@@ -3,6 +3,13 @@
 ## **Project ID**
 RP-24-25J-146
 
+## **Supervisor Details**
+
+| Name                 | Supervior           |
+|----------------------|---------------------|
+| Lakmini Abeywardhana | Supervisor          |
+| Karthiga Rajendran   | Sub-Supervisor      |
+
 ## **Member Details**
 
 | Student ID   | Student Name           |
