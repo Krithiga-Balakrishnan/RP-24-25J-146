@@ -18,6 +18,10 @@ app.use(express.json());
 // Serve static files (uploaded images)
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+app.get("/", (req, res) => {
+  res.json({ success: true, message: "API is running successfully!" });
+});
+
 const server = http.createServer(app);
 
 const io = new Server(server, {
