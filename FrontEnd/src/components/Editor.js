@@ -4,6 +4,7 @@ import "quill/dist/quill.snow.css";
 import ImageWithCaptionBlot from "../blots/ImageWithCaptionBlot.js";
 import QuillCursors from "quill-cursors";
 import debounce from "lodash.debounce";
+import MindmapModal from "./MindmapModal";
 
 Quill.register("modules/cursors", QuillCursors);
 Quill.register(ImageWithCaptionBlot);
@@ -145,6 +146,10 @@ function Editor({
     500
   );
 
+  // State to control the Mind Map modal
+  const [showMindmap, setShowMindmap] = useState(false);
+  const [selectedText, setSelectedText] = useState("");
+
   // 1) Initialize Quill editors for each node.
   useEffect(() => {
     console.log("📌 Sections in Editor:", sections);
@@ -250,6 +255,10 @@ function Editor({
         // On selection change, emit local cursor update
         quill.on("selection-change", (range, oldRange, source) => {
           if (source === "user" && range) {
+            // Get the currently selected text from the Quill editor
+            const text = quill.getText(range.index, range.length);
+            setSelectedText(text); // update our state with the highlighted text
+            console.log(selectedText);
             // Emit the node's identifier (using node.id)
             socket.emit("cursor-selection", {
               padId,
@@ -985,6 +994,22 @@ function Editor({
           ))}
         </ul>
       </div>
+      {/* Button to generate mind map */}
+      <button
+        className="btn btn-success mb-3"
+        onClick={() => setShowMindmap(true)}
+      >
+        Generate Mind Map
+      </button>
+
+      {/* Render Mindmap Modal */}
+      {showMindmap && (
+        <MindmapModal
+          show={showMindmap}
+          onClose={() => setShowMindmap(false)}
+          selectedText={selectedText}
+        />
+      )}
     </div>
   );
 }
