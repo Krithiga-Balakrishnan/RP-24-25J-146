@@ -46,6 +46,10 @@ const PadSchema = new mongoose.Schema({
     email: String,
   }],
   references: [ReferenceSchema]
+}, {
+  versionKey: false,             // disable __v
+  optimisticConcurrency: false   // disable version checks
 });
 
 module.exports = mongoose.model("Pad", PadSchema);
+
