@@ -4,7 +4,6 @@ import "quill/dist/quill.snow.css";
 import ImageWithCaptionBlot from "../blots/ImageWithCaptionBlot.js";
 import QuillCursors from "quill-cursors";
 import debounce from "lodash.debounce";
-import MindmapModal from "./MindmapModal";
 
 Quill.register("modules/cursors", QuillCursors);
 Quill.register(ImageWithCaptionBlot);
@@ -147,7 +146,6 @@ function Editor({
   );
 
   // State to control the Mind Map modal
-  const [showMindmap, setShowMindmap] = useState(false);
   const [selectedText, setSelectedText] = useState("");
 
   // 1) Initialize Quill editors for each node.
@@ -994,22 +992,6 @@ function Editor({
           ))}
         </ul>
       </div>
-      {/* Button to generate mind map */}
-      <button
-        className="btn btn-success mb-3"
-        onClick={() => setShowMindmap(true)}
-      >
-        Generate Mind Map
-      </button>
-
-      {/* Render Mindmap Modal */}
-      {showMindmap && (
-        <MindmapModal
-          show={showMindmap}
-          onClose={() => setShowMindmap(false)}
-          selectedText={selectedText}
-        />
-      )}
     </div>
   );
 }

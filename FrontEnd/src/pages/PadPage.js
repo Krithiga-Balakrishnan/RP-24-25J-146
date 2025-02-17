@@ -3,6 +3,8 @@ import { useParams } from "react-router-dom";
 import { io } from "socket.io-client";
 import { v4 as uuidv4 } from "uuid";
 import Editor from "../components/Editor";
+import MindmapModal from "../components/MindmapModal";
+import PadHeader from "../components/PadHeader";
 
 const socket = io(`${process.env.REACT_APP_BACKEND_API_URL}`);
 
@@ -14,6 +16,8 @@ const PadPage = () => {
   const [authors, setAuthors] = useState([]);
   const [references, setReferences] = useState([]);
   const [userEmail, setUserEmail] = useState("");
+  const [showMindmap, setShowMindmap] = useState(false);
+  const [selectedText, setSelectedText] = useState("");
 
   const userId = useRef(localStorage.getItem("userId") || uuidv4());
   const userName = useRef(localStorage.getItem("userName") || `User-${userId.current.slice(0, 4)}`);
@@ -73,6 +77,15 @@ const PadPage = () => {
     };
   }, [padId]);
 
+  // When the "Generate Mind Map" button is clicked, get the selected text.
+  const handleGenerateMindmap = () => {
+    // Get the current selection from the window
+    const selText = window.getSelection().toString();
+    setSelectedText(selText);
+    console.log("Selected Text in PadPage: ",selText);
+    setShowMindmap(true);
+  };
+  
   // Add user to pad (only if current user is pad_owner)
   const addUserToPad = async () => {
     if (!userEmail.trim()) return alert("Enter a valid email!");
@@ -103,50 +116,65 @@ const PadPage = () => {
   };
 
   return (
-    <div>
-      <h1>Pad: {padId}</h1>
-      {/* Pass sections, authors, references into Editor */}
-      <Editor
-        padId={padId}
-        socket={socket}
-        userId={userId.current}
-        sections={sections}
-        setSections={setSections}
-        authors={authors}
-        setAuthors={setAuthors}
-        references={references}
-        setReferences={setReferences}
-      />
-
-      {/* Only show Add User if pad_owner */}
-      {pad && pad.roles && pad.roles[userId.current] === "pad_owner" && (
-        <div>
-          <h3>Add User</h3>
-          <input
-            type="email"
-            value={userEmail}
-            onChange={(e) => setUserEmail(e.target.value)}
-            placeholder="User email"
+    <div className="container my-3">
+      {/* Sticky header */}
+      <div className="sticky-top bg-white py-2" style={{ zIndex: 900 }}>
+        <PadHeader padId={padId} onGenerateMindmap={handleGenerateMindmap} />
+      </div>
+  
+      {/* Main content */}
+      <div className="mt-4">
+        <Editor
+          padId={padId}
+          socket={socket}
+          userId={userId.current}
+          sections={sections}
+          setSections={setSections}
+          authors={authors}
+          setAuthors={setAuthors}
+          references={references}
+          setReferences={setReferences}
+        />
+  
+        {pad && pad.roles && pad.roles[userId.current] === "pad_owner" && (
+          <div>
+            <h3>Add User</h3>
+            <input
+              type="email"
+              value={userEmail}
+              onChange={(e) => setUserEmail(e.target.value)}
+              placeholder="User email"
+            />
+            <button onClick={addUserToPad}>➕ Add User as Editor</button>
+          </div>
+        )}
+  
+        <h2>Active Users:</h2>
+        {users.length > 0 ? (
+          <ul>
+            {users.map((user) => (
+              <li key={user.userId}>
+                {user.userName}{" "}
+                {pad?.roles && pad.roles[user.userId] === "pad_owner" ? "(Owner)" : ""}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>⚠️ No active users yet.</p>
+        )}
+  
+        {/* Render Mindmap Modal */}
+        {showMindmap && (
+          <MindmapModal
+            show={showMindmap}
+            onClose={() => setShowMindmap(false)}
+            selectedText={selectedText}
           />
-          <button onClick={addUserToPad}>➕ Add User as Editor</button>
-        </div>
-      )}
-
-      <h2>Active Users:</h2>
-      {users.length > 0 ? (
-        <ul>
-          {users.map((user) => (
-            <li key={user.userId}>
-              {user.userName}{" "}
-              {pad?.roles && pad.roles[user.userId] === "pad_owner" ? "(Owner)" : ""}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p>⚠️ No active users yet.</p>
-      )}
+        )}
+      </div>
     </div>
   );
+  
 };
 
 export default PadPage;

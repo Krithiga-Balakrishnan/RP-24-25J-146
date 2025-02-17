@@ -482,6 +482,36 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
             traverseMindmap(mindmapNode, null);
           });
         }
+
+        // Adjust URL/endpoint as needed:
+        // const baseApiUrl = "https://616b-34-34-37-161.ngrok-free.app";
+        // const endpoint = "generate";
+
+        // const response = await fetch(`${baseApiUrl}/${endpoint}`, {
+        //   method: "POST",
+        //   headers: { "Content-Type": "application/json" },
+        //   body: JSON.stringify({ input_text: selectedText }),
+        // });
+
+        // if (!response.ok) {
+        //   throw new Error(`Server error: ${response.status}`);
+        // }
+
+        // const data = await response.json();
+        // console.log("Parsed JSON Data:", data);
+        // const mindmapRoot = data.response;
+
+        // // Clear previous data
+        // nodes.splice(0, nodes.length);
+        // links.splice(0, links.length);
+
+        // // Recursively traverse the returned structure
+        // if (mindmapRoot && mindmapRoot.mindmap && Array.isArray(mindmapRoot.mindmap)) {
+        //   mindmapRoot.mindmap.forEach((mindmapNode) => {
+        //     traverseMindmap(mindmapNode, null);
+        //   });
+        // }
+
         const hierarchyData = buildHierarchy(nodes, links);
         applyTreeLayout(hierarchyData);
         update();
