@@ -30,45 +30,57 @@ const toolbarOptions = [
 /* ========= Helper Functions ========= */
 // Add default empty array if list is undefined
 function updateNodeTitleInTree(list = [], nodeId, newTitle) {
-  return list.map(item => {
+  return list.map((item) => {
     if (item.id === nodeId) {
       return { ...item, title: newTitle };
     }
-    return { 
-      ...item, 
-      subsections: updateNodeTitleInTree(item.subsections || [], nodeId, newTitle)
+    return {
+      ...item,
+      subsections: updateNodeTitleInTree(
+        item.subsections || [],
+        nodeId,
+        newTitle
+      ),
     };
   });
 }
 
 function updateNodeContentInTree(list = [], nodeId, newContent) {
-  return list.map(item => {
+  return list.map((item) => {
     if (item.id === nodeId) {
       return { ...item, content: newContent };
     }
-    return { 
-      ...item, 
-      subsections: updateNodeContentInTree(item.subsections || [], nodeId, newContent)
+    return {
+      ...item,
+      subsections: updateNodeContentInTree(
+        item.subsections || [],
+        nodeId,
+        newContent
+      ),
     };
   });
 }
 
 function addSubsectionInTree(list = [], parentId, newNode) {
-  return list.map(item => {
+  return list.map((item) => {
     if (item.id === parentId) {
       return { ...item, subsections: [...(item.subsections || []), newNode] };
     }
-    return { 
-      ...item, 
-      subsections: addSubsectionInTree(item.subsections || [], parentId, newNode)
+    return {
+      ...item,
+      subsections: addSubsectionInTree(
+        item.subsections || [],
+        parentId,
+        newNode
+      ),
     };
   });
 }
 
 function removeNodeFromTree(list = [], nodeId) {
   return list
-    .filter(item => item.id !== nodeId)
-    .map(item => ({
+    .filter((item) => item.id !== nodeId)
+    .map((item) => ({
       ...item,
       subsections: removeNodeFromTree(item.subsections || [], nodeId),
     }));
@@ -90,7 +102,7 @@ function createNode(title) {
     title,
     contentId: `content-${id}`,
     content: { ops: [] },
-    subsections: []
+    subsections: [],
   };
 }
 
@@ -120,9 +132,18 @@ function Editor({
   const [keywords, setKeywords] = useState("");
 
   // Use debounced state for plain text fields
-  const [debouncedTitle, setDebouncedTitle] = useDebouncedValue(paperTitle, 500);
-  const [debouncedAbstract, setDebouncedAbstract] = useDebouncedValue(abstract, 500);
-  const [debouncedKeywords, setDebouncedKeywords] = useDebouncedValue(keywords, 500);
+  const [debouncedTitle, setDebouncedTitle] = useDebouncedValue(
+    paperTitle,
+    500
+  );
+  const [debouncedAbstract, setDebouncedAbstract] = useDebouncedValue(
+    abstract,
+    500
+  );
+  const [debouncedKeywords, setDebouncedKeywords] = useDebouncedValue(
+    keywords,
+    500
+  );
 
   // 1) Initialize Quill editors for each node.
   useEffect(() => {
@@ -145,15 +166,23 @@ function Editor({
                     if (!file) return;
                     const formData = new FormData();
                     formData.append("image", file);
-                    const res = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/api/pads/uploads`, {
-                      method: "POST",
-                      body: formData,
-                    });
+                    const res = await fetch(
+                      `${process.env.REACT_APP_BACKEND_API_URL}/api/pads/uploads`,
+                      {
+                        method: "POST",
+                        body: formData,
+                      }
+                    );
                     const data = await res.json();
                     if (!data.url) return;
                     const caption = prompt("Enter image caption") || "";
-                    const range = this.quill.getSelection() || { index: this.quill.getLength() };
-                    this.quill.insertEmbed(range.index, "imageWithCaption", { src: data.url, caption });
+                    const range = this.quill.getSelection() || {
+                      index: this.quill.getLength(),
+                    };
+                    this.quill.insertEmbed(range.index, "imageWithCaption", {
+                      src: data.url,
+                      caption,
+                    });
                     this.quill.setSelection(range.index + 1, 0);
                     const fullContent = this.quill.getContents();
                     const cursor = { index: range.index + 1, length: 0 };
@@ -179,7 +208,7 @@ function Editor({
                 },
               },
             },
-            cursors: {} // Enable remote cursors
+            cursors: {}, // Enable remote cursors
           },
         });
         // Store Quill instance
@@ -192,7 +221,9 @@ function Editor({
           if (source === "user") {
             const fullContent = quill.getContents();
             const range = quill.getSelection();
-            const cursor = range ? { index: range.index, length: range.length } : { index: 0, length: 0 };
+            const cursor = range
+              ? { index: range.index, length: range.length }
+              : { index: 0, length: 0 };
             if (parentId === null) {
               socket.emit("send-changes", {
                 padId,
@@ -211,20 +242,29 @@ function Editor({
                 cursor,
               });
             }
-            setSections(prev => updateNodeContentInTree(prev, node.id, fullContent));
+            setSections((prev) =>
+              updateNodeContentInTree(prev, node.id, fullContent)
+            );
           }
         });
         // On selection change, emit local cursor update
         quill.on("selection-change", (range, oldRange, source) => {
           if (source === "user" && range) {
             // Emit the node's identifier (using node.id)
-            socket.emit("cursor-selection", { padId, userId, cursor: range, nodeId: node.id });
+            socket.emit("cursor-selection", {
+              padId,
+              userId,
+              cursor: range,
+              nodeId: node.id,
+            });
           }
-        });       
+        });
       }
-      (node.subsections || []).forEach(child => initQuillForNode(child, node.id));
+      (node.subsections || []).forEach((child) =>
+        initQuillForNode(child, node.id)
+      );
     }
-    sections.forEach(node => initQuillForNode(node, null));
+    sections.forEach((node) => initQuillForNode(node, null));
   }, [sections, socket, setSections, userId]);
 
   // 2) Listen for remote fullContent updates and remote cursor events.
@@ -238,10 +278,10 @@ function Editor({
   //       // We do not override local selection for remote updates.
   //     }
   //   });
-    
+
   //   socket.on("remote-cursor", ({ userId: remoteUserId, cursor, color, nodeId }) => {
   //     if (remoteUserId === userId) return; // ignore our own
-    
+
   //     // Remove any existing cursor for this remote user from all editors
   //     Object.keys(quillRefs.current).forEach((contentId) => {
   //       const quill = quillRefs.current[contentId];
@@ -250,7 +290,7 @@ function Editor({
   //         cursors.removeCursor(remoteUserId);
   //       }
   //     });
-    
+
   //     // Get the correct editor for this remote cursor update
   //     const contentId = getNodeContentId(sections, nodeId);
   //     if (contentId && quillRefs.current[contentId]) {
@@ -262,8 +302,7 @@ function Editor({
   //       }
   //     }
   //   });
-    
-    
+
   //   socket.on("load-pad", ({ sections: newSecs, authors: newAuthors, references: newRefs, title, abstract: abs, keyword }) => {
   //     setSections(newSecs || []);
   //     setAuthors(newAuthors || []);
@@ -272,7 +311,7 @@ function Editor({
   //     setAbstract(abs || "");
   //     setKeywords(keyword || "");
   //   });
-    
+
   //   return () => {
   //     socket.off("receive-changes");
   //     socket.off("load-pad");
@@ -281,64 +320,85 @@ function Editor({
   // }, [socket, sections, setSections, setAuthors, setReferences, userId]);
 
   useEffect(() => {
-    socket.on("receive-changes", ({ sectionId, subId, fullContent, userId: senderId, cursor }) => {
-      console.log("🔵 [Client] Received fullContent update:", JSON.stringify(fullContent, null, 2));
-      const nodeId = subId || sectionId;
-      const contentId = getNodeContentId(sections, nodeId);
-      if (contentId && quillRefs.current[contentId]) {
-        const quill = quillRefs.current[contentId];
-        // Save current selection if editor is focused
-        const currentSelection = quill.hasFocus() ? quill.getSelection() : null;
-        // Compute the diff delta between current content and the remote fullContent
-        const localDelta = quill.getContents();
-        const Delta = Quill.import("delta");
-        const diffDelta = localDelta.diff(new Delta(fullContent.ops));
-        // Apply the diff; this updates the document incrementally
-        quill.updateContents(diffDelta);
-        // Restore selection if we had one
-        if (currentSelection) {
-          // Optionally, adjust currentSelection.index if necessary.
-          quill.setSelection(currentSelection.index, currentSelection.length);
+    socket.on(
+      "receive-changes",
+      ({ sectionId, subId, fullContent, userId: senderId, cursor }) => {
+        console.log(
+          "🔵 [Client] Received fullContent update:",
+          JSON.stringify(fullContent, null, 2)
+        );
+        const nodeId = subId || sectionId;
+        const contentId = getNodeContentId(sections, nodeId);
+        if (contentId && quillRefs.current[contentId]) {
+          const quill = quillRefs.current[contentId];
+          // Save current selection if editor is focused
+          const currentSelection = quill.hasFocus()
+            ? quill.getSelection()
+            : null;
+          // Compute the diff delta between current content and the remote fullContent
+          const localDelta = quill.getContents();
+          const Delta = Quill.import("delta");
+          const diffDelta = localDelta.diff(new Delta(fullContent.ops));
+          // Apply the diff; this updates the document incrementally
+          quill.updateContents(diffDelta);
+          // Restore selection if we had one
+          if (currentSelection) {
+            // Optionally, adjust currentSelection.index if necessary.
+            quill.setSelection(currentSelection.index, currentSelection.length);
+          }
         }
       }
-    });
-  
-    socket.on("remote-cursor", ({ userId: remoteUserId, cursor, color, nodeId }) => {
-      if (remoteUserId === userId) return; // ignore our own
-      // Remove any existing remote cursor for this user from all editors
-      Object.keys(quillRefs.current).forEach((contentId) => {
-        const quill = quillRefs.current[contentId];
-        const cursors = quill.getModule("cursors");
-        if (cursors) {
-          cursors.removeCursor(remoteUserId);
-        }
-      });
-      const contentId = getNodeContentId(sections, nodeId);
-      if (contentId && quillRefs.current[contentId]) {
-        const cursors = quillRefs.current[contentId].getModule("cursors");
-        if (cursors) {
-          cursors.createCursor(remoteUserId, remoteUserId, color);
-          cursors.moveCursor(remoteUserId, cursor);
+    );
+
+    socket.on(
+      "remote-cursor",
+      ({ userId: remoteUserId, cursor, color, nodeId }) => {
+        if (remoteUserId === userId) return; // ignore our own
+        // Remove any existing remote cursor for this user from all editors
+        Object.keys(quillRefs.current).forEach((contentId) => {
+          const quill = quillRefs.current[contentId];
+          const cursors = quill.getModule("cursors");
+          if (cursors) {
+            cursors.removeCursor(remoteUserId);
+          }
+        });
+        const contentId = getNodeContentId(sections, nodeId);
+        if (contentId && quillRefs.current[contentId]) {
+          const cursors = quillRefs.current[contentId].getModule("cursors");
+          if (cursors) {
+            cursors.createCursor(remoteUserId, remoteUserId, color);
+            cursors.moveCursor(remoteUserId, cursor);
+          }
         }
       }
-    });
-  
-    socket.on("load-pad", ({ sections: newSecs, authors: newAuthors, references: newRefs, title, abstract: abs, keyword }) => {
-      setSections(newSecs || []);
-      setAuthors(newAuthors || []);
-      setReferences(newRefs || []);
-      setPaperTitle(title || "");
-      setAbstract(abs || "");
-      setKeywords(keyword || "");
-    });
-  
+    );
+
+    socket.on(
+      "load-pad",
+      ({
+        sections: newSecs,
+        authors: newAuthors,
+        references: newRefs,
+        title,
+        abstract: abs,
+        keyword,
+      }) => {
+        setSections(newSecs || []);
+        setAuthors(newAuthors || []);
+        setReferences(newRefs || []);
+        setPaperTitle(title || "");
+        setAbstract(abs || "");
+        setKeywords(keyword || "");
+      }
+    );
+
     return () => {
       socket.off("receive-changes");
       socket.off("load-pad");
       socket.off("remote-cursor");
     };
   }, [socket, sections, setSections, setAuthors, setReferences, userId]);
-  
+
   // 3) Update node's title.
   const updateNodeTitle = (nodeId, newTitle) => {
     const updated = updateNodeTitleInTree(sections, nodeId, newTitle);
@@ -370,7 +430,7 @@ function Editor({
       keyword: keywords,
     });
   };
-  
+
   const handleAbstractChange = (e) => {
     const newVal = e.target.value;
     setAbstract(newVal);
@@ -385,7 +445,7 @@ function Editor({
       keyword: keywords,
     });
   };
-  
+
   const handleKeywordsChange = (e) => {
     const newVal = e.target.value;
     setKeywords(newVal);
@@ -400,7 +460,7 @@ function Editor({
       keyword: newVal,
     });
   };
-  
+
   // 5) Define addSection, addSubsection, and removeNode.
   const addSection = () => {
     const newSection = createNode("New Section");
@@ -465,11 +525,18 @@ function Editor({
           🗑️
         </button>
       </div>
-      <div id={`editor-${node.contentId}`} style={{ height: 200, border: "1px solid #ccc", marginBottom: 10 }} />
-      <button onClick={() => addSubsection(node.id)} style={{ marginBottom: 5 }}>
+      <div
+        id={`editor-${node.contentId}`}
+        style={{ height: 200, border: "1px solid #ccc", marginBottom: 10 }}
+      />
+      <button
+        onClick={() => addSubsection(node.id)}
+        style={{ marginBottom: 5 }}
+      >
         ➕ Add Subsection
       </button>
-      {node.subsections && node.subsections.map(child => renderNode(child, indent + 1))}
+      {node.subsections &&
+        node.subsections.map((child) => renderNode(child, indent + 1))}
     </div>
   );
 
@@ -477,73 +544,85 @@ function Editor({
     <div>
       {/* Plain text fields */}
       {/* Plain text fields */}
-<div style={{ border: "1px solid #000", padding: 10, marginBottom: 20 }}>
-  <h1 style={{ margin: 0 }}>Paper Title</h1>
-  <input
-    style={{ width: "100%", fontSize: "1.5rem", fontWeight: "bold", marginBottom: 10 }}
-    placeholder="Enter paper title here..."
-    value={paperTitle}
-    onChange={(e) => {
-      setPaperTitle(e.target.value);
-      // Do not emit here
-    }}
-    onBlur={() => {
-      socket.emit("update-pad", {
-        padId,
-        sections,
-        authors,
-        references,
-        title: paperTitle,
-        abstract,
-        keyword: keywords,
-      });
-    }}
-  />
-  <h2>Abstract</h2>
-  <textarea
-    style={{ width: "100%", height: 100, fontSize: "1rem", marginBottom: 10 }}
-    placeholder="Enter abstract here..."
-    value={abstract}
-    onChange={(e) => {
-      setAbstract(e.target.value);
-    }}
-    onBlur={() => {
-      socket.emit("update-pad", {
-        padId,
-        sections,
-        authors,
-        references,
-        title: paperTitle,
-        abstract: abstract,
-        keyword: keywords,
-      });
-    }}
-  />
-  <h2>Keywords</h2>
-  <input
-    style={{ width: "100%", fontSize: "1rem", marginBottom: 10 }}
-    placeholder="Enter keywords here..."
-    value={keywords}
-    onChange={(e) => {
-      setKeywords(e.target.value);
-    }}
-    onBlur={() => {
-      socket.emit("update-pad", {
-        padId,
-        sections,
-        authors,
-        references,
-        title: paperTitle,
-        abstract,
-        keyword: keywords,
-      });
-    }}
-  />
-</div>
-
+      <div style={{ border: "1px solid #000", padding: 10, marginBottom: 20 }}>
+        <h1 style={{ margin: 0 }}>Paper Title</h1>
+        <input
+          style={{
+            width: "100%",
+            fontSize: "1.5rem",
+            fontWeight: "bold",
+            marginBottom: 10,
+          }}
+          placeholder="Enter paper title here..."
+          value={paperTitle}
+          onChange={(e) => {
+            setPaperTitle(e.target.value);
+            // Do not emit here
+          }}
+          onBlur={() => {
+            socket.emit("update-pad", {
+              padId,
+              sections,
+              authors,
+              references,
+              title: paperTitle,
+              abstract,
+              keyword: keywords,
+            });
+          }}
+        />
+        <h2>Abstract</h2>
+        <textarea
+          style={{
+            width: "100%",
+            height: 100,
+            fontSize: "1rem",
+            marginBottom: 10,
+          }}
+          placeholder="Enter abstract here..."
+          value={abstract}
+          onChange={(e) => {
+            setAbstract(e.target.value);
+          }}
+          onBlur={() => {
+            socket.emit("update-pad", {
+              padId,
+              sections,
+              authors,
+              references,
+              title: paperTitle,
+              abstract: abstract,
+              keyword: keywords,
+            });
+          }}
+        />
+        <h2>Keywords</h2>
+        <input
+          style={{ width: "100%", fontSize: "1rem", marginBottom: 10 }}
+          placeholder="Enter keywords here..."
+          value={keywords}
+          onChange={(e) => {
+            setKeywords(e.target.value);
+          }}
+          onBlur={() => {
+            socket.emit("update-pad", {
+              padId,
+              sections,
+              authors,
+              references,
+              title: paperTitle,
+              abstract,
+              keyword: keywords,
+            });
+          }}
+        />
+      </div>
 
       {/* Section Controls */}
-      <button onClick={addSection} style={{ marginBottom: 10, marginRight: 10 }}>
+      <button
+        onClick={addSection}
+        style={{ marginBottom: 10, marginRight: 10 }}
+      >
         ➕ Add Blank Section
       </button>
       {COMMON_IEEE_SECTIONS.map((title, idx) => (
@@ -568,7 +647,7 @@ function Editor({
           ➕ {title}
         </button>
       ))}
-      {sections.map(sec => renderNode(sec))}
+      {sections.map((sec) => renderNode(sec))}
 
       {/* Authors Section */}
       <div style={{ marginTop: 30, padding: 10, border: "1px solid #ccc" }}>
@@ -597,13 +676,13 @@ function Editor({
           ➕ Add Author
         </button>
         <ul>
-          {authors.map(author => (
+          {authors.map((author) => (
             <li key={author.id}>
               <input
                 type="text"
                 value={author.name}
                 onChange={(e) => {
-                  const updatedAuthors = authors.map(a =>
+                  const updatedAuthors = authors.map((a) =>
                     a.id === author.id ? { ...a, name: e.target.value } : a
                   );
                   setAuthors(updatedAuthors);
@@ -623,8 +702,10 @@ function Editor({
                 type="text"
                 value={author.affiliation}
                 onChange={(e) => {
-                  const updatedAuthors = authors.map(a =>
-                    a.id === author.id ? { ...a, affiliation: e.target.value } : a
+                  const updatedAuthors = authors.map((a) =>
+                    a.id === author.id
+                      ? { ...a, affiliation: e.target.value }
+                      : a
                   );
                   setAuthors(updatedAuthors);
                   socket.emit("update-pad", {
@@ -643,7 +724,7 @@ function Editor({
                 type="text"
                 value={author.email}
                 onChange={(e) => {
-                  const updatedAuthors = authors.map(a =>
+                  const updatedAuthors = authors.map((a) =>
                     a.id === author.id ? { ...a, email: e.target.value } : a
                   );
                   setAuthors(updatedAuthors);
@@ -661,7 +742,9 @@ function Editor({
               />
               <button
                 onClick={() => {
-                  const updatedAuthors = authors.filter(a => a.id !== author.id);
+                  const updatedAuthors = authors.filter(
+                    (a) => a.id !== author.id
+                  );
                   setAuthors(updatedAuthors);
                   socket.emit("update-pad", {
                     padId,
@@ -720,7 +803,7 @@ function Editor({
                 type="text"
                 value={reference.key}
                 onChange={(e) => {
-                  const updatedReferences = references.map(r =>
+                  const updatedReferences = references.map((r) =>
                     r.id === reference.id ? { ...r, key: e.target.value } : r
                   );
                   setReferences(updatedReferences);
@@ -740,7 +823,7 @@ function Editor({
                 type="text"
                 value={reference.author}
                 onChange={(e) => {
-                  const updatedReferences = references.map(r =>
+                  const updatedReferences = references.map((r) =>
                     r.id === reference.id ? { ...r, author: e.target.value } : r
                   );
                   setReferences(updatedReferences);
@@ -760,7 +843,7 @@ function Editor({
                 type="text"
                 value={reference.title}
                 onChange={(e) => {
-                  const updatedReferences = references.map(r =>
+                  const updatedReferences = references.map((r) =>
                     r.id === reference.id ? { ...r, title: e.target.value } : r
                   );
                   setReferences(updatedReferences);
@@ -780,8 +863,10 @@ function Editor({
                 type="text"
                 value={reference.journal}
                 onChange={(e) => {
-                  const updatedReferences = references.map(r =>
-                    r.id === reference.id ? { ...r, journal: e.target.value } : r
+                  const updatedReferences = references.map((r) =>
+                    r.id === reference.id
+                      ? { ...r, journal: e.target.value }
+                      : r
                   );
                   setReferences(updatedReferences);
                   socket.emit("update-pad", {
@@ -800,7 +885,7 @@ function Editor({
                 type="text"
                 value={reference.year}
                 onChange={(e) => {
-                  const updatedReferences = references.map(r =>
+                  const updatedReferences = references.map((r) =>
                     r.id === reference.id ? { ...r, year: e.target.value } : r
                   );
                   setReferences(updatedReferences);
@@ -820,7 +905,7 @@ function Editor({
                 type="text"
                 value={reference.volume}
                 onChange={(e) => {
-                  const updatedReferences = references.map(r =>
+                  const updatedReferences = references.map((r) =>
                     r.id === reference.id ? { ...r, volume: e.target.value } : r
                   );
                   setReferences(updatedReferences);
@@ -840,7 +925,7 @@ function Editor({
                 type="text"
                 value={reference.number}
                 onChange={(e) => {
-                  const updatedReferences = references.map(r =>
+                  const updatedReferences = references.map((r) =>
                     r.id === reference.id ? { ...r, number: e.target.value } : r
                   );
                   setReferences(updatedReferences);
@@ -860,7 +945,7 @@ function Editor({
                 type="text"
                 value={reference.pages}
                 onChange={(e) => {
-                  const updatedReferences = references.map(r =>
+                  const updatedReferences = references.map((r) =>
                     r.id === reference.id ? { ...r, pages: e.target.value } : r
                   );
                   setReferences(updatedReferences);
@@ -878,7 +963,9 @@ function Editor({
               />
               <button
                 onClick={() => {
-                  const updatedReferences = references.filter(r => r.id !== reference.id);
+                  const updatedReferences = references.filter(
+                    (r) => r.id !== reference.id
+                  );
                   setReferences(updatedReferences);
                   socket.emit("update-pad", {
                     padId,
