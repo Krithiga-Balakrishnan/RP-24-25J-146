@@ -280,6 +280,65 @@ function Editor({
     };
   }, [socket, sections, setSections, setAuthors, setReferences, userId]);
 
+  useEffect(() => {
+    socket.on("receive-changes", ({ sectionId, subId, fullContent, userId: senderId, cursor }) => {
+      console.log("🔵 [Client] Received fullContent update:", JSON.stringify(fullContent, null, 2));
+      const nodeId = subId || sectionId;
+      const contentId = getNodeContentId(sections, nodeId);
+      if (contentId && quillRefs.current[contentId]) {
+        const quill = quillRefs.current[contentId];
+        // Save current selection if editor is focused
+        const currentSelection = quill.hasFocus() ? quill.getSelection() : null;
+        // Compute the diff delta between current content and the remote fullContent
+        const localDelta = quill.getContents();
+        const Delta = Quill.import("delta");
+        const diffDelta = localDelta.diff(new Delta(fullContent.ops));
+        // Apply the diff; this updates the document incrementally
+        quill.updateContents(diffDelta);
+        // Restore selection if we had one
+        if (currentSelection) {
+          // Optionally, adjust currentSelection.index if necessary.
+          quill.setSelection(currentSelection.index, currentSelection.length);
+        }
+      }
+    });
+  
+    socket.on("remote-cursor", ({ userId: remoteUserId, cursor, color, nodeId }) => {
+      if (remoteUserId === userId) return; // ignore our own
+      // Remove any existing remote cursor for this user from all editors
+      Object.keys(quillRefs.current).forEach((contentId) => {
+        const quill = quillRefs.current[contentId];
+        const cursors = quill.getModule("cursors");
+        if (cursors) {
+          cursors.removeCursor(remoteUserId);
+        }
+      });
+      const contentId = getNodeContentId(sections, nodeId);
+      if (contentId && quillRefs.current[contentId]) {
+        const cursors = quillRefs.current[contentId].getModule("cursors");
+        if (cursors) {
+          cursors.createCursor(remoteUserId, remoteUserId, color);
+          cursors.moveCursor(remoteUserId, cursor);
+        }
+      }
+    });
+  
+    socket.on("load-pad", ({ sections: newSecs, authors: newAuthors, references: newRefs, title, abstract: abs, keyword }) => {
+      setSections(newSecs || []);
+      setAuthors(newAuthors || []);
+      setReferences(newRefs || []);
+      setPaperTitle(title || "");
+      setAbstract(abs || "");
+      setKeywords(keyword || "");
+    });
+  
+    return () => {
+      socket.off("receive-changes");
+      socket.off("load-pad");
+      socket.off("remote-cursor");
+    };
+  }, [socket, sections, setSections, setAuthors, setReferences, userId]);
+  
   // 3) Update node's title.
   const updateNodeTitle = (nodeId, newTitle) => {
     const updated = updateNodeTitleInTree(sections, nodeId, newTitle);
