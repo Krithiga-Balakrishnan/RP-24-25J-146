@@ -228,57 +228,57 @@ function Editor({
   }, [sections, socket, setSections, userId]);
 
   // 2) Listen for remote fullContent updates and remote cursor events.
-  useEffect(() => {
-    socket.on("receive-changes", ({ sectionId, subId, fullContent, userId: senderId, cursor }) => {
-      console.log("🔵 [Client] Received fullContent update:", JSON.stringify(fullContent, null, 2));
-      const nodeId = subId || sectionId;
-      const contentId = getNodeContentId(sections, nodeId);
-      if (contentId && quillRefs.current[contentId]) {
-        quillRefs.current[contentId].setContents(fullContent);
-        // We do not override local selection for remote updates.
-      }
-    });
+  // useEffect(() => {
+  //   socket.on("receive-changes", ({ sectionId, subId, fullContent, userId: senderId, cursor }) => {
+  //     console.log("🔵 [Client] Received fullContent update:", JSON.stringify(fullContent, null, 2));
+  //     const nodeId = subId || sectionId;
+  //     const contentId = getNodeContentId(sections, nodeId);
+  //     if (contentId && quillRefs.current[contentId]) {
+  //       quillRefs.current[contentId].setContents(fullContent);
+  //       // We do not override local selection for remote updates.
+  //     }
+  //   });
     
-    socket.on("remote-cursor", ({ userId: remoteUserId, cursor, color, nodeId }) => {
-      if (remoteUserId === userId) return; // ignore our own
+  //   socket.on("remote-cursor", ({ userId: remoteUserId, cursor, color, nodeId }) => {
+  //     if (remoteUserId === userId) return; // ignore our own
     
-      // Remove any existing cursor for this remote user from all editors
-      Object.keys(quillRefs.current).forEach((contentId) => {
-        const quill = quillRefs.current[contentId];
-        const cursors = quill.getModule("cursors");
-        if (cursors) {
-          cursors.removeCursor(remoteUserId);
-        }
-      });
+  //     // Remove any existing cursor for this remote user from all editors
+  //     Object.keys(quillRefs.current).forEach((contentId) => {
+  //       const quill = quillRefs.current[contentId];
+  //       const cursors = quill.getModule("cursors");
+  //       if (cursors) {
+  //         cursors.removeCursor(remoteUserId);
+  //       }
+  //     });
     
-      // Get the correct editor for this remote cursor update
-      const contentId = getNodeContentId(sections, nodeId);
-      if (contentId && quillRefs.current[contentId]) {
-        const cursors = quillRefs.current[contentId].getModule("cursors");
-        if (cursors) {
-          // Create and move the remote cursor on the correct editor
-          cursors.createCursor(remoteUserId, remoteUserId, color);
-          cursors.moveCursor(remoteUserId, cursor);
-        }
-      }
-    });
+  //     // Get the correct editor for this remote cursor update
+  //     const contentId = getNodeContentId(sections, nodeId);
+  //     if (contentId && quillRefs.current[contentId]) {
+  //       const cursors = quillRefs.current[contentId].getModule("cursors");
+  //       if (cursors) {
+  //         // Create and move the remote cursor on the correct editor
+  //         cursors.createCursor(remoteUserId, remoteUserId, color);
+  //         cursors.moveCursor(remoteUserId, cursor);
+  //       }
+  //     }
+  //   });
     
     
-    socket.on("load-pad", ({ sections: newSecs, authors: newAuthors, references: newRefs, title, abstract: abs, keyword }) => {
-      setSections(newSecs || []);
-      setAuthors(newAuthors || []);
-      setReferences(newRefs || []);
-      setPaperTitle(title || "");
-      setAbstract(abs || "");
-      setKeywords(keyword || "");
-    });
+  //   socket.on("load-pad", ({ sections: newSecs, authors: newAuthors, references: newRefs, title, abstract: abs, keyword }) => {
+  //     setSections(newSecs || []);
+  //     setAuthors(newAuthors || []);
+  //     setReferences(newRefs || []);
+  //     setPaperTitle(title || "");
+  //     setAbstract(abs || "");
+  //     setKeywords(keyword || "");
+  //   });
     
-    return () => {
-      socket.off("receive-changes");
-      socket.off("load-pad");
-      socket.off("remote-cursor");
-    };
-  }, [socket, sections, setSections, setAuthors, setReferences, userId]);
+  //   return () => {
+  //     socket.off("receive-changes");
+  //     socket.off("load-pad");
+  //     socket.off("remote-cursor");
+  //   };
+  // }, [socket, sections, setSections, setAuthors, setReferences, userId]);
 
   useEffect(() => {
     socket.on("receive-changes", ({ sectionId, subId, fullContent, userId: senderId, cursor }) => {
