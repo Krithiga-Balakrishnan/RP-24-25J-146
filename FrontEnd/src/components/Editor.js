@@ -239,19 +239,30 @@ function Editor({
       }
     });
     
-    socket.on("remote-cursor", ({ userId: remoteUserId, cursor, color, nodeId}) => {
+    socket.on("remote-cursor", ({ userId: remoteUserId, cursor, color, nodeId }) => {
       if (remoteUserId === userId) return; // ignore our own
-      // Update remote cursor overlays for each editor.
+    
+      // Remove any existing cursor for this remote user from all editors
+      Object.keys(quillRefs.current).forEach((contentId) => {
+        const quill = quillRefs.current[contentId];
+        const cursors = quill.getModule("cursors");
+        if (cursors) {
+          cursors.removeCursor(remoteUserId);
+        }
+      });
+    
+      // Get the correct editor for this remote cursor update
       const contentId = getNodeContentId(sections, nodeId);
-    if (contentId && quillRefs.current[contentId]) {
-      const cursors = quillRefs.current[contentId].getModule("cursors");
-      if (cursors) {
-        // Create or update the remote cursor only on this editor
-        cursors.createCursor(remoteUserId, remoteUserId, color);
-        cursors.moveCursor(remoteUserId, cursor);
+      if (contentId && quillRefs.current[contentId]) {
+        const cursors = quillRefs.current[contentId].getModule("cursors");
+        if (cursors) {
+          // Create and move the remote cursor on the correct editor
+          cursors.createCursor(remoteUserId, remoteUserId, color);
+          cursors.moveCursor(remoteUserId, cursor);
+        }
       }
-    }
     });
+    
     
     socket.on("load-pad", ({ sections: newSecs, authors: newAuthors, references: newRefs, title, abstract: abs, keyword }) => {
       setSections(newSecs || []);
