@@ -468,6 +468,23 @@ function Editor({
     });
   };
 
+
+  
+  /* --------------------------------------------------------------------------
+     4) Node Title update (onBlur)
+     -------------------------------------------------------------------------- */
+     const handleNodeTitleBlur = () => {
+      socket.emit("update-pad", {
+        padId,
+        sections,
+        authors,
+        references,
+        title: paperTitle,
+        abstract,
+        keyword: keywords,
+      });
+    };
+    
   // 5) Define addSection, addSubsection, and removeNode.
   const addSection = () => {
     const newSection = createNode("New Section");
@@ -526,7 +543,24 @@ function Editor({
         <input
           style={{ fontSize: "1.2rem", fontWeight: "bold", flexGrow: 1 }}
           value={node.title}
-          onChange={(e) => updateNodeTitle(node.id, e.target.value)}
+          // onChange={(e) => updateNodeTitle(node.id, e.target.value)}
+          onChange={(e) => {
+            const newTitle = e.target.value;
+            const updated = updateNodeTitleInTree(sections, node.id, newTitle);
+            setSections(updated);
+          }}
+          
+          onBlur={() =>
+            socket.emit("update-pad", {
+              padId,
+              sections,
+              authors,
+              references,
+              title: paperTitle,
+              abstract,
+              keyword: keywords,
+            })
+          }
         />
         <button onClick={() => removeNode(node.id)} style={{ marginLeft: 5 }}>
           🗑️
@@ -693,16 +727,17 @@ function Editor({
                     a.id === author.id ? { ...a, name: e.target.value } : a
                   );
                   setAuthors(updatedAuthors);
-                  socket.emit("update-pad", {
-                    padId,
-                    sections,
-                    authors: updatedAuthors,
-                    references,
-                    title: paperTitle,
-                    abstract,
-                    keyword: keywords,
-                  });
+                  // socket.emit("update-pad", {
+                  //   padId,
+                  //   sections,
+                  //   authors: updatedAuthors,
+                  //   references,
+                  //   title: paperTitle,
+                  //   abstract,
+                  //   keyword: keywords,
+                  // });
                 }}
+                onBlur={handleNodeTitleBlur}
                 placeholder="Author Name"
               />
               <input
@@ -715,16 +750,19 @@ function Editor({
                       : a
                   );
                   setAuthors(updatedAuthors);
-                  socket.emit("update-pad", {
-                    padId,
-                    sections,
-                    authors: updatedAuthors,
-                    references,
-                    title: paperTitle,
-                    abstract,
-                    keyword: keywords,
-                  });
+                  // socket.emit("update-pad", {
+                  //   padId,
+                  //   sections,
+                  //   authors: updatedAuthors,
+                  //   references,
+                  //   title: paperTitle,
+                  //   abstract,
+                  //   keyword: keywords,
+                  // });
                 }}
+
+                onBlur={handleNodeTitleBlur}
+
                 placeholder="Affiliation"
               />
               <input
@@ -735,16 +773,17 @@ function Editor({
                     a.id === author.id ? { ...a, email: e.target.value } : a
                   );
                   setAuthors(updatedAuthors);
-                  socket.emit("update-pad", {
-                    padId,
-                    sections,
-                    authors: updatedAuthors,
-                    references,
-                    title: paperTitle,
-                    abstract,
-                    keyword: keywords,
-                  });
+                  // socket.emit("update-pad", {
+                  //   padId,
+                  //   sections,
+                  //   authors: updatedAuthors,
+                  //   references,
+                  //   title: paperTitle,
+                  //   abstract,
+                  //   keyword: keywords,
+                  // });
                 }}
+                onBlur={handleNodeTitleBlur}
                 placeholder="Email"
               />
               <button
@@ -814,16 +853,17 @@ function Editor({
                     r.id === reference.id ? { ...r, key: e.target.value } : r
                   );
                   setReferences(updatedReferences);
-                  socket.emit("update-pad", {
-                    padId,
-                    sections,
-                    authors,
-                    references: updatedReferences,
-                    title: paperTitle,
-                    abstract,
-                    keyword: keywords,
-                  });
+                  // socket.emit("update-pad", {
+                  //   padId,
+                  //   sections,
+                  //   authors,
+                  //   references: updatedReferences,
+                  //   title: paperTitle,
+                  //   abstract,
+                  //   keyword: keywords,
+                  // });
                 }}
+                onBlur={handleNodeTitleBlur}
                 placeholder="Reference Key"
               />
               <input
@@ -834,16 +874,17 @@ function Editor({
                     r.id === reference.id ? { ...r, author: e.target.value } : r
                   );
                   setReferences(updatedReferences);
-                  socket.emit("update-pad", {
-                    padId,
-                    sections,
-                    authors,
-                    references: updatedReferences,
-                    title: paperTitle,
-                    abstract,
-                    keyword: keywords,
-                  });
+                  // socket.emit("update-pad", {
+                  //   padId,
+                  //   sections,
+                  //   authors,
+                  //   references: updatedReferences,
+                  //   title: paperTitle,
+                  //   abstract,
+                  //   keyword: keywords,
+                  // });
                 }}
+                onBlur={handleNodeTitleBlur}
                 placeholder="Author(s)"
               />
               <input
@@ -854,16 +895,17 @@ function Editor({
                     r.id === reference.id ? { ...r, title: e.target.value } : r
                   );
                   setReferences(updatedReferences);
-                  socket.emit("update-pad", {
-                    padId,
-                    sections,
-                    authors,
-                    references: updatedReferences,
-                    title: paperTitle,
-                    abstract,
-                    keyword: keywords,
-                  });
+                  // socket.emit("update-pad", {
+                  //   padId,
+                  //   sections,
+                  //   authors,
+                  //   references: updatedReferences,
+                  //   title: paperTitle,
+                  //   abstract,
+                  //   keyword: keywords,
+                  // });
                 }}
+                onBlur={handleNodeTitleBlur}
                 placeholder="Title"
               />
               <input
@@ -876,16 +918,17 @@ function Editor({
                       : r
                   );
                   setReferences(updatedReferences);
-                  socket.emit("update-pad", {
-                    padId,
-                    sections,
-                    authors,
-                    references: updatedReferences,
-                    title: paperTitle,
-                    abstract,
-                    keyword: keywords,
-                  });
+                  // socket.emit("update-pad", {
+                  //   padId,
+                  //   sections,
+                  //   authors,
+                  //   references: updatedReferences,
+                  //   title: paperTitle,
+                  //   abstract,
+                  //   keyword: keywords,
+                  // });
                 }}
+                onBlur={handleNodeTitleBlur}
                 placeholder="Journal"
               />
               <input
@@ -896,16 +939,17 @@ function Editor({
                     r.id === reference.id ? { ...r, year: e.target.value } : r
                   );
                   setReferences(updatedReferences);
-                  socket.emit("update-pad", {
-                    padId,
-                    sections,
-                    authors,
-                    references: updatedReferences,
-                    title: paperTitle,
-                    abstract,
-                    keyword: keywords,
-                  });
+                  // socket.emit("update-pad", {
+                  //   padId,
+                  //   sections,
+                  //   authors,
+                  //   references: updatedReferences,
+                  //   title: paperTitle,
+                  //   abstract,
+                  //   keyword: keywords,
+                  // });
                 }}
+                onBlur={handleNodeTitleBlur}
                 placeholder="Year"
               />
               <input
@@ -916,16 +960,18 @@ function Editor({
                     r.id === reference.id ? { ...r, volume: e.target.value } : r
                   );
                   setReferences(updatedReferences);
-                  socket.emit("update-pad", {
-                    padId,
-                    sections,
-                    authors,
-                    references: updatedReferences,
-                    title: paperTitle,
-                    abstract,
-                    keyword: keywords,
-                  });
+                  // socket.emit("update-pad", {
+                  //   padId,
+                  //   sections,
+                  //   authors,
+                  //   references: updatedReferences,
+                  //   title: paperTitle,
+                  //   abstract,
+                  //   keyword: keywords,
+                  // });
+
                 }}
+                onBlur={handleNodeTitleBlur}
                 placeholder="Volume"
               />
               <input
@@ -936,16 +982,17 @@ function Editor({
                     r.id === reference.id ? { ...r, number: e.target.value } : r
                   );
                   setReferences(updatedReferences);
-                  socket.emit("update-pad", {
-                    padId,
-                    sections,
-                    authors,
-                    references: updatedReferences,
-                    title: paperTitle,
-                    abstract,
-                    keyword: keywords,
-                  });
+                  // socket.emit("update-pad", {
+                  //   padId,
+                  //   sections,
+                  //   authors,
+                  //   references: updatedReferences,
+                  //   title: paperTitle,
+                  //   abstract,
+                  //   keyword: keywords,
+                  // });
                 }}
+                onBlur={handleNodeTitleBlur}
                 placeholder="Number"
               />
               <input
@@ -956,16 +1003,17 @@ function Editor({
                     r.id === reference.id ? { ...r, pages: e.target.value } : r
                   );
                   setReferences(updatedReferences);
-                  socket.emit("update-pad", {
-                    padId,
-                    sections,
-                    authors,
-                    references: updatedReferences,
-                    title: paperTitle,
-                    abstract,
-                    keyword: keywords,
-                  });
+                  // socket.emit("update-pad", {
+                  //   padId,
+                  //   sections,
+                  //   authors,
+                  //   references: updatedReferences,
+                  //   title: paperTitle,
+                  //   abstract,
+                  //   keyword: keywords,
+                  // });
                 }}
+                onBlur={handleNodeTitleBlur}
                 placeholder="Pages"
               />
               <button

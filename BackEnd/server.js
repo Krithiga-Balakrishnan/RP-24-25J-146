@@ -6,6 +6,7 @@ const cors = require("cors");
 const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const padRoutes = require("./routes/padRoutes");
+const ieeeRoutes = require("./routes/ieeeRoutes");
 const Pad = require("./models/Pad");
 const path = require("path");
 require("dotenv").config();
@@ -179,6 +180,7 @@ io.on("connection", (socket) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/pads", padRoutes);
+app.use("/api/convert", ieeeRoutes);
 
 
 // Use in Local

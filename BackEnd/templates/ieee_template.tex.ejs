@@ -1,0 +1,43 @@
+\documentclass[conference]{IEEEtran}
+\usepackage{graphicx}
+
+\title{<%= title %>}
+\author{<%= authors %>}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+<%= abstract %>
+\end{abstract}
+
+<% if (sections && sections.length) { %>
+  <% sections.forEach(function(section) { %>
+    \section{<%= section.name %>}
+    <%= section.content %>
+  <% }); %>
+<% } %>
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.5\textwidth]{<%= image_path %>}
+\caption{Example Figure}
+\label{fig:example}
+\end{figure}
+
+\begin{thebibliography}{1}
+<% if (references && references.length) { %>
+  <% references.forEach(function(ref) { %>
+    \bibitem{<%= ref.id %>}
+    <%= ref.citation %>
+  <% }); %>
+<% } else { %>
+    \bibitem{example2023}
+    J. Doe and J. Smith, ``A Study on NLP Style Transfer,'' \emph{Journal of NLP}, vol. 10, no. 2, pp. 100--110, 2023.
+    \bibitem{example2024}
+    A. Johnson and B. Williams, ``Advancements in Text Style Transfer,'' \emph{AI Journal}, vol. 12, no. 3, pp. 150--160, 2024.
+<% } %>
+\end{thebibliography}
+
+\end{document}
