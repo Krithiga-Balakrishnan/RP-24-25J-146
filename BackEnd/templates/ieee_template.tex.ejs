@@ -12,19 +12,69 @@
 <%= abstract %>
 \end{abstract}
 
-<% if (sections && sections.length) { %>
-  <% sections.forEach(function(section) { %>
-    \section{<%= section.name %>}
-    <%= section.content %>
-  <% }); %>
+<% 
+  // Find specific sections by title
+  var introductionSection = sections.find(function(section) { 
+    return section.title && section.title.toLowerCase() === "introduction"; 
+  });
+  var literatureReviewSection = sections.find(function(section) { 
+    return section.title && section.title.toLowerCase().includes("literature review"); 
+  });
+  var resultsSection = sections.find(function(section) { 
+    return section.title && section.title.toLowerCase().includes("results");
+  });
+%>
+
+<% if (introductionSection) { %>
+  \section{<%= introductionSection.title %>}
+  <%= introductionSection.content %>
+  <% if (introductionSection.subsections && introductionSection.subsections.length) { %>
+    <% introductionSection.subsections.forEach(function(sub) { %>
+      \subsection{<%= sub.title %>}
+      <%= sub.content %>
+    <% }); %>
+  <% } %>
 <% } %>
 
-\begin{figure}[h]
-\centering
-\includegraphics[width=0.5\textwidth]{<%= image_path %>}
-\caption{Example Figure}
-\label{fig:example}
-\end{figure}
+<% if (literatureReviewSection) { %>
+  \section{<%= literatureReviewSection.title %>}
+  <%= literatureReviewSection.content %>
+<% } %>
+
+<% if (resultsSection) { %>
+  \section{<%= resultsSection.title %>}
+  <%= resultsSection.content %>
+<% } %>
+
+<% 
+  // Optionally, render any other sections that are not specifically handled above.
+  // For instance, loop through sections and show any that haven't been rendered.
+  var renderedTitles = [];
+  if (introductionSection) renderedTitles.push(introductionSection.title);
+  if (literatureReviewSection) renderedTitles.push(literatureReviewSection.title);
+  if (resultsSection) renderedTitles.push(resultsSection.title);
+%>
+<% sections.forEach(function(section) { %>
+  <% if (!renderedTitles.includes(section.title)) { %>
+    \section{<%= section.title %>}
+    <%= section.content %>
+    <% if (section.subsections && section.subsections.length) { %>
+      <% section.subsections.forEach(function(sub) { %>
+        \subsection{<%= sub.title %>}
+        <%= sub.content %>
+      <% }); %>
+    <% } %>
+  <% } %>
+<% }); %>
+
+<% if (image_path && image_path !== "default_image_path.jpg") { %>
+  \begin{figure}[h]
+  \centering
+  \includegraphics[width=0.5\textwidth]{<%= image_path %>}
+  \caption{Example Figure}
+  \label{fig:example}
+  \end{figure}
+<% } %>
 
 \begin{thebibliography}{1}
 <% if (references && references.length) { %>
