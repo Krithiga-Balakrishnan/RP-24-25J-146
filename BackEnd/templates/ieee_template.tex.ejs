@@ -2,10 +2,26 @@
 \usepackage{graphicx}
 
 \title{<%= title %>}
+
 \author{
-  \IEEEauthorblockN{<%= authorsNames %>}
-  \IEEEauthorblockA{<%= authorsAffiliations %> \\[0.5ex]
-  <%= authorsEmails %>}
+<% if (authorsInPairs && authorsInPairs.length) { %>
+  <% authorsInPairs.forEach(function(pair, colIndex) { %>
+    <% pair.forEach(function(author) { %>
+      \IEEEauthorblockN{<%= author.name %>}
+      \IEEEauthorblockA{
+        <%= author.affiliation || "Unknown Affiliation" %> \\
+        <%= author.email || "No Email" %>
+      }
+    <% }) %>
+    <% // If this isn't the last pair, insert "\and" to start a new column %>
+    <% if (colIndex < authorsInPairs.length - 1) { %>
+      \and
+    <% } %>
+  <% }); %>
+<% } else { %>
+  \IEEEauthorblockN{Unknown Author}
+  \IEEEauthorblockA{No Affiliation \\ No Email}
+<% } %>
 }
 
 \begin{document}
@@ -17,16 +33,10 @@
 \end{abstract}
 
 <% 
-  // Find specific sections by title.
-  var introductionSection = sections.find(function(section) { 
-    return section.title && section.title.toLowerCase() === "introduction"; 
-  });
-  var literatureReviewSection = sections.find(function(section) { 
-    return section.title && section.title.toLowerCase().includes("literature review"); 
-  });
-  var resultsSection = sections.find(function(section) { 
-    return section.title && section.title.toLowerCase().includes("results");
-  });
+  // Example logic for specific sections
+  var introductionSection = sections.find(s => s.title && s.title.toLowerCase() === "introduction");
+  var literatureReviewSection = sections.find(s => s.title && s.title.toLowerCase().includes("literature review"));
+  var resultsSection = sections.find(s => s.title && s.title.toLowerCase().includes("results"));
 %>
 
 <% if (introductionSection) { %>
@@ -36,7 +46,7 @@
     <% introductionSection.subsections.forEach(function(sub) { %>
       \subsection{<%= sub.title %>}
       <%= sub.content %>
-    <% }); %>
+    <% }) %>
   <% } %>
 <% } %>
 
@@ -51,12 +61,13 @@
 <% } %>
 
 <% 
-  // Render any other sections not handled above.
+  // Render any other sections not handled above
   var renderedTitles = [];
   if (introductionSection) renderedTitles.push(introductionSection.title);
   if (literatureReviewSection) renderedTitles.push(literatureReviewSection.title);
   if (resultsSection) renderedTitles.push(resultsSection.title);
 %>
+
 <% sections.forEach(function(section) { %>
   <% if (!renderedTitles.includes(section.title)) { %>
     \section{<%= section.title %>}
@@ -65,7 +76,7 @@
       <% section.subsections.forEach(function(sub) { %>
         \subsection{<%= sub.title %>}
         <%= sub.content %>
-      <% }); %>
+      <% }) %>
     <% } %>
   <% } %>
 <% }); %>
@@ -84,7 +95,7 @@
   <% references.forEach(function(ref) { %>
     \bibitem{<%= ref.id %>}
     <%= ref.citation %>
-  <% }); %>
+  <% }) %>
 <% } else { %>
     \bibitem{example2023}
     J. Doe and J. Smith, ``A Study on NLP Style Transfer,'' \emph{Journal of NLP}, vol. 10, no. 2, pp. 100--110, 2023.
