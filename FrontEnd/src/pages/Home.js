@@ -6,6 +6,7 @@ const Home = () => {
   const [padName, setPadName] = useState("");
   const navigate = useNavigate();
 
+  
   // ✅ Fetch user's pads when the component mounts
   useEffect(() => {
     const fetchPads = async () => {

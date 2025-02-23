@@ -18,6 +18,8 @@ const PadPage = () => {
   const [userEmail, setUserEmail] = useState("");
   const [showMindmap, setShowMindmap] = useState(false);
   const [selectedText, setSelectedText] = useState("");
+  const [padName, setPadName] = useState("");
+
 
   const userId = useRef(localStorage.getItem("userId") || uuidv4());
   const userName = useRef(localStorage.getItem("userName") || `User-${userId.current.slice(0, 4)}`);
@@ -64,6 +66,7 @@ const PadPage = () => {
         setSections(data.sections || []);
         setAuthors(data.authors || []);
         setReferences(data.references || []);
+        setPadName(data.name || "")
       } catch (error) {
         console.error("❌ Error fetching pad:", error);
       }
@@ -115,12 +118,48 @@ const PadPage = () => {
     }
   };
 
+
+/*------------------------------------------------------------------------------------------*/
+
+// Fetch pad details from REST endpoint
+const FetchPadData = async () => {
+  const token = localStorage.getItem("token");
+  if (!token) return;
+
+  try {
+    const res = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/api/convert/${padId}`, {
+      headers: { Authorization: token },
+    });
+
+    if (!res.ok) {
+      console.error("❌ Failed to fetch pad:", res.status);
+      return;
+    }
+
+    const data = await res.json();
+    console.log("📜 Pad Data for IEEE doc:", data);
+  } catch (error) {
+    console.error("❌ Error fetching pad:", error);
+  }
+};
+
+
+
+
+
+
+
+
+
+
   return (
     <div className="container my-3">
       {/* Sticky header */}
       <div className="sticky-top bg-white py-2" style={{ zIndex: 900 }}>
-        <PadHeader padId={padId} onGenerateMindmap={handleGenerateMindmap} />
+        <PadHeader padName={padName} padId={padId} onGenerateMindmap={handleGenerateMindmap} generateIEEE={FetchPadData} />
       </div>
+
+      
   
       {/* Main content */}
       <div className="mt-4">
