@@ -10,7 +10,7 @@ const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
 
-// Ensure output directory exists
+// Ensure the output directory exists.
 const outputDir = path.join(__dirname, '../output');
 if (!fs.existsSync(outputDir)) {
   fs.mkdirSync(outputDir, { recursive: true });
@@ -21,10 +21,19 @@ router.get("/:padId", async (req, res) => {
     const pad = await Pad.findById(req.params.padId);
     if (!pad) return res.status(404).json({ msg: "Pad not found" });
 
-    // Process authors: join names if available.
-    const authorsString = Array.isArray(pad.authors) && pad.authors.length > 0
-      ? pad.authors.map(author => author.name).join(', ')
+    // Build authors fields from pad.authors.
+    // Each author object is expected to have name, affiliation, and email.
+    const authorsNames = Array.isArray(pad.authors) && pad.authors.length > 0
+      ? pad.authors.map(author => author.name).join(' \\and ')
       : "Unknown Author";
+
+    const authorsAffiliations = Array.isArray(pad.authors) && pad.authors.length > 0
+      ? pad.authors.map(author => author.affiliation || 'Unknown Affiliation').join(' \\and ')
+      : "Unknown Affiliation";
+
+    const authorsEmails = Array.isArray(pad.authors) && pad.authors.length > 0
+      ? pad.authors.map(author => author.email || 'No Email').join(' \\and ')
+      : "No Email";
 
     // Process sections and subsections.
     const processedSections = Array.isArray(pad.sections)
@@ -49,12 +58,13 @@ router.get("/:padId", async (req, res) => {
         cleanedImagePath = '/' + cleanedImagePath;
       }
     }
-
     console.log("cleanedImagePath:", cleanedImagePath);
 
     const content = {
       title: pad.title || "Untitled Document",
-      authors: authorsString,
+      authorsNames,         // Pass authors names separated by "\and"
+      authorsAffiliations,  // Pass authors affiliations separated by "\and"
+      authorsEmails,        // Pass authors emails separated by "\and"
       abstract: pad.abstract || "",
       sections: processedSections,
       image_path: cleanedImagePath,
@@ -72,36 +82,21 @@ router.get("/:padId", async (req, res) => {
         return res.status(500).json({ msg: "Error rendering LaTeX template", error: err });
       }
 
-      const outputDir = path.join(__dirname, '../output');
-      // Convert Windows backslashes to forward slashes for the command.
-              const normalizedOutputDir = outputDir.replace(/\\/g, '/');
-              const outputTexPath = path.join(outputDir, 'output_paper.tex').replace(/\\/g, '/');
       // Write the rendered LaTeX file.
-      //const outputTexPath = path.join(outputDir, 'output_paper.tex');
+      const outputTexPath = path.join(outputDir, 'output_paper.tex').replace(/\\/g, '/');
       fs.writeFileSync(outputTexPath, latexOutput, 'utf8');
 
-      // Build the command string after outputTexPath is defined.
-       
+      // Normalize the output directory path.
+      const normalizedOutputDir = outputDir.replace(/\\/g, '/');
 
-const command = `pdflatex -interaction=nonstopmode -output-directory "${normalizedOutputDir}" "${outputTexPath}"`;
-console.log("LaTeX command:", command);
-
+      // Build the command string.
+      const command = `pdflatex -interaction=nonstopmode -output-directory "${normalizedOutputDir}" "${outputTexPath}"`;
       console.log("LaTeX command:", command);
 
+      // Compile the LaTeX file into a PDF.
       exec(command, { shell: true, env: process.env }, (error, stdout, stderr) => {
         console.log('STDOUT:', stdout);
         console.log('STDERR:', stderr);
-        if (error) {
-          console.error(`Error compiling LaTeX: ${error.message}`);
-          return res.status(500).json({ msg: "Error compiling LaTeX", error: error.message });
-        }
-        // further code...
-      });
-      
-      
-
-      // Compile the LaTeX file into a PDF.
-      exec(command, (error, stdout, stderr) => {
         if (error) {
           console.error(`Error compiling LaTeX: ${error.message}`);
           return res.status(500).json({ msg: "Error compiling LaTeX", error: error.message });
@@ -142,7 +137,7 @@ function convertDeltaToLatex(delta) {
         if (src[0] !== '/') {
           src = '/' + src;
         }
-        // Prepend "../output" so the path becomes relative to the output directory
+        // Prepend "../" so the path becomes relative to the output directory
         src = "../" + src;
       }
 

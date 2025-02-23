@@ -1,11 +1,11 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (MiKTeX 24.1) (preloaded format=pdflatex 2025.2.1)  21 FEB 2025 00:04
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (MiKTeX 24.1) (preloaded format=pdflatex 2025.2.1)  23 FEB 2025 17:42
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
-**"E:/SLIIT/Final Year project/QuilEditor/RP-24-25J-146/BackEnd/output/output_p
+**"E:/SLIIT/Final Year project/QuilEditor/RP-24-25J-146/Backend/output/output_p
 aper.tex"
 
-(E:/SLIIT/Final Year project/QuilEditor/RP-24-25J-146/BackEnd/output/output_pap
+(E:/SLIIT/Final Year project/QuilEditor/RP-24-25J-146/Backend/output/output_pap
 er.tex
 LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-01-04>
@@ -152,24 +152,24 @@ File: l3backend-pdftex.def 2024-01-04 L3 backend support: PDF output (pdfTeX)
 \l__color_backend_stack_int=\count268
 \l__pdf_internal_box=\box53
 )
-(E:/SLIIT\Final Year project\QuilEditor\RP-24-25J-146\BackEnd\output\output_pap
+(E:/SLIIT\Final Year project\QuilEditor\RP-24-25J-146\Backend\output\output_pap
 er.aux)
 \openout1 = `output_paper.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 7.
-LaTeX Font Info:    ... okay on input line 7.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 7.
-LaTeX Font Info:    ... okay on input line 7.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 7.
-LaTeX Font Info:    ... okay on input line 7.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 7.
-LaTeX Font Info:    ... okay on input line 7.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 7.
-LaTeX Font Info:    ... okay on input line 7.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 7.
-LaTeX Font Info:    ... okay on input line 7.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 7.
-LaTeX Font Info:    ... okay on input line 7.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 11.
+LaTeX Font Info:    ... okay on input line 11.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 11.
+LaTeX Font Info:    ... okay on input line 11.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 11.
+LaTeX Font Info:    ... okay on input line 11.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 11.
+LaTeX Font Info:    ... okay on input line 11.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 11.
+LaTeX Font Info:    ... okay on input line 11.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 11.
+LaTeX Font Info:    ... okay on input line 11.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 11.
+LaTeX Font Info:    ... okay on input line 11.
 
 -- Lines per column: 56 (exact).
 
@@ -198,23 +198,13 @@ Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 4
 s.cfg
 File: epstopdf-sys.cfg 2021/03/18 v2.0 Configuration of epstopdf for MiKTeX
 ))
-<..//uploads/1740064117608.jpg, id=1, 1927.2pt x 1139.00531pt>
-File: ..//uploads/1740064117608.jpg Graphic file (type jpg)
-<use ..//uploads/1740064117608.jpg>
-Package pdftex.def Info: ..//uploads/1740064117608.jpg  used on input line 24.
+<..//uploads/1740310754251.jpg, id=1, 1927.2pt x 1139.00531pt>
+File: ..//uploads/1740310754251.jpg Graphic file (type jpg)
+<use ..//uploads/1740310754251.jpg>
+Package pdftex.def Info: ..//uploads/1740310754251.jpg  used on input line 34.
 (pdftex.def)             Requested size: 258.0pt x 152.47298pt.
 
-Overfull \hbox (6.0pt too wide) in paragraph at lines 24--25
- [][] 
- []
-
-<..//uploads/1740076397928.jpg, id=2, 1927.2pt x 1139.00531pt>
-File: ..//uploads/1740076397928.jpg Graphic file (type jpg)
-<use ..//uploads/1740076397928.jpg>
-Package pdftex.def Info: ..//uploads/1740076397928.jpg  used on input line 36.
-(pdftex.def)             Requested size: 258.0pt x 152.47298pt.
-
-Overfull \hbox (6.0pt too wide) in paragraph at lines 36--37
+Overfull \hbox (6.0pt too wide) in paragraph at lines 34--35
  [][] 
  []
 
@@ -225,16 +215,25 @@ LaTeX Warning: `h' float specifier changed to `ht'.
 /shandeep/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/base/8r.enc}
 
 
- <E:/SLIIT/Final Year project/QuilEditor/RP-24-25J-146/BackEnd/uploads/17400641
-17608.jpg> <E:/SLIIT/Final Year project/QuilEditor/RP-24-25J-146/BackEnd/upload
-s/1740076397928.jpg>]
-<..//uploads/1740076455021.PNG, id=11, 499.8675pt x 344.03531pt>
-File: ..//uploads/1740076455021.PNG Graphic file (type png)
-<use ..//uploads/1740076455021.PNG>
-Package pdftex.def Info: ..//uploads/1740076455021.PNG  used on input line 53.
-(pdftex.def)             Requested size: 258.0pt x 177.5765pt.
+ <E:/SLIIT/Final Year project/QuilEditor/RP-24-25J-146/Backend/uploads/17403107
+54251.jpg>]
+<..//uploads/1740312155867.jpg, id=10, 722.7pt x 888.31876pt>
+File: ..//uploads/1740312155867.jpg Graphic file (type jpg)
+<use ..//uploads/1740312155867.jpg>
+Package pdftex.def Info: ..//uploads/1740312155867.jpg  used on input line 60.
+(pdftex.def)             Requested size: 258.0pt x 317.12424pt.
 
-Overfull \hbox (6.0pt too wide) in paragraph at lines 53--54
+Overfull \hbox (6.0pt too wide) in paragraph at lines 60--61
+ [][] 
+ []
+
+<..//uploads/1740312088464.jpg, id=11, 312.41719pt x 286.06876pt>
+File: ..//uploads/1740312088464.jpg Graphic file (type jpg)
+<use ..//uploads/1740312088464.jpg>
+Package pdftex.def Info: ..//uploads/1740312088464.jpg  used on input line 84.
+(pdftex.def)             Requested size: 258.0pt x 236.24535pt.
+
+Overfull \hbox (6.0pt too wide) in paragraph at lines 84--85
  [][] 
  []
 
@@ -249,9 +248,10 @@ Before submitting the final camera ready copy, remember to:
  uses only Type 1 fonts and that every step in the generation
  process uses the appropriate paper size.
 
-[2 <E:/SLIIT/Final Year project/QuilEditor/RP-24-25J-146/BackEnd/uploads/174007
-6455021.PNG>]
-(E:/SLIIT\Final Year project\QuilEditor\RP-24-25J-146\BackEnd\output\output_pap
+[2 <E:/SLIIT/Final Year project/QuilEditor/RP-24-25J-146/Backend/uploads/174031
+2155867.jpg> <E:/SLIIT/Final Year project/QuilEditor/RP-24-25J-146/Backend/uplo
+ads/1740312088464.jpg>]
+(E:/SLIIT\Final Year project\QuilEditor\RP-24-25J-146\Backend\output\output_pap
 er.aux)
  ***********
 LaTeX2e <2023-11-01> patch level 1
@@ -259,25 +259,22 @@ L3 programming layer <2024-01-04>
  ***********
  ) 
 Here is how much of TeX's memory you used:
- 2127 strings out of 474485
- 39966 string characters out of 5742319
- 1936542 words of memory out of 5000000
- 24447 multiletter control sequences out of 15000+600000
+ 2128 strings out of 474485
+ 39985 string characters out of 5742319
+ 1940542 words of memory out of 5000000
+ 24448 multiletter control sequences out of 15000+600000
  587436 words of font info for 84 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 57i,8n,65p,1043b,250s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 57i,8n,65p,980b,258s stack positions out of 10000i,1000n,20000p,200000b,200000s
 <C:/Users/shandeep/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times/utmb8a
 .pfb><C:/Users/shandeep/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times/utm
 bi8a.pfb><C:/Users/shandeep/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times
 /utmr8a.pfb><C:/Users/shandeep/AppData/Local/Programs/MiKTeX/fonts/type1/urw/ti
 mes/utmri8a.pfb>
-Output written on "E:/SLIIT\Final Year project\QuilEditor\RP-24-25J-146\BackEnd
-\output\output_paper.pdf" (2 pages, 802814 bytes).
+Output written on "E:/SLIIT\Final Year project\QuilEditor\RP-24-25J-146\Backend
+\output\output_paper.pdf" (2 pages, 438073 bytes).
 PDF statistics:
- 35 PDF objects out of 1000 (max. 8388607)
+ 33 PDF objects out of 1000 (max. 8388607)
  0 named destinations out of 1000 (max. 500000)
- 16 words of extra memory for PDF output out of 10000 (max. 10000000)
-
-x. 500000)
  16 words of extra memory for PDF output out of 10000 (max. 10000000)
 

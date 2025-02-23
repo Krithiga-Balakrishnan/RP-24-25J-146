@@ -2,7 +2,11 @@
 \usepackage{graphicx}
 
 \title{<%= title %>}
-\author{<%= authors %>}
+\author{
+  \IEEEauthorblockN{<%= authorsNames %>}
+  \IEEEauthorblockA{<%= authorsAffiliations %> \\[0.5ex]
+  <%= authorsEmails %>}
+}
 
 \begin{document}
 
@@ -13,7 +17,7 @@
 \end{abstract}
 
 <% 
-  // Find specific sections by title
+  // Find specific sections by title.
   var introductionSection = sections.find(function(section) { 
     return section.title && section.title.toLowerCase() === "introduction"; 
   });
@@ -47,8 +51,7 @@
 <% } %>
 
 <% 
-  // Optionally, render any other sections that are not specifically handled above.
-  // For instance, loop through sections and show any that haven't been rendered.
+  // Render any other sections not handled above.
   var renderedTitles = [];
   if (introductionSection) renderedTitles.push(introductionSection.title);
   if (literatureReviewSection) renderedTitles.push(literatureReviewSection.title);
