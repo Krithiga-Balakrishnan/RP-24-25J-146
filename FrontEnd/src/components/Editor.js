@@ -124,6 +124,8 @@ function Editor({
   setAuthors,
   references = [],
   setReferences,
+  setCurrentSelectionText,
+  setLastHighlightText,
 }) {
   // Ensure arrays have defaults if not provided
   const quillRefs = useRef({});
@@ -252,11 +254,14 @@ function Editor({
         });
         // On selection change, emit local cursor update
         quill.on("selection-change", (range, oldRange, source) => {
-          if (source === "user" && range) {
-            // Get the currently selected text from the Quill editor
-            const text = quill.getText(range.index, range.length);
-            setSelectedText(text); // update our state with the highlighted text
-            console.log(selectedText);
+          if (source === "user") {
+            if (range && range.length > 0) {
+              const text = quill.getText(range.index, range.length);
+              setCurrentSelectionText(text);
+              setLastHighlightText(text);
+            } else {
+              setCurrentSelectionText("");
+            }
             // Emit the node's identifier (using node.id)
             socket.emit("cursor-selection", {
               padId,
