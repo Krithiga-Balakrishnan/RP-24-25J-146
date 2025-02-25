@@ -1,6 +1,6 @@
 // Citations.js
 const Citations = () => {
-    return <div>For GoogleDocs Content</div>;
+    return <div>For Citations Content</div>;
   };
   export default Citations;
   

@@ -45,11 +45,6 @@ const Sidebar = ({
 }) => {
   const navigate = useNavigate();
 
-  // --- COLOR PALETTE ---
-  const primaryColor = "#56008a";
-  const secondaryColor = "#a287b0";
-  const tertiaryColor = "#fef7ff";
-
   // --- Container: fixed height, now with overflow visible so the arrow appears outside
   const containerStyle = {
     position: "relative",
@@ -123,8 +118,8 @@ const Sidebar = ({
 
   // Selected style
   const navItemSelectedStyle = {
-    backgroundColor: tertiaryColor, // #fef7ff
-    color: primaryColor, // #56008a
+    backgroundColor: "var(--tertiary-color)", // #fef7ff
+    color: "var(--primary-color)", // #56008a
   };
 
   // For the icon
@@ -138,7 +133,7 @@ const Sidebar = ({
 
   // Header style (only if expanded)
   const headerStyle = {
-    color: secondaryColor,
+    color: "var(--secondary-color)",
     fontSize: "0.7rem",
     fontWeight: "bold",
     marginTop: "1rem",

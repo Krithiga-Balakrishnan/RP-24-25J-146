@@ -252,7 +252,7 @@ const Home = () => {
       <style>
         {`
           .custom-focus:focus {
-            border-color: #a287b0 !important;
+            border-color: #var(--secondary-color) !important;
             box-shadow: 0 0 0 0.25rem rgba(162,135,176,0.25);
           }
         `}
@@ -261,15 +261,15 @@ const Home = () => {
       {/* Row 1: top-right plan info */}
       <div className="row mb-3">
         <div className="col text-end">
-          <span className="me-3 text-muted">
+          <span className="me-2 text-muted">
             You are currently on free plan.
           </span>
           <a
             href="#"
-            className="fw-bold text-decoration-none"
-            style={{ color: "#56008a" }}
+            className="fw-bold header-font text-decoration-none"
+            style={{ color: "var(--primary-color)" }}
           >
-            Get prime
+            Go Premium
           </a>
         </div>
       </div>
@@ -293,10 +293,7 @@ const Home = () => {
               placeholder="Pad Name"
               className="form-control custom-focus"
             />
-            <button
-              onClick={createPad}
-              className="btn primary-button"
-            >
+            <button onClick={createPad} className="btn primary-button">
               Create Pad
             </button>
           </div>
@@ -320,7 +317,7 @@ const Home = () => {
                 right: "10px",
                 top: "50%",
                 transform: "translateY(-50%)",
-                color: "#a287b0", // your secondary color
+                color: "var(--secondary-color)", // your secondary color
                 pointerEvents: "none",
               }}
             ></i>
@@ -340,13 +337,15 @@ const Home = () => {
             .map((u) => userMap[u]?.name || "Unknown")
             .join(", ");
 
-          // Show first 20 letters of abstract if present
+          // Show first 50 letters of abstract if present
           const abstractPreview = pad.abstract
-            ? pad.abstract.substring(0, 20)
+            ? pad.abstract.length > 50
+              ? pad.abstract.substring(0, 50) + "..."
+              : pad.abstract
             : "";
 
           // If no abstract, show "No text"
-          const textToShow = abstractPreview ? `${abstractPreview}...` : "";
+          const textToShow = abstractPreview || "";
 
           return (
             <div
@@ -405,7 +404,7 @@ const Home = () => {
                         <span
                           className="badge"
                           style={{
-                            backgroundColor: "#fffade",
+                            backgroundColor: "var(--fourth-color)",
                             color: "#000",
                             padding: "8px 16px",
                           }}

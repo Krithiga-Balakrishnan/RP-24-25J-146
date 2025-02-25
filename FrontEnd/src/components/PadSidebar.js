@@ -11,11 +11,6 @@ const menuData = [
   { label: "Checks", icon: "✔️", route: "#" },
 ];
 
-const PRIMARY_COLOR = "#56008a";
-const SECONDARY_COLOR = "#a287b0";
-const TERTIARY_COLOR = "#fef7ff";
-const HOVER_TEXT_COLOR = "#56008a";
-
 const PadSidebar = ({ sidebarOpen, toggleSidebar, onGenerateMindmap, onGenerateIEEE, padName, padId }) => {
   const navigate = useNavigate();
   const [isLaptop, setIsLaptop] = useState(window.innerWidth >= 992);
@@ -38,7 +33,7 @@ const PadSidebar = ({ sidebarOpen, toggleSidebar, onGenerateMindmap, onGenerateI
     left: 0,
     height: "100vh",
     width: `${sidebarWidth}px`,
-    backgroundColor: PRIMARY_COLOR,
+    backgroundColor: "var(--primary-color)",
     color: "#fff",
     padding: "1rem 0",
     zIndex: 999,
@@ -72,7 +67,7 @@ const PadSidebar = ({ sidebarOpen, toggleSidebar, onGenerateMindmap, onGenerateI
   };
 
   const handleMouseEnter = (e) => {
-    e.currentTarget.style.backgroundColor = SECONDARY_COLOR;
+    e.currentTarget.style.backgroundColor = "var(--secondary-color)";
   };
 
   const handleMouseLeave = (e) => {

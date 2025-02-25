@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from "react";
 
-const PRIMARY_COLOR = "#56008a";
-
 const PadHeader = ({
   padName,
   padId,
@@ -35,7 +33,7 @@ const PadHeader = ({
           >
             <i
               className="bi bi-list"
-              style={{ color: PRIMARY_COLOR, fontSize: "1.5rem" }}
+              style={{ color: "var(--primary-color)", fontSize: "1.5rem" }}
             ></i>
           </button>
         )}
