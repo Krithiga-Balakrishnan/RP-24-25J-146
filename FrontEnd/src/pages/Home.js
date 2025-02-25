@@ -161,19 +161,37 @@ const Home = () => {
   useEffect(() => {
     const fetchPads = async () => {
       const token = localStorage.getItem("token");
-      if (!token) return;
 
-      const res = await fetch(
-        `${process.env.REACT_APP_BACKEND_API_URL}/api/pads/user-pads`,
-        {
-          headers: { Authorization: token },
+      if (!token) {
+        navigate("/login");
+        return;
+      }
+
+      try {
+        const res = await fetch(
+          `${process.env.REACT_APP_BACKEND_API_URL}/api/pads/user-pads`,
+          {
+            headers: { Authorization: token },
+          }
+        );
+
+        if (res.status === 401) {
+          // Token is invalid or expired
+          localStorage.removeItem("token");
+          localStorage.removeItem("userId");
+          localStorage.removeItem("userName");
+          navigate("/login");
+          return;
         }
-      );
-      const data = await res.json();
-      console.log("📜 Fetched Pads:", data);
-      setPads(data);
-    };
 
+        const data = await res.json();
+        console.log("📜 Fetched Pads:", data);
+        setPads(data);
+      } catch (error) {
+        console.error("❌ Error fetching pads:", error);
+      }
+    };
+    
     fetchPads();
   }, []);
 
