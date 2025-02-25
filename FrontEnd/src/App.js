@@ -25,7 +25,7 @@
 
 
 // App.jsx
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
 import DashboardLayout from "./pages/DashboardLayout"; // Adjust path as needed
 import Home from "./pages/Home";
@@ -42,9 +42,6 @@ import LoadingScreen from "./pages/LoadingScreen";
 import { UserProvider } from "./context/UserContext";
 
 function App() {
-  // Get the token from localStorage immediately
-  const token = localStorage.getItem("token");
-
   return (
     <UserProvider>
       <Router>
@@ -54,25 +51,28 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
           <Route path="/pad/:padId" element={<PadPage />} />
-          
-          {/* Protected routes using the DashboardLayout */}
-          {token ? (
-            <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
-              <Route path="/" element={<Home />} />
-              <Route path="/mindmap" element={<Mindmap />} />
-              <Route path="/citations" element={<Citations />} />
-              <Route path="/ieee" element={<Ieee />} />
-              <Route path="/profile" element={<Profile />} />
-            </Route>
-          ) : (
-            // If no token, redirect everything to /login immediately.
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          )}
+
+          {/* Protected + Dashboard Layout */}
+          <Route
+            element={
+              <ProtectedRoute>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="/" element={<Home />} />
+            <Route path="/mindmap" element={<Mindmap />} />
+            <Route path="/citations" element={<Citations />} />
+            <Route path="/ieee" element={<Ieee />} />
+            <Route path="/profile" element={<Profile />} />
+          </Route>
+
+          {/* Catch-all → login */}
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Router>
     </UserProvider>
   );
 }
-
 
 export default App;
