@@ -8,18 +8,18 @@ const DashboardLayout = () => {
   const [selectedItem, setSelectedItem] = useState("/");
   const location = useLocation();
 
-  // Update selectedItem whenever the location changes
+  // Whenever route changes, update selected item
   useEffect(() => {
     setSelectedItem(location.pathname);
   }, [location]);
 
-  // Set default sidebar state based on screen width
+  // Expand or collapse by default depending on screen width
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 768) {
-        setIsExpanded(false);
+        setIsExpanded(false); // collapsed on mobile
       } else {
-        setIsExpanded(true);
+        setIsExpanded(true);  // expanded on desktop
       }
     };
     handleResize();
@@ -35,16 +35,28 @@ const DashboardLayout = () => {
     setSelectedItem(route);
   };
 
+  // Match these with your Sidebar widths
+  const expandedWidth = 240;
+  const collapsedWidth = 70;
+  const sidebarWidth = isExpanded ? expandedWidth : collapsedWidth;
+
+  // The entire layout is 100vw wide. We fix the sidebar width 
+  // and subtract that from 100vw for the main content.
   const layoutStyle = {
     display: "flex",
+    width: "100vw",
+    height: "100vh",
+    overflow: "hidden", // so no horizontal scroll
   };
 
   const mainContentStyle = {
-    flex: 1,
+    // Fill remaining space after sidebar
+    width: `calc(100vw - ${sidebarWidth}px)`,
+    // If you want vertical scrolling for main content:
+    overflowY: "auto",
+    transition: "width 0.3s",
     padding: "1rem",
-    minHeight: "100vh",
-    transition: "margin-left 0.3s",
-    marginLeft: 0,
+    boxSizing: "border-box",
   };
 
   return (
