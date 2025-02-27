@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (MiKTeX 24.1) (preloaded format=pdflatex 2025.2.1)  23 FEB 2025 19:23
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (MiKTeX 24.1) (preloaded format=pdflatex 2025.2.1)  27 FEB 2025 10:38
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -146,30 +146,40 @@ File: pdftex.def 2022/09/22 v1.2b Graphics/color driver for pdftex
 \Gin@req@height=\dimen164
 \Gin@req@width=\dimen165
 )
+(C:\Users\shandeep\AppData\Local\Programs\MiKTeX\tex/latex/tools\array.sty
+Package: array 2023/10/16 v2.5g Tabular extension package (FMi)
+\col@sep=\dimen166
+\ar@mcellbox=\box53
+\extrarowheight=\dimen167
+\NC@list=\toks19
+\extratabsurround=\skip51
+\backup@length=\skip52
+\ar@cellbox=\box54
+)
 (C:\Users\shandeep\AppData\Local\Programs\MiKTeX\tex/latex/l3backend\l3backend-
 pdftex.def
 File: l3backend-pdftex.def 2024-01-04 L3 backend support: PDF output (pdfTeX)
 \l__color_backend_stack_int=\count268
-\l__pdf_internal_box=\box53
+\l__pdf_internal_box=\box55
 )
 (E:/SLIIT\Final Year project\QuilEditor\RP-24-25J-146\Backend\output\output_pap
 er.aux)
 \openout1 = `output_paper.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 28.
-LaTeX Font Info:    ... okay on input line 28.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 28.
-LaTeX Font Info:    ... okay on input line 28.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 28.
-LaTeX Font Info:    ... okay on input line 28.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 28.
-LaTeX Font Info:    ... okay on input line 28.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 28.
-LaTeX Font Info:    ... okay on input line 28.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 28.
-LaTeX Font Info:    ... okay on input line 28.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 28.
-LaTeX Font Info:    ... okay on input line 28.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 44.
+LaTeX Font Info:    ... okay on input line 44.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 44.
+LaTeX Font Info:    ... okay on input line 44.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 44.
+LaTeX Font Info:    ... okay on input line 44.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 44.
+LaTeX Font Info:    ... okay on input line 44.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 44.
+LaTeX Font Info:    ... okay on input line 44.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 44.
+LaTeX Font Info:    ... okay on input line 44.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 44.
+LaTeX Font Info:    ... okay on input line 44.
 
 -- Lines per column: 56 (exact).
 
@@ -177,16 +187,16 @@ LaTeX Font Info:    ... okay on input line 28.
 .mkii
 [Loading MPS to PDF converter (version 2006.09.02).]
 \scratchcounter=\count269
-\scratchdimen=\dimen166
-\scratchbox=\box54
+\scratchdimen=\dimen168
+\scratchbox=\box56
 \nofMPsegments=\count270
 \nofMParguments=\count271
-\everyMPshowfont=\toks19
+\everyMPshowfont=\toks20
 \MPscratchCnt=\count272
-\MPscratchDim=\dimen167
+\MPscratchDim=\dimen169
 \MPnumerator=\count273
 \makeMPintoPDFobject=\count274
-\everyMPtoPDFconversion=\toks20
+\everyMPtoPDFconversion=\toks21
 )
 (C:\Users\shandeep\AppData\Local\Programs\MiKTeX\tex/latex/epstopdf-pkg\epstopd
 f-base.sty
@@ -198,48 +208,271 @@ Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 4
 s.cfg
 File: epstopdf-sys.cfg 2021/03/18 v2.0 Configuration of epstopdf for MiKTeX
 ))
-<..//uploads/1740310754251.jpg, id=1, 1927.2pt x 1139.00531pt>
-File: ..//uploads/1740310754251.jpg Graphic file (type jpg)
-<use ..//uploads/1740310754251.jpg>
-Package pdftex.def Info: ..//uploads/1740310754251.jpg  used on input line 51.
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.45 \maketitle
+               
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.45 \maketitle
+               
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.45 \maketitle
+               
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+LaTeX Font Info:    Calculating math sizes for size <11> on input line 45.
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <11> on input line 45.
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <7.69997> on input line 45.
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <5.5> on input line 45.
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.45 \maketitle
+               
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.45 \maketitle
+               
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.45 \maketitle
+               
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.45 \maketitle
+               
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.45 \maketitle
+               
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.45 \maketitle
+               
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.45 \maketitle
+               
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.45 \maketitle
+               
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.45 \maketitle
+               
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.45 \maketitle
+               
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.45 \maketitle
+               
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.45 \maketitle
+               
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.45 \maketitle
+               
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.45 \maketitle
+               
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.45 \maketitle
+               
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+<..//uploads/1740632573014.jpg, id=1, 1927.2pt x 1139.00531pt>
+File: ..//uploads/1740632573014.jpg Graphic file (type jpg)
+<use ..//uploads/1740632573014.jpg>
+Package pdftex.def Info: ..//uploads/1740632573014.jpg  used on input line 63.
 (pdftex.def)             Requested size: 258.0pt x 152.47298pt.
 
-Overfull \hbox (6.0pt too wide) in paragraph at lines 51--52
+Overfull \hbox (6.0pt too wide) in paragraph at lines 63--64
  [][] 
  []
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+<..//uploads/1740581299422.jpg, id=2, 1927.2pt x 1139.00531pt>
+File: ..//uploads/1740581299422.jpg Graphic file (type jpg)
+<use ..//uploads/1740581299422.jpg>
+Package pdftex.def Info: ..//uploads/1740581299422.jpg  used on input line 95.
+(pdftex.def)             Requested size: 258.0pt x 152.47298pt.
+
+Overfull \hbox (6.0pt too wide) in paragraph at lines 95--96
+ [][] 
+ []
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
 
 [1{C:/Users/shandeep/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map}{C:/Users
 /shandeep/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/base/8r.enc}
 
 
- <E:/SLIIT/Final Year project/QuilEditor/RP-24-25J-146/Backend/uploads/17403107
-54251.jpg>]
-<..//uploads/1740312155867.jpg, id=10, 722.7pt x 888.31876pt>
-File: ..//uploads/1740312155867.jpg Graphic file (type jpg)
-<use ..//uploads/1740312155867.jpg>
-Package pdftex.def Info: ..//uploads/1740312155867.jpg  used on input line 77.
-(pdftex.def)             Requested size: 258.0pt x 317.12424pt.
+ <E:/SLIIT/Final Year project/QuilEditor/RP-24-25J-146/Backend/uploads/17406325
+73014.jpg>]
+<..//uploads/1740581318803.jpg, id=10, 1927.2pt x 1139.00531pt>
+File: ..//uploads/1740581318803.jpg Graphic file (type jpg)
+<use ..//uploads/1740581318803.jpg>
+Package pdftex.def Info: ..//uploads/1740581318803.jpg  used on input line 109.
 
-Overfull \hbox (6.0pt too wide) in paragraph at lines 77--78
+(pdftex.def)             Requested size: 258.0pt x 152.47298pt.
+
+Overfull \hbox (6.0pt too wide) in paragraph at lines 109--110
  [][] 
  []
-
-
-LaTeX Warning: `h' float specifier changed to `ht'.
-
-<..//uploads/1740312088464.jpg, id=11, 312.41719pt x 286.06876pt>
-File: ..//uploads/1740312088464.jpg Graphic file (type jpg)
-<use ..//uploads/1740312088464.jpg>
-Package pdftex.def Info: ..//uploads/1740312088464.jpg  used on input line 102.
-
-(pdftex.def)             Requested size: 258.0pt x 236.24535pt.
-
-Overfull \hbox (6.0pt too wide) in paragraph at lines 102--103
- [][] 
- []
-
-
-LaTeX Warning: `h' float specifier changed to `ht'.
 
 
 ** Conference Paper **
@@ -252,11 +485,11 @@ Before submitting the final camera ready copy, remember to:
  uses only Type 1 fonts and that every step in the generation
  process uses the appropriate paper size.
 
-[2 <E:/SLIIT/Final Year project/QuilEditor/RP-24-25J-146/Backend/uploads/174031
-2155867.jpg>] [3
+[2
 
- <E:/SLIIT/Final Year project/QuilEditor/RP-24-25J-146/Backend/uploads/17403120
-88464.jpg>]
+ <E:/SLIIT/Final Year project/QuilEditor/RP-24-25J-146/Backend/uploads/17405812
+99422.jpg> <E:/SLIIT/Final Year project/QuilEditor/RP-24-25J-146/Backend/upload
+s/1740581318803.jpg>]
 (E:/SLIIT\Final Year project\QuilEditor\RP-24-25J-146\Backend\output\output_pap
 er.aux)
  ***********
@@ -265,22 +498,21 @@ L3 programming layer <2024-01-04>
  ***********
  ) 
 Here is how much of TeX's memory you used:
- 2128 strings out of 474485
- 39985 string characters out of 5742319
- 1940542 words of memory out of 5000000
- 24448 multiletter control sequences out of 15000+600000
- 587436 words of font info for 84 fonts, out of 8000000 for 9000
+ 2221 strings out of 474485
+ 41516 string characters out of 5742319
+ 1941542 words of memory out of 5000000
+ 24535 multiletter control sequences out of 15000+600000
+ 589235 words of font info for 90 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 57i,8n,65p,980b,256s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 57i,17n,65p,1263b,446s stack positions out of 10000i,1000n,20000p,200000b,200000s
 <C:/Users/shandeep/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times/utmb8a
 .pfb><C:/Users/shandeep/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times/utm
 bi8a.pfb><C:/Users/shandeep/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times
-/utmr8a.pfb><C:/Users/shandeep/AppData/Local/Programs/MiKTeX/fonts/type1/urw/ti
-mes/utmri8a.pfb>
+/utmr8a.pfb>
 Output written on "E:/SLIIT\Final Year project\QuilEditor\RP-24-25J-146\Backend
-\output\output_paper.pdf" (3 pages, 438223 bytes).
+\output\output_paper.pdf" (2 pages, 940509 bytes).
 PDF statistics:
- 36 PDF objects out of 1000 (max. 8388607)
+ 28 PDF objects out of 1000 (max. 8388607)
  0 named destinations out of 1000 (max. 500000)
  16 words of extra memory for PDF output out of 10000 (max. 10000000)
 

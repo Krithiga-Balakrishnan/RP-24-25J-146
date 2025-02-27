@@ -1,39 +1,44 @@
 \documentclass[conference]{IEEEtran}
 \usepackage{graphicx}
+\usepackage{array}
 
 \title{<%= title %>}
 
 \author{
-<% if (authorsInPairs && authorsInPairs.length) { %>
-  <% authorsInPairs.forEach(function(pair, colIndex) { %>
-    <% pair.forEach(function(author) { %>
-      \IEEEauthorblockN{<%= author.name %>}
-      \IEEEauthorblockA{
-        <%= author.affiliation || "Unknown Affiliation" %> \\
+\begin{center}
+\begin{tabular}{>{\centering\arraybackslash}p{0.3\linewidth} >{\centering\arraybackslash}p{0.3\linewidth} >{\centering\arraybackslash}p{0.3\linewidth}}
+<% if (authorsRows && authorsRows.length) { %>
+  <% authorsRows.forEach(function(row) { %>
+    <% row.forEach(function(author, index) { %>
+      \begin{minipage}[t]{\linewidth}
+        \centering
+        {\bfseries <%= author.name %>}\\
+        <%= author.affiliation || "Unknown Affiliation" %>\\
         <%= author.email || "No Email" %>
-      }
-    <% }) %>
-    <% // If this isn't the last pair, insert "\and" to start a new column %>
-    <% if (colIndex < authorsInPairs.length - 1) { %>
-      \and
-    <% } %>
+      \end{minipage}
+      <% if (index < row.length - 1) { %> & <% } %>
+    <% }); %>
+    <% if (row.length === 1) { %> & ~ & ~ <% } else if (row.length === 2) { %> & ~ <% } %> \\
   <% }); %>
 <% } else { %>
-  \IEEEauthorblockN{Unknown Author}
-  \IEEEauthorblockA{No Affiliation \\ No Email}
+  \IEEEauthorblockN{Unknown Author} & ~ & ~ \\
 <% } %>
+\end{tabular}
+\end{center}
 }
 
 \begin{document}
-
 \maketitle
 
 \begin{abstract}
 <%= abstract %>
 \end{abstract}
 
+\begin{IEEEkeywords}
+<%= keyword %>
+\end{IEEEkeywords}
+
 <% 
-  // Example logic for specific sections
   var introductionSection = sections.find(s => s.title && s.title.toLowerCase() === "introduction");
   var literatureReviewSection = sections.find(s => s.title && s.title.toLowerCase().includes("literature review"));
   var resultsSection = sections.find(s => s.title && s.title.toLowerCase().includes("results"));
@@ -46,7 +51,7 @@
     <% introductionSection.subsections.forEach(function(sub) { %>
       \subsection{<%= sub.title %>}
       <%= sub.content %>
-    <% }) %>
+    <% }); %>
   <% } %>
 <% } %>
 
@@ -61,13 +66,11 @@
 <% } %>
 
 <% 
-  // Render any other sections not handled above
   var renderedTitles = [];
   if (introductionSection) renderedTitles.push(introductionSection.title);
   if (literatureReviewSection) renderedTitles.push(literatureReviewSection.title);
   if (resultsSection) renderedTitles.push(resultsSection.title);
 %>
-
 <% sections.forEach(function(section) { %>
   <% if (!renderedTitles.includes(section.title)) { %>
     \section{<%= section.title %>}
@@ -76,7 +79,7 @@
       <% section.subsections.forEach(function(sub) { %>
         \subsection{<%= sub.title %>}
         <%= sub.content %>
-      <% }) %>
+      <% }); %>
     <% } %>
   <% } %>
 <% }); %>
@@ -95,7 +98,7 @@
   <% references.forEach(function(ref) { %>
     \bibitem{<%= ref.id %>}
     <%= ref.citation %>
-  <% }) %>
+  <% }); %>
 <% } else { %>
     \bibitem{example2023}
     J. Doe and J. Smith, ``A Study on NLP Style Transfer,'' \emph{Journal of NLP}, vol. 10, no. 2, pp. 100--110, 2023.
