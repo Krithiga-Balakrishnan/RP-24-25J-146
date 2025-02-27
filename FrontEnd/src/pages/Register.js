@@ -27,7 +27,7 @@ const Register = () => {
       localStorage.setItem("userId", data.userId);
       localStorage.setItem("userName", data.name);
       setUser(data); // Update global user state
-      navigate("/home");
+      navigate("/");
     } else {
       alert("Registration failed");
     }

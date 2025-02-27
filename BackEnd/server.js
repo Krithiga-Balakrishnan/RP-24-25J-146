@@ -7,6 +7,7 @@ const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const padRoutes = require("./routes/padRoutes");
 const ieeeRoutes = require("./routes/ieeeRoutes");
+const usersRoutes = require("./routes/userRoutes");
 const Pad = require("./models/Pad");
 const path = require("path");
 require("dotenv").config();
@@ -181,7 +182,7 @@ io.on("connection", (socket) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/pads", padRoutes);
 app.use("/api/convert", ieeeRoutes);
-
+app.use("/api/users", usersRoutes);
 
 // Use in Local
 server.listen(4000, () => {
