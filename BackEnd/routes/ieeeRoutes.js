@@ -6,6 +6,8 @@ const fs = require("fs");
 const { exec } = require("child_process");
 const axios = require("axios"); // For calling the conversion API
 const Pad = require("../models/Pad");
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+
 
 // Ensure the output directory exists.
 const outputDir = path.join(__dirname, "../output");
@@ -68,6 +70,34 @@ function convertDeltaToPlainText(delta) {
   return result;
 }
 
+
+
+
+
+
+const abbreviationMap = {}; // Store abbreviation mappings
+
+function processAbbreviations(text) {
+    // Regular expression to detect abbreviations in parentheses, e.g., "artificial intelligence (AI)"
+    const regex = /\b([A-Za-z\s]+)\s\((\b[A-Z]{2,}\b)\)/g;
+
+    return text.replace(regex, (match, fullForm, abbr) => {
+        // If the abbreviation is new, store it
+        if (!abbreviationMap[abbr]) {
+            abbreviationMap[abbr] = fullForm; 
+            return `${fullForm} (${abbr})`; // First occurrence: Keep full form + abbreviation
+        } 
+        return abbr; // Subsequent occurrences: Replace with abbreviation only
+    });
+}
+
+
+
+
+
+
+
+
 // Helper: For each section/subsection, send its ENTIRE text (minus images) to the conversion API.
 async function convertSectionsByFullText(sections) {
   for (let section of sections) {
@@ -80,12 +110,14 @@ async function convertSectionsByFullText(sections) {
           content: plainText
         });
         // Expecting { converted_text: "..." } in the response
-        section.content = response.data.converted_text || plainText;
+        section.content = processAbbreviations(response.data.converted_text || plainText);
+        // section.content = response.data.converted_text || plainText;
         console.log("Converted text for section:", section.title);
       } catch (apiErr) {
         console.error("Conversion API error:", apiErr);
         // If API fails, fall back to the original plain text
-        section.content = plainText;
+        // section.content = plainText;
+        section.content = processAbbreviations(plainText);
       }
     } else {
       // If there's no text, leave it as is
