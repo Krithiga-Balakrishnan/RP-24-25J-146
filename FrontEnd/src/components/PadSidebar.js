@@ -11,10 +11,10 @@ const menuData = [
   { label: "Checks", icon: "✔️", route: "#" },
 ];
 
-const PadSidebar = ({ sidebarOpen, toggleSidebar, onGenerateMindmap, onGenerateIEEE, padName, padId }) => {
+const PadSidebar = ({ sidebarOpen, toggleSidebar, onGenerateMindmap, onGenerateIEEE, onGenerateReference, padName, padId, }) => {
   const navigate = useNavigate();
   const [isLaptop, setIsLaptop] = useState(window.innerWidth >= 992);
-
+  
   useEffect(() => {
     const handleResize = () => {
       setIsLaptop(window.innerWidth >= 992);
@@ -41,9 +41,9 @@ const PadSidebar = ({ sidebarOpen, toggleSidebar, onGenerateMindmap, onGenerateI
     ...(isLaptop
       ? {}
       : {
-          transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)",
-          transition: "transform 0.3s ease",
-        }),
+        transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)",
+        transition: "transform 0.3s ease",
+      }),
   };
 
   // Always use laptop style for menu items: vertical layout, centered.
@@ -106,6 +106,8 @@ const PadSidebar = ({ sidebarOpen, toggleSidebar, onGenerateMindmap, onGenerateI
       onGenerateMindmap();
     } else if (item.label === "IEEE") {
       onGenerateIEEE();
+    } else if (item.label === "Cite") {
+      onGenerateReference();  // Corrected this line
     } else {
       navigate(item.route);
     }
@@ -113,21 +115,21 @@ const PadSidebar = ({ sidebarOpen, toggleSidebar, onGenerateMindmap, onGenerateI
   };
 
   return (
-    <div style={containerStyle}>
-      {mobileCloseButton}
-      {menuData.map((item) => (
-        <div
-          key={item.label}
-          style={menuItemStyle}
-          onClick={() => handleItemClick(item)}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
-        >
-          <span style={iconStyle}>{item.icon}</span>
-          <span className="header-font">{item.label}</span>
-        </div>
-      ))}
-    </div>
+      <div style={containerStyle}>
+        {mobileCloseButton}
+        {menuData.map((item) => (
+          <div
+            key={item.label}
+            style={menuItemStyle}
+            onClick={() => handleItemClick(item)}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+          >
+            <span style={iconStyle}>{item.icon}</span>
+            <span className="header-font">{item.label}</span>
+          </div>
+        ))}
+      </div>
   );
 };
 
