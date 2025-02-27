@@ -6,6 +6,7 @@ import Editor from "../components/Editor";
 import MindmapModal from "../components/MindmapModal";
 import PadHeader from "../components/PadHeader";
 import PadSidebar from "../components/PadSidebar";
+import CiteSidebar from "../components/CiteSideBar";
 
 const socket = io(`${process.env.REACT_APP_BACKEND_API_URL}`);
 
@@ -17,6 +18,7 @@ const PadPage = () => {
   const [authors, setAuthors] = useState([]);
   const [references, setReferences] = useState([]);
   const [userEmail, setUserEmail] = useState("");
+  const [isCiteSidebarOpen, setCiteSidebarOpen] = useState(false);
   const [showMindmap, setShowMindmap] = useState(false);
   const [selectedText, setSelectedText] = useState("");
   const [lastSelectedText, setLastSelectedText] = useState("");
@@ -125,6 +127,15 @@ const PadPage = () => {
     console.log("Final text used for mindmap:", textToUse);
   };
 
+  // When the "Generate reference & Cite" button is clicked, get the selected text.
+  const handleGenerateCiteSidebar = () => {
+    const textToUse = lastSelectedText || selectedText;
+    setSelectedText(textToUse);
+    setCiteSidebarOpen(true);
+    console.log("Final text used for citation sidebar:", textToUse);
+  };
+
+
   // Add user to pad (only if current user is pad_owner)
   const addUserToPad = async () => {
     if (!userEmail.trim()) return alert("Enter a valid email!");
@@ -192,6 +203,7 @@ const PadPage = () => {
         sidebarOpen={sidebarOpen}
         toggleSidebar={toggleSidebar}
         onGenerateMindmap={handleGenerateMindmap}
+        onGenerateReference={handleGenerateCiteSidebar}
         onGenerateIEEE={FetchPadData}
       />
       <div style={mainContentStyle}>
@@ -261,6 +273,13 @@ const PadPage = () => {
           )}
         </div>
       </div>
+      {isCiteSidebarOpen && (
+        <CiteSidebar
+          isOpen={isCiteSidebarOpen}
+          onClose={() => setCiteSidebarOpen(false)}
+          selectedText={selectedText}
+        />
+      )}
     </>
   );
 };
