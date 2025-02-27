@@ -1,5 +1,5 @@
 // MindmapModal.js
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 
 const MindmapModal = ({ show, onClose, selectedText }) => {
@@ -14,6 +14,8 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
   const addRelationBtnRef = useRef(null);
   const colorPickerRef = useRef(null);
   const colorPickerContainerRef = useRef(null);
+  const [fullScreenImageUrl, setFullScreenImageUrl] = useState(null);
+  const deleteImageBtnRef = useRef(null);
 
   // Global variables for the mind map (internal to this component)
   let nodes = [];
@@ -29,6 +31,86 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
   let isAddNodeListenerAttached = false;
   let isAddRelationListenerAttached = false;
   let isDeleteListenerAttached = false;
+
+  // 1) A catalog of 10 images, each with a description
+  //    (Adjust the URLs and descriptions to fit your use case.)
+  const imageCatalog = [
+    {
+      url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRCmgkix4DEJoToCFKP-g8ztCYa9bIuxAC3pA&s",
+      description: "iot",
+    },
+    {
+      url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTnGWEwXpRS7z7rVaGrjIWWTdE8_TiYTGiYjA&s",
+      description: "neural networks perceptron artificial biological",
+    },
+    {
+      url: "https://i0.wp.com/plopdo.com/wp-content/uploads/2021/11/feature-pic.jpg?fit=537%2C322&ssl=1",
+      description: "healthcare machine learning diagnosis patterns",
+    },
+    {
+      url: "https://images.ctfassets.net/hrltx12pl8hq/28ECAQiPJZ78hxatLTa7Ts/2f695d869736ae3b0de3e56ceaca3958/free-nature-images.jpg?fit=fill&w=1200&h=630",
+      description: "gps wireless adaptors big data location",
+    },
+    {
+      url: "https://cdn.prod.website-files.com/62d84e447b4f9e7263d31e94/6399a4d27711a5ad2c9bf5cd_ben-sweet-2LowviVHZ-E-unsplash-1.jpeg",
+      description: "classification regression tasks complex data",
+    },
+    {
+      url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQUPIfiGgUML8G3ZqsNLHfaCnZK3I5g4tJabQ&s",
+      description: "storage large frameworks information architecture",
+    },
+    {
+      url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTc9APxkj0xClmrU3PpMZglHQkx446nQPG6lA&s",
+      description: "survey overview applications algorithms",
+    },
+    {
+      url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTtnvAOajH9gS4C30cRF7rD_voaTAKly2Ntaw&s",
+      description: "advantages efficient medical fields improvement",
+    },
+    {
+      url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQKGvxtr7vmYvKw_dBgBPf98isHM4Cz6REorg&s",
+      description: "crucial role big data iot research",
+    },
+    {
+      url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQoFRQjM-wM_nXMA03AGDXgJK3VeX7vtD3ctA&s",
+      description: "support infrastructure sensor machine communication",
+    },
+  ];
+
+  async function preloadImages(imageCatalog) {
+    // For each entry, fetch the image, convert to blob, then to base64 dataURL.
+    // We'll store the final dataURL in item.dataUrl.
+    const promises = imageCatalog.map(async (item) => {
+      const response = await fetch(item.url);
+      const blob = await response.blob();
+      const reader = new FileReader();
+      const dataUrlPromise = new Promise((resolve) => {
+        reader.onload = () => {
+          item.dataUrl = reader.result; // The base64 data
+          resolve();
+        };
+      });
+      reader.readAsDataURL(blob);
+      await dataUrlPromise;
+    });
+
+    await Promise.all(promises);
+    return imageCatalog; // Now each item has dataUrl
+  }
+
+  // 2) Helper to find the first image whose description contains
+  //    at least one of the node’s words (case-insensitive).
+  function getMatchingImage(nodeText, imageList) {
+    const nodeWords = nodeText.toLowerCase().split(/\s+/);
+    for (const { dataUrl, description } of imageList) {
+      const descWords = description.toLowerCase().split(/\s+/);
+      const foundMatch = nodeWords.some((word) => descWords.includes(word));
+      if (foundMatch) {
+        return dataUrl; // <-- Return the base64 dataUrl instead of original url
+      }
+    }
+    return null;
+  }
 
   useEffect(() => {
     if (!show) return;
@@ -187,6 +269,10 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
       }
       selectedNode = null;
       selectedLink = null;
+
+      // Only call updateBlinking if nodeGroup and linkGroup exist
+      if (!nodeGroup || !linkGroup) return;
+
       updateBlinking();
     };
 
@@ -523,7 +609,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
         }
 
         // Adjust URL/endpoint as needed:
-        // const baseApiUrl = "https://e0d6-34-90-7-129.ngrok-free.app";
+        // const baseApiUrl = "https://edf5-34-143-234-222.ngrok-free.app";
         // const endpoint = "generate";
 
         // const response = await fetch(`${baseApiUrl}/${endpoint}`, {
@@ -640,6 +726,150 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
       });
     }
 
+    function reRenderNode(d, group) {
+      // Clear any existing content
+      group.selectAll("*").remove();
+      const matchedUrl = d.imageDeleted
+        ? null
+        : getMatchingImage(d.text, imageCatalog);
+
+      if (matchedUrl) {
+        // Set image dimensions and spacing.
+        const imageWidth = 100;
+        const imageHeight = 100;
+        const spacing = 10; // space between image and text
+        const estimatedTextHeight = 20; // estimated text height
+        // Total composite height = image + spacing + text.
+        const compositeHeight = imageHeight + spacing + estimatedTextHeight; // 130
+        // Center the composite vertically:
+        const compositeTop = -compositeHeight / 2; // -65
+        // Position text below image.
+        const textY = compositeTop + imageHeight + spacing; // 45
+
+        // Set ellipse dimensions to enclose the composite.
+        const ellipseRx = Math.max(50, d.text.length * 6) + 40;
+        const ellipseRy = compositeHeight / 2 + 20; // about 85 (adjust as needed)
+
+        // Append ellipse (as background)
+        group
+          .append("ellipse")
+          .attr("rx", ellipseRx)
+          .attr("ry", ellipseRy)
+          .attr("fill", window.nodeColorMap.get(d.id))
+          .attr("stroke", "#333")
+          .attr("stroke-width", 2);
+
+        // Append the image, centered horizontally.
+        group
+          .append("image")
+          .attr("xlink:href", matchedUrl)
+          .attr("width", imageWidth)
+          .attr("height", imageHeight)
+          .attr("x", -imageWidth / 2)
+          .attr("y", compositeTop)
+          .on("click", (event, d) => {
+            // Stop the click from propagating further
+            event.stopPropagation();
+
+            // Show the clicked image in full-screen
+            setFullScreenImageUrl(matchedUrl);
+            handleDocumentClick();
+          });
+
+        // Append text below the image.
+        group
+          .append("text")
+          .attr("text-anchor", "middle")
+          .attr("alignment-baseline", "hanging")
+          .attr("y", textY)
+          .text(d.text)
+          .on("click", (event, d) => {
+            const input = document.createElement("input");
+            input.type = "text";
+            input.value = d.text;
+            input.style.position = "absolute";
+            input.style.left = `${event.pageX}px`;
+            input.style.top = `${event.pageY}px`;
+            input.style.zIndex = 1000;
+            document.body.appendChild(input);
+            input.focus();
+            input.addEventListener("blur", () => {
+              const updatedText = input.value.trim();
+              if (updatedText && updatedText !== d.text) {
+                d.text = updatedText;
+                const oldID = d.id;
+                d.id = updatedText;
+                const nodeObj = nodes.find((n) => n.id === oldID);
+                if (nodeObj) {
+                  nodeObj.id = updatedText;
+                  nodeObj.text = updatedText;
+                }
+                links.forEach((link) => {
+                  if (link.source === oldID) link.source = updatedText;
+                  if (link.target === oldID) link.target = updatedText;
+                });
+                update();
+                console.log("Node updated successfully:", updatedText);
+              }
+              document.body.removeChild(input);
+            });
+            event.stopPropagation();
+            handleDocumentClick();
+            d.imageDeleted = false;
+          });
+      } else {
+        // No matching image: simply create an ellipse and center text.
+        const ellipseRx = Math.max(40, d.text.length * 5);
+        const ellipseRy = 40;
+        group
+          .append("ellipse")
+          .attr("rx", ellipseRx)
+          .attr("ry", ellipseRy)
+          .attr("fill", window.nodeColorMap.get(d.id))
+          .attr("stroke", "#333")
+          .attr("stroke-width", 2);
+        group
+          .append("text")
+          .attr("text-anchor", "middle")
+          .attr("alignment-baseline", "middle")
+          .text(d.text)
+          .on("click", (event, d) => {
+            const input = document.createElement("input");
+            input.type = "text";
+            input.value = d.text;
+            input.style.position = "absolute";
+            input.style.left = `${event.pageX}px`;
+            input.style.top = `${event.pageY}px`;
+            input.style.zIndex = 1000;
+            document.body.appendChild(input);
+            input.focus();
+            input.addEventListener("blur", () => {
+              const updatedText = input.value.trim();
+              if (updatedText && updatedText !== d.text) {
+                d.text = updatedText;
+                const oldID = d.id;
+                d.id = updatedText;
+                const nodeObj = nodes.find((n) => n.id === oldID);
+                if (nodeObj) {
+                  nodeObj.id = updatedText;
+                  nodeObj.text = updatedText;
+                }
+                links.forEach((link) => {
+                  if (link.source === oldID) link.source = updatedText;
+                  if (link.target === oldID) link.target = updatedText;
+                });
+                update();
+                console.log("Node updated successfully:", updatedText);
+              }
+              document.body.removeChild(input);
+            });
+            event.stopPropagation();
+            handleDocumentClick();
+            d.imageDeleted = false;
+          });
+      }
+    }
+
     function update() {
       console.log("Updating visualization...");
       if (!window.nodeColorMap) window.nodeColorMap = new Map();
@@ -739,53 +969,23 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
                 selectedLink = null;
                 updateBlinking();
                 event.stopPropagation();
+
+                const matchedUrl = d.imageDeleted
+                  ? null
+                  : getMatchingImage(d.text, imageCatalog);
+                if (deleteImageBtnRef.current) {
+                  deleteImageBtnRef.current.style.display = matchedUrl
+                    ? "inline-block"
+                    : "none";
+                }
               })
-              .on("dblclick", (event, d) => {
-                const input = document.createElement("input");
-                input.type = "text";
-                input.value = d.text;
-                input.style.position = "absolute";
-                input.style.left = `${event.pageX}px`;
-                input.style.top = `${event.pageY}px`;
-                input.style.zIndex = 1000;
-                document.body.appendChild(input);
-                input.focus();
-                input.addEventListener("blur", () => {
-                  const updatedText = input.value.trim();
-                  if (updatedText && updatedText !== d.text) {
-                    d.text = updatedText;
-                    const oldID = d.id;
-                    d.id = updatedText;
-                    const nodeObj = nodes.find((n) => n.id === oldID);
-                    if (nodeObj) {
-                      nodeObj.id = updatedText;
-                      nodeObj.text = updatedText;
-                    }
-                    links.forEach((link) => {
-                      if (link.source === oldID) link.source = updatedText;
-                      if (link.target === oldID) link.target = updatedText;
-                    });
-                    d3.select(event.target.parentNode)
-                      .select("text")
-                      .text(updatedText);
-                    console.log("Node updated successfully:", updatedText);
-                  }
-                  document.body.removeChild(input);
-                });
-                event.stopPropagation();
-              });
-            nodeEnter
-              .append("ellipse")
-              .attr("rx", (d) => Math.max(30, d.text.length * 5))
-              .attr("ry", 30)
-              .attr("fill", (d) => window.nodeColorMap.get(d.id))
-              .attr("stroke", "#333")
-              .attr("stroke-width", 2);
-            nodeEnter
-              .append("text")
-              .attr("text-anchor", "middle")
-              .attr("alignment-baseline", "middle")
-              .text((d) => d.text);
+              .on("dblclick", (event, d) => {});
+
+            // In your update() function (within the update selection):
+            nodeGroup.selectAll("g").each(function (d) {
+              reRenderNode(d, d3.select(this));
+            });
+
             return nodeEnter;
           },
           (update) =>
@@ -868,6 +1068,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
     }
 
     function updateBlinking() {
+      if (!nodeGroup || !linkGroup) return;
       nodeGroup.selectAll("ellipse").classed("blinking", false);
       linkGroup.selectAll("line").classed("blinking", false);
       if (selectedNode) {
@@ -910,7 +1111,29 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
     }
 
     // Call the generate function when the modal mounts
-    generateMindmap();
+    // 1) Preload images as data URIs
+    preloadImages(imageCatalog)
+      .then(() => {
+        // 2) Once images are preloaded, do the rest of your setup
+        generateMindmap();
+      })
+      .catch((err) => console.error("Error preloading images:", err));
+
+    deleteImageBtnRef.current &&
+      deleteImageBtnRef.current.addEventListener("click", () => {
+        if (selectedNode) {
+          // Only delete if there is a matching image.
+          const currentMatched = getMatchingImage(
+            selectedNode.text,
+            imageCatalog
+          );
+          if (currentMatched && !selectedNode.imageDeleted) {
+            // Mark this node as having its image deleted.
+            selectedNode.imageDeleted = true;
+            update();
+          }
+        }
+      });
 
     // Cleanup: Remove event listeners on unmount
     return () => {
@@ -1046,8 +1269,19 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
           cursor: pointer;
           transition: color 0.3s ease;
           display: inline-block;
+          margin-right: 20px;
         }
         .add-image-text:hover {
+          color: var(--secondary-color);
+        }
+        .delete-image-text {
+          color: var(--primary-color);
+          cursor: pointer;
+          transition: color 0.3s ease;
+          display: inline-block;
+          margin-right: 20px;
+        }
+        .delete-image-text:hover {
           color: var(--secondary-color);
         }
         .color-picker-group {
@@ -1184,7 +1418,10 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
             onClick={(e) => e.stopPropagation()}
           >
             {/* First child: "Add Image" text */}
-            <span className="add-image-text">+ Add Image</span>
+            {/* <span className="add-image-text">+ Add Image</span> */}
+            <span className="delete-image-text" ref={deleteImageBtnRef}>
+              − Delete Image
+            </span>
 
             {/* Second child: Label and color picker grouped together */}
             <div className="color-picker-group">
@@ -1231,6 +1468,31 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
           ></div>
         </div>
       </div>
+
+      {fullScreenImageUrl && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            backgroundColor: "rgba(0, 0, 0, 0.8)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 2000, // above the rest
+            cursor: "pointer",
+          }}
+          onClick={() => setFullScreenImageUrl(null)} // close on click
+        >
+          <img
+            src={fullScreenImageUrl}
+            alt="Full Screen Preview"
+            style={{ maxWidth: "90%", maxHeight: "90%" }}
+          />
+        </div>
+      )}
     </div>
   );
 };
