@@ -16,6 +16,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
   const colorPickerContainerRef = useRef(null);
   const [fullScreenImageUrl, setFullScreenImageUrl] = useState(null);
   const deleteImageBtnRef = useRef(null);
+  const [loading, setLoading] = useState(true);
 
   // Global variables for the mind map (internal to this component)
   let nodes = [];
@@ -31,6 +32,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
   let isAddNodeListenerAttached = false;
   let isAddRelationListenerAttached = false;
   let isDeleteListenerAttached = false;
+  let zoomBehavior;
 
   // 1) A catalog of 10 images, each with a description
   //    (Adjust the URLs and descriptions to fit your use case.)
@@ -114,6 +116,8 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
 
   useEffect(() => {
     if (!show) return;
+
+    setLoading(true);
 
     // Get elements via refs
     const modal = modalRef.current;
@@ -424,7 +428,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
       linkGroup = zoomGroup.append("g").attr("class", "links");
       nodeGroup = zoomGroup.append("g").attr("class", "nodes");
 
-      const zoomBehavior = d3
+      zoomBehavior = d3
         .zoom()
         .scaleExtent([0.5, 5])
         .on("zoom", (event) => {
@@ -451,11 +455,47 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
 
       console.log("Selected Text:", selectedText);
       fetchFromDatabase()
-        .then(() => console.log("Mind map data loaded."))
-        .catch((err) => console.error("Error fetching mind map data:", err));
+        .then(() => {
+          console.log("Mind map data loaded.");
+        })
+        .catch((err) => {
+          console.error("Error fetching mind map data:", err);
+        });
     };
 
     // ---------- Download Mindmap Handler is defined above as handleDownload ----------
+
+    // Zoom beaviour function
+    function fitToScreen() {
+      // 1) Get container size
+      const container = document.getElementById("mindmapContainer");
+      if (!container) return;
+      const containerWidth = container.clientWidth;
+      const containerHeight = container.clientHeight;
+
+      // 2) Measure bounding box of zoomGroup
+      const bbox = zoomGroup.node().getBBox();
+      if (!bbox.width || !bbox.height) return; // No content or not rendered yet?
+
+      // 3) Compute scale so the content fits
+      const scale = Math.min(
+        containerWidth / bbox.width,
+        containerHeight / bbox.height
+      );
+
+      // 4) Compute translation to center
+      const tx = (containerWidth - bbox.width * scale) / 2 - bbox.x * scale;
+      const ty = (containerHeight - bbox.height * scale) / 2 - bbox.y * scale;
+
+      // 5) Apply transform with a transition
+      svg
+        .transition()
+        .duration(750)
+        .call(
+          zoomBehavior.transform,
+          d3.zoomIdentity.translate(tx, ty).scale(scale)
+        );
+    }
 
     // ---------- Fetch Mock Data Function ----------
     async function fetchFromDatabase() {
@@ -609,7 +649,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
         }
 
         // Adjust URL/endpoint as needed:
-        // const baseApiUrl = "https://edf5-34-143-234-222.ngrok-free.app";
+        // const baseApiUrl = "https://60b4-34-125-66-190.ngrok-free.app";
         // const endpoint = "generate";
 
         // const response = await fetch(`${baseApiUrl}/${endpoint}`, {
@@ -623,25 +663,31 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
         // }
 
         // const data = await response.json();
-        // console.log("Parsed JSON Data:", data);
+        // // Check if the API returned an error or an unexpected structure
+        // if (data.error) {
+        //   console.error("API returned error: " + data.error);
+        //   // Optionally, you can keep loading true or show an error message.
+        //   return;
+        // }
+        // if (!data.response || !Array.isArray(data.response.mindmap)) {
+        //   throw new Error("Invalid data structure: " + JSON.stringify(data));
+        // }
         // const mindmapRoot = data.response;
-
         // // Clear previous data
         // nodes = [];
         // links = [];
-
-        // // Recursively traverse the returned structure
-        // if (mindmapRoot && mindmapRoot.mindmap && Array.isArray(mindmapRoot.mindmap)) {
-        //   mindmapRoot.mindmap.forEach((mindmapNode) => {
-        //     traverseMindmap(mindmapNode, null);
-        //   });
-        // }
+        // // Traverse the response structure
+        // mindmapRoot.mindmap.forEach((mindmapNode) => {
+        //   traverseMindmap(mindmapNode, null);
+        // });
 
         const hierarchyData = buildHierarchy(nodes, links);
         applyTreeLayout(hierarchyData);
         update();
+        setLoading(false);
       } catch (error) {
         console.error("Error fetching data from mock data:", error);
+        setLoading(false);
       }
     }
 
@@ -715,13 +761,19 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
     }
 
     function applyTreeLayout(hierarchyData) {
-      const treeLayout = d3.tree().size([width, height - 100]);
+      const treeLayout = d3
+        .tree()
+        .nodeSize([200, 200])
+        .separation((a, b) => (a.parent === b.parent ? 2 : 2));
       const treeData = treeLayout(hierarchyData);
       treeData.descendants().forEach((d) => {
         const node = nodes.find((n) => n.id === d.data.id);
         if (node) {
           node.x = d.x;
           node.y = d.y;
+          // Freeze the position so the simulation doesn't move the nodes
+          node.fx = d.x;
+          node.fy = d.y;
         }
       });
     }
@@ -1008,6 +1060,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
       simulation.alpha(1).restart();
       console.log("Nodes:", nodes);
       console.log("Links:", links);
+      window.requestAnimationFrame(() => fitToScreen());
     }
 
     function ticked() {
@@ -1466,6 +1519,26 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
             ref={graphRef}
             style={{ width: "100%", height: "100%" }}
           ></div>
+          {loading && (
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "rgba(255, 255, 255, 0.8)",
+                zIndex: 1000,
+                fontSize: "1.5rem",
+                color: "#555",
+              }}
+            >
+              Loading...
+            </div>
+          )}
         </div>
       </div>
 
