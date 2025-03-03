@@ -430,7 +430,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
 
       zoomBehavior = d3
         .zoom()
-        .scaleExtent([0.5, 5])
+        .scaleExtent([0.05, 5])
         .on("zoom", (event) => {
           zoomGroup.attr("transform", event.transform);
         });
@@ -576,7 +576,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
               },
             ],
           };
-        } else {
+        } else if (chosen === "3") {
           data = {
             mindmap: [
               {
@@ -638,7 +638,149 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
               },
             ],
           };
+        } else {
+          data = {
+            mindmap: [
+              {
+                name: "Rainfall Prediction and Suicide Analysis",
+                subnodes: [
+                  {
+                    name: "Objective",
+                    subnodes: [
+                      {
+                        name: "Reduce the Suicides due to Rainfall",
+                        subnodes: [],
+                      },
+                    ],
+                  },
+                  {
+                    name: "Data Types",
+                    subnodes: [
+                      {
+                        name: "Categorical Data",
+                        subnodes: [
+                          {
+                            name: "Converted for Machine Learning",
+                            subnodes: [],
+                          },
+                        ],
+                      },
+                      {
+                        name: "Continuous Data",
+                        subnodes: [
+                          {
+                            name: "Converted for Machine Learning",
+                            subnodes: [],
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                  {
+                    name: "Experimental Analysis",
+                    subnodes: [
+                      {
+                        name: "Categorical Data",
+                        subnodes: [
+                          {
+                            name: "Random Forest: Highest Accuracy",
+                            subnodes: [
+                              {
+                                name: "Compared to",
+                                subnodes: [
+                                  { name: "SVM", subnodes: [] },
+                                  { name: "Logistic Regression", subnodes: [] },
+                                  { name: "Linear Regression", subnodes: [] },
+                                ],
+                              },
+                            ],
+                          },
+                          {
+                            name: "Logistic Regression",
+                            subnodes: [
+                              {
+                                name: "Highest Accuracy",
+                                subnodes: [
+                                  {
+                                    name: "Compared to",
+                                    subnodes: [
+                                      { name: "SVM", subnodes: [] },
+                                      { name: "Random Forest", subnodes: [] },
+                                      {
+                                        name: "Linear Regression",
+                                        subnodes: [],
+                                      },
+                                    ],
+                                  },
+                                ],
+                              },
+                            ],
+                          },
+                          {
+                            name: "SVM",
+                            subnodes: [
+                              {
+                                name: "Highest Accuracy",
+                                subnodes: [
+                                  {
+                                    name: "Compared to",
+                                    subnodes: [
+                                      {
+                                        name: "Logistic Regression",
+                                        subnodes: [],
+                                      },
+                                      { name: "Random Forest", subnodes: [] },
+                                      {
+                                        name: "Linear Regression",
+                                        subnodes: [],
+                                      },
+                                    ],
+                                  },
+                                ],
+                              },
+                            ],
+                          },
+                          {
+                            name: "Linear Regression",
+                            subnodes: [
+                              {
+                                name: "Highest Accuracy",
+                                subnodes: [
+                                  {
+                                    name: "Compared to",
+                                    subnodes: [
+                                      {
+                                        name: "Logistic Regression",
+                                        subnodes: [],
+                                      },
+                                      { name: "SVM", subnodes: [] },
+                                      { name: "Random Forest", subnodes: [] },
+                                    ],
+                                  },
+                                ],
+                              },
+                            ],
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                  {
+                    name: "Future Scope",
+                    subnodes: [
+                      { name: "Combine Different Datasets", subnodes: [] },
+                      {
+                        name: "Analysis using Different Algorithms",
+                        subnodes: [],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          };
         }
+
         console.log("Mock Data Chosen:", data);
         nodes = [];
         links = [];
@@ -691,24 +833,75 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
       }
     }
 
+    // 1) Maintain a global map from "rawName" => count
+    //    so we can produce unique IDs.
+    const uniqueNameCount = new Map();
+
+    function createUniqueId(rawName) {
+      // If we haven't seen this name, start at 1.
+      if (!uniqueNameCount.has(rawName)) {
+        uniqueNameCount.set(rawName, 1);
+        return rawName; // first time => ID is just the rawName
+      } else {
+        // If we have seen it, increment and append a suffix
+        const currentCount = uniqueNameCount.get(rawName) + 1;
+        uniqueNameCount.set(rawName, currentCount);
+        // Example suffix: "GPS (2)", "GPS (3)", etc.
+        return `${rawName} (${currentCount})`;
+      }
+    }
+
+    // 2) Modify your traverseMindmap to always create a new node
+    //    with a unique ID. Also remove the old "if (!nodes.some())" check
     function traverseMindmap(nodeData, parentData) {
       if (!nodeData || !nodeData.name) return;
-      if (!nodes.some((existingNode) => existingNode.id === nodeData.name)) {
-        nodes.push({ id: nodeData.name, text: nodeData.name });
-      }
-      if (parentData && parentData.name) {
+
+      // Create a unique ID each time
+      const newId = createUniqueId(nodeData.name);
+
+      // Create the node
+      // text = original name, id = unique name
+      nodes.push({
+        id: newId,
+        text: nodeData.name,
+      });
+
+      // If there's a parent, link from parent's ID => new ID
+      if (parentData && parentData.id) {
         links.push({
-          source: parentData.name,
-          target: nodeData.name,
+          source: parentData.id,
+          target: newId,
           type: "HAS_SUBNODE",
         });
       }
+
+      // Recurse on subnodes
       if (Array.isArray(nodeData.subnodes)) {
-        nodeData.subnodes.forEach((subnode) =>
-          traverseMindmap(subnode, nodeData)
-        );
+        nodeData.subnodes.forEach((subnode) => {
+          // pass the parent ID = newId
+          traverseMindmap(subnode, { id: newId });
+        });
       }
     }
+
+    // function traverseMindmap(nodeData, parentData) {
+    //   if (!nodeData || !nodeData.name) return;
+    //   if (!nodes.some((existingNode) => existingNode.id === nodeData.name)) {
+    //     nodes.push({ id: nodeData.name, text: nodeData.name });
+    //   }
+    //   if (parentData && parentData.name) {
+    //     links.push({
+    //       source: parentData.name,
+    //       target: nodeData.name,
+    //       type: "HAS_SUBNODE",
+    //     });
+    //   }
+    //   if (Array.isArray(nodeData.subnodes)) {
+    //     nodeData.subnodes.forEach((subnode) =>
+    //       traverseMindmap(subnode, nodeData)
+    //     );
+    //   }
+    // }
 
     function buildHierarchy(nodes, links) {
       const nodeMap = new Map(nodes.map((node) => [node.id, node]));
