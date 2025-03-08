@@ -70,11 +70,6 @@ function convertDeltaToPlainText(delta) {
   return result;
 }
 
-
-
-
-
-
 const abbreviationMap = {}; // Store abbreviation mappings
 
 function processAbbreviations(text) {

@@ -60,6 +60,167 @@ body {
 
 /* Shandeep */
 
+/* Ensure this file is linked after Bootstrap in your project */
+
+/* Paper Section */
+.paper-section {
+  border: 1px solid #000;
+  padding: 10px;
+  margin-bottom: 20px;
+  background-color: var(--tertiary-color);
+}
+
+/* Input fields */
+.input-field {
+  width: 100%;
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-bottom: 10px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-family: "Open Sans", sans-serif;
+}
+
+.textarea-field {
+  width: 100%;
+  height: 100px;
+  font-size: 1rem;
+  margin-bottom: 10px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-family: "Open Sans", sans-serif;
+}
+
+/* Buttons */
+.custom-button {
+  font-size: 1rem;
+  font-weight: bold;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  margin-right: 5px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  background-color: var(--primary-color);
+  color: white;
+  transition: background-color 0.3s ease-in-out;
+}
+
+.custom-button:hover {
+  background-color: var(--secondary-color);
+}
+
+/* Authors & References Sections */
+.authors-section,
+.references-section {
+  margin-top: 30px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  background-color: var(--fourth-color);
+}
+
+/* List Styles */
+.list-item {
+  list-style-type: none;
+  margin-bottom: 10px;
+}
+
+/* Input Fields for Authors & References */
+.input-small {
+  width: 100%;
+  padding: 6px;
+  margin-bottom: 5px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 0.9rem;
+}
+
+/* Remove Button */
+.remove-button {
+  margin-left: 5px;
+  background-color: red;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  border-radius: 5px;
+}
+
+.remove-button:hover {
+  background-color: darkred;
+}
+.ql-editor table,
+.ql-editor th,
+.ql-editor td {
+  border: 1px solid #ccc;
+  border-collapse: collapse;
+}
+.ql-editor th,
+.ql-editor td {
+  padding: 6px;
+  min-width: 40px;
+}
+.ql-editor table {
+  width: auto;
+  margin-bottom: 16px;
+}
+
+/* .ql-Table-Input .ql-picker-options {
+  display: block !important;
+  position: absolute;
+  left: 0;
+  top: 100%;
+  background: #fff;
+  border: 1px solid #ccc;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  padding: 4px 0;
+  z-index: 100;
+} */
+
+.ql-Table-Input .ql-picker-options {
+  display: none;
+}
+
+/* Only show them when the parent picker is expanded */
+/* Hide table picker options by default */
+.ql-Table-Input .ql-picker-options {
+  display: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+/* When the table picker is expanded, show the options */
+.ql-Table-Input.ql-expanded .ql-picker-options {
+  display: block;
+  opacity: 1;
+  position: absolute;
+  left: 0;
+  top: 100%;
+  background: #fff;
+  border: 1px solid #ccc;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  padding: 4px 0;
+  z-index: 100;
+  width: 150px; /* adjust width as needed */
+}
+
+/* Style each dropdown item */
+.ql-Table-Input.ql-expanded .ql-picker-options .ql-picker-item {
+  display: block;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+/* Hover effect for each option */
+.ql-Table-Input.ql-expanded .ql-picker-options .ql-picker-item:hover {
+  background: #f0f0f0;
+}
+
+
 /* Krithi */
 
 /* Saara */
