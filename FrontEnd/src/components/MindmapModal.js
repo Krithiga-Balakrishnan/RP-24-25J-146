@@ -17,6 +17,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
   const [fullScreenImageUrl, setFullScreenImageUrl] = useState(null);
   const deleteImageBtnRef = useRef(null);
   const [loading, setLoading] = useState(true);
+  const selectRelationFeedbackRef = useRef(null);
 
   // Global variables for the mind map (internal to this component)
   let nodes = [];
@@ -33,6 +34,8 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
   let isAddRelationListenerAttached = false;
   let isDeleteListenerAttached = false;
   let zoomBehavior;
+  let interactiveRelationMode = false;
+  let selectedSourceForRelation = null;
 
   // 1) A catalog of 10 images, each with a description
   //    (Adjust the URLs and descriptions to fit your use case.)
@@ -193,72 +196,115 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
       image.src = url;
     };
 
-    const handleAddNode = () => {
+    const handleAddNode = () => { 
       const newNodeName = newNodeNameRef.current.value.trim();
       if (!newNodeName) {
         alert("Please enter a valid node name.");
         return;
       }
       addNodeBtn.disabled = true;
-      if (nodes.some((node) => node.id === newNodeName)) {
-        alert(
-          "A node with this name already exists. Please use a different name."
-        );
-        addNodeBtn.disabled = false;
-        return;
+    
+      // Find the root node – either by checking depth 0 or fallback to the first node
+      const rootNode = nodes.find((node) => node.depth === 0) || nodes[0];
+    
+      let x, y;
+      if (rootNode) {
+        // Generate a random distance between min and max (in pixels)
+        const minDistance = 100;
+        const maxDistance = 400;
+        const distance = minDistance + Math.random() * (maxDistance - minDistance);
+        // Generate a random angle (in radians)
+        const angle = Math.random() * 2 * Math.PI;
+        x = rootNode.x + distance * Math.cos(angle);
+        y = rootNode.y + distance * Math.sin(angle);
+      } else {
+        // Fallback: center of the container if no node exists yet
+        const container = graphRef.current;
+        x = container.clientWidth / 2;
+        y = container.clientHeight / 2;
       }
+      
+      // Create a new node with a unique id and pin it at the calculated position.
       const newNode = {
-        id: newNodeName,
+        id: `node-${uniqueNodeCounter++}`,
         text: newNodeName,
-        x: nodes.length > 0 ? d3.mean(nodes, (node) => node.x) || 400 : 400,
-        y: nodes.length > 0 ? d3.mean(nodes, (node) => node.y) || 300 : 400,
-        depth: null,
+        x: x,
+        y: y,
+        depth: 0,
+        fx: x,
+        fy: y,
       };
+    
       nodes.push(newNode);
       update();
+    
       addNodeBtn.disabled = false;
       newNodeNameRef.current.value = "";
     };
+    
+    
 
-    const handleAddRelation = () => {
-      const sourceName = document
-        .getElementById("add-relation-source")
-        .value.trim();
-      const targetName = document
-        .getElementById("add-relation-target")
-        .value.trim();
-      if (!sourceName || !targetName) {
-        alert("Please enter both source and target node names.");
-        return;
-      }
-      if (sourceName === targetName) {
-        alert("Source and target nodes cannot be the same.");
-        return;
-      }
-      const sourceNode = nodes.find((node) => node.id === sourceName);
-      const targetNode = nodes.find((node) => node.id === targetName);
-      if (!sourceNode || !targetNode) {
-        alert("One or both nodes do not exist. Please enter valid node names.");
-        return;
-      }
-      links.push({
-        source: sourceName,
-        target: targetName,
-        type: "HAS_SUBNODE",
-      });
-      const nodeMap = new Map(nodes.map((node) => [node.id, node]));
-      targetNode.depth = sourceNode.depth + 1;
-      updateDepthsRecursively(targetNode, nodeMap, links);
-      nodes.forEach((node) => {
-        if (!colorMap[node.depth]) {
-          colorMap[node.depth] = defaultColorScale(node.depth);
+    const addRelationInteractiveSpan =
+      document.querySelector(".add-relation-text");
+    if (addRelationInteractiveSpan) {
+      addRelationInteractiveSpan.addEventListener("click", (event) => {
+        // Prevent duplicate activation
+        if (!interactiveRelationMode) {
+          if (selectedNode) {
+            interactiveRelationMode = true;
+            selectedSourceForRelation = selectedNode;
+            // Instead of an alert, update visual feedback:
+            addRelationInteractiveSpan.style.display = "none";
+            if (selectRelationFeedbackRef.current) {
+              selectRelationFeedbackRef.current.style.display = "inline-block";
+            }
+          } else {
+            alert("Please click on a node first to set it as the source.");
+          }
         }
-        window.nodeColorMap.set(node.id, colorMap[node.depth]);
+        event.stopPropagation();
       });
-      update();
-      document.getElementById("add-relation-source").value = "";
-      document.getElementById("add-relation-target").value = "";
-    };
+    }
+
+    // const handleAddRelation = () => {
+    //   const sourceName = document
+    //     .getElementById("add-relation-source")
+    //     .value.trim();
+    //   const targetName = document
+    //     .getElementById("add-relation-target")
+    //     .value.trim();
+    //   if (!sourceName || !targetName) {
+    //     alert("Please enter both source and target node names.");
+    //     return;
+    //   }
+    //   if (sourceName === targetName) {
+    //     alert("Source and target nodes cannot be the same.");
+    //     return;
+    //   }
+    //   const sourceNode = nodes.find((node) => node.id === sourceName);
+    //   const targetNode = nodes.find((node) => node.id === targetName);
+    //   if (!sourceNode || !targetNode) {
+    //     alert("One or both nodes do not exist. Please enter valid node names.");
+    //     return;
+    //   }
+    //   links.push({
+    //     source: sourceName,
+    //     target: targetName,
+    //     type: "HAS_SUBNODE",
+    //   });
+    //   const nodeMap = new Map(nodes.map((node) => [node.id, node]));
+    //   targetNode.depth = sourceNode.depth + 1;
+    //   updateDepthsRecursively(targetNode, nodeMap, links);
+    //   nodes.forEach((node) => {
+    //     if (!colorMap[node.depth]) {
+    //       colorMap[node.depth] = defaultColorScale(node.depth);
+    //     }
+    //     window.nodeColorMap.set(node.id, colorMap[node.depth]);
+    //   });
+    //   update();
+    //   document.getElementById("add-relation-source").value = "";
+    //   document.getElementById("add-relation-target").value = "";
+    // };
 
     const handleCloseModal = () => {
       modal.style.display = "none";
@@ -268,6 +314,17 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
     };
 
     const handleDocumentClick = () => {
+      if (interactiveRelationMode) {
+        interactiveRelationMode = false;
+        selectedSourceForRelation = null;
+        if (addRelationInteractiveSpan) {
+          addRelationInteractiveSpan.style.display = "inline-block";
+        }
+        if (selectRelationFeedbackRef.current) {
+          selectRelationFeedbackRef.current.style.display = "none";
+        }
+      }
+
       if (colorPickerContainer) {
         colorPickerContainer.style.display = "none";
       }
@@ -404,7 +461,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
     downloadButton.addEventListener("click", handleDownload);
     document.addEventListener("click", handleDocumentClick);
     addNodeBtn.addEventListener("click", handleAddNode);
-    addRelationBtn.addEventListener("click", handleAddRelation);
+    // addRelationBtn.addEventListener("click", handleAddRelation);
     document.addEventListener("keydown", handleKeyDown);
     isAddNodeListenerAttached = true;
     isAddRelationListenerAttached = true;
@@ -791,30 +848,33 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
         }
 
         // Adjust URL/endpoint as needed:
-        // const baseApiUrl = "https://60b4-34-125-66-190.ngrok-free.app";
+        // const baseApiUrl = "https://ceed-34-16-164-131.ngrok-free.app";
         // const endpoint = "generate";
 
         // const response = await fetch(`${baseApiUrl}/${endpoint}`, {
         //   method: "POST",
         //   headers: { "Content-Type": "application/json" },
-        //   body: JSON.stringify({ input_text: selectedText }),
+        //   body: JSON.stringify({ content: selectedText }),
         // });
 
         // if (!response.ok) {
         //   throw new Error(`Server error: ${response.status}`);
         // }
-
+    
         // const data = await response.json();
-        // // Check if the API returned an error or an unexpected structure
+    
+        // // Check if the API returned an error
         // if (data.error) {
         //   console.error("API returned error: " + data.error);
-        //   // Optionally, you can keep loading true or show an error message.
         //   return;
         // }
-        // if (!data.response || !Array.isArray(data.response.mindmap)) {
+    
+        // // Instead of checking data.response, check the data.mindmap4 structure
+        // if (!data.mindmap4 || !Array.isArray(data.mindmap4.mindmap)) {
         //   throw new Error("Invalid data structure: " + JSON.stringify(data));
         // }
-        // const mindmapRoot = data.response;
+        // const mindmapRoot = data.mindmap4;
+        
         // // Clear previous data
         // nodes = [];
         // links = [];
@@ -853,24 +913,25 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
 
     // 2) Modify your traverseMindmap to always create a new node
     //    with a unique ID. Also remove the old "if (!nodes.some())" check
+    let uniqueNodeCounter = 1;
+
     function traverseMindmap(nodeData, parentData) {
       if (!nodeData || !nodeData.name) return;
 
-      // Create a unique ID each time
-      const newId = createUniqueId(nodeData.name);
+      // Generate a unique ID by appending a counter
+      const uniqueId = `${nodeData.name}-${uniqueNodeCounter++}`;
 
-      // Create the node
-      // text = original name, id = unique name
+      // Create the node with a unique id and separate text
       nodes.push({
-        id: newId,
-        text: nodeData.name,
+        id: uniqueId, // unique identifier that never changes
+        text: nodeData.name, // display text which may be changed later
       });
 
-      // If there's a parent, link from parent's ID => new ID
+      // If there's a parent, create a link using parent's unique id
       if (parentData && parentData.id) {
         links.push({
           source: parentData.id,
-          target: newId,
+          target: uniqueId,
           type: "HAS_SUBNODE",
         });
       }
@@ -878,8 +939,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
       // Recurse on subnodes
       if (Array.isArray(nodeData.subnodes)) {
         nodeData.subnodes.forEach((subnode) => {
-          // pass the parent ID = newId
-          traverseMindmap(subnode, { id: newId });
+          traverseMindmap(subnode, { id: uniqueId });
         });
       }
     }
@@ -1041,18 +1101,13 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
             input.addEventListener("blur", () => {
               const updatedText = input.value.trim();
               if (updatedText && updatedText !== d.text) {
+                // Only update the text, not the id
                 d.text = updatedText;
-                const oldID = d.id;
-                d.id = updatedText;
-                const nodeObj = nodes.find((n) => n.id === oldID);
+                // Also update the corresponding node in the nodes array
+                const nodeObj = nodes.find((n) => n.id === d.id);
                 if (nodeObj) {
-                  nodeObj.id = updatedText;
                   nodeObj.text = updatedText;
                 }
-                links.forEach((link) => {
-                  if (link.source === oldID) link.source = updatedText;
-                  if (link.target === oldID) link.target = updatedText;
-                });
                 update();
                 console.log("Node updated successfully:", updatedText);
               }
@@ -1091,18 +1146,13 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
             input.addEventListener("blur", () => {
               const updatedText = input.value.trim();
               if (updatedText && updatedText !== d.text) {
+                // Only update the text, not the id
                 d.text = updatedText;
-                const oldID = d.id;
-                d.id = updatedText;
-                const nodeObj = nodes.find((n) => n.id === oldID);
+                // Also update the corresponding node in the nodes array
+                const nodeObj = nodes.find((n) => n.id === d.id);
                 if (nodeObj) {
-                  nodeObj.id = updatedText;
                   nodeObj.text = updatedText;
                 }
-                links.forEach((link) => {
-                  if (link.source === oldID) link.source = updatedText;
-                  if (link.target === oldID) link.target = updatedText;
-                });
                 update();
                 console.log("Node updated successfully:", updatedText);
               }
@@ -1203,6 +1253,46 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
                   .on("end", dragended)
               )
               .on("click", (event, d) => {
+                if (interactiveRelationMode) {
+                  if (
+                    selectedSourceForRelation &&
+                    selectedSourceForRelation.id === d.id
+                  ) {
+                    alert(
+                      "Source and target nodes cannot be the same. Please select a different target node."
+                    );
+                    event.stopPropagation();
+                    return;
+                  }
+                  // Create the relation (link) as before.
+                  links.push({
+                    source: selectedSourceForRelation.id,
+                    target: d.id,
+                    type: "HAS_SUBNODE",
+                  });
+                  const nodeMap = new Map(nodes.map((node) => [node.id, node]));
+                  d.depth = selectedSourceForRelation.depth + 1;
+                  updateDepthsRecursively(d, nodeMap, links);
+                  nodes.forEach((node) => {
+                    if (!colorMap[node.depth]) {
+                      colorMap[node.depth] = defaultColorScale(node.depth);
+                    }
+                    window.nodeColorMap.set(node.id, colorMap[node.depth]);
+                  });
+                  // Reset interactive mode and update visual feedback.
+                  interactiveRelationMode = false;
+                  selectedSourceForRelation = null;
+                  if (addRelationInteractiveSpan) {
+                    addRelationInteractiveSpan.style.display = "inline-block";
+                  }
+                  if (selectRelationFeedbackRef.current) {
+                    selectRelationFeedbackRef.current.style.display = "none";
+                  }
+                  update();
+                  event.stopPropagation();
+                  return;
+                }
+
                 selectedLevel = d.depth;
                 const colorPickerContainer = colorPickerContainerRef.current;
                 const colorPicker = colorPickerRef.current;
@@ -1393,7 +1483,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
       downloadBtnRef.current &&
         downloadBtnRef.current.removeEventListener("click", handleDownload);
       addNodeBtn.removeEventListener("click", handleAddNode);
-      addRelationBtn.removeEventListener("click", handleAddRelation);
+      // addRelationBtn.removeEventListener("click", handleAddRelation);
       document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("click", handleDocumentClick);
     };
@@ -1436,7 +1526,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
         }
         /* Input fields only: keep existing padding and border radius */
         .input-group input {
-          flex-grow: 1;
+          flex-grow: 3;
           padding: 10px;
           border: 1px solid #ccc;
           border-radius: 5px;
@@ -1450,6 +1540,11 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
           border: none;
           cursor: pointer;
         }
+
+        .input-group, .simplify-button, .extend-button {
+          flex-grow: 2!important;
+        }
+
         /* Mind Map Container */
         #mindmap-container {
           width: 100%;
@@ -1468,26 +1563,36 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
           cursor: pointer;
           align-self: center;
         }
+
         /* Mobile-specific adjustments */
         @media (max-width: 768px) {
-          /* Force elements with these classes to share the same row side by side */
-          .mobile-move-next,
-          .mobile-move-bottom {
-            width: 48%;           /* Each takes ~half width */
-            max-width: none;      /* Remove the 300px cap */
-            margin-top: 10px;
-            align-self: center;
-          }
-          /* Keep .mobile-move-bottom items ordered after the others in the same .input-group */
-          .mobile-move-bottom {
-            order: 1;
-          }
           .input-group {
             flex-wrap: wrap;
             justify-content: center;
             margin-bottom: 10px;
+            gap: 10px; /* keep consistent spacing */
+          }
+          /* Force input + add-node button to share the first row side by side */
+          .add-node-input {
+            flex: 0 0 calc(70% - 5px);
+          }
+          .add-node-button {
+            flex: 0 0 calc(30% - 5px);
+          }
+          /* Extend, Simplify, Download on second row, side by side */
+          .extend-button,
+          .simplify-button,
+          .download-button {
+            flex: 0 0 calc((100% - 20px)/3); /* 3 buttons, 2 gaps of 10px = 20px total */
           }
         }
+
+        @media (min-width: 768px) {
+          #color-picker-container {
+            text-align: end !important;
+          }
+        }
+
         /* Blinking animations for nodes and links */
         ellipse.blinking {
           animation: blink-border 1s linear infinite !important;
@@ -1510,6 +1615,12 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
             opacity: 0;
           }
         }
+        @keyframes blinking {
+          0% { opacity: 1; }
+          50% { opacity: 0; }
+          100% { opacity: 1; }
+        }
+
         .add-image-text {
           color: var(--primary-color);
           cursor: pointer;
@@ -1520,14 +1631,14 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
         .add-image-text:hover {
           color: var(--secondary-color);
         }
-        .delete-image-text {
+        .delete-image-text, .add-relation-text {
           color: var(--primary-color);
           cursor: pointer;
           transition: color 0.3s ease;
           display: inline-block;
           margin-right: 20px;
         }
-        .delete-image-text:hover {
+        .delete-image-text:hover, .add-relation-text:hover {
           color: var(--secondary-color);
         }
         .color-picker-group {
@@ -1538,11 +1649,6 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
         @media (max-width: 768px) {
           #color-picker-container {
             justify-content: space-between !important;
-          }
-        }
-        @media (min-width: 768px) {
-          #color-picker-container {
-            text-align: end !important;
           }
         }
       `}</style>
@@ -1602,54 +1708,32 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
 
         {/* Customization Buttons & Inputs */}
         <div className="button-container">
-          <div className="input-group">
-            <input
-              type="text"
-              id="new-node-name"
-              ref={newNodeNameRef}
-              placeholder="Enter new node name"
-            />
-            <button
-              id="add-node"
-              className="primary-button"
-              ref={addNodeBtnRef}
-            >
-              Add Node
-            </button>
-            <button className="mobile-move-bottom primary-button">
-              Extend
-            </button>
-            <button className="mobile-move-bottom primary-button">
-              Simplify
-            </button>
-          </div>
-          <div className="input-group">
-            <input
-              type="text"
-              id="add-relation-source"
-              placeholder="Enter new relation source"
-            />
-            <input
-              type="text"
-              id="add-relation-target"
-              placeholder="Enter new relation target"
-            />
-            <button
-              id="add-relation"
-              ref={addRelationBtnRef}
-              className="mobile-move-next primary-button"
-            >
-              Add Relation
-            </button>
-            <button
-              id="download-map"
-              ref={downloadBtnRef}
-              className="mobile-move-bottom primary-button"
-            >
-              Download
-            </button>
-          </div>
-
+        <div className="input-group">
+  <input
+    type="text"
+    id="new-node-name"
+    ref={newNodeNameRef}
+    placeholder="Enter new node name"
+    className="add-node-input"
+  />
+  <button
+    id="add-node"
+    className="primary-button add-node-button"
+    ref={addNodeBtnRef}
+  >
+    <i className="bi bi-plus-circle"></i>
+  </button>
+  <button className="primary-button extend-button">Extend</button>
+  <button className="primary-button simplify-button">Simplify</button>
+  <button
+    id="download-map"
+    ref={downloadBtnRef}
+    className="primary-button download-button"
+  >
+    <i className="bi bi-download"></i>
+  </button>
+</div>
+          
           <div
             id="color-picker-container"
             ref={colorPickerContainerRef}
@@ -1663,13 +1747,30 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* First child: "Add Image" text */}
-            {/* <span className="add-image-text">+ Add Image</span> */}
+            {/* The interactive relation trigger */}
+            <span className="add-relation-text" style={{ cursor: "pointer" }}>
+              + Add Relation
+            </span>
+            {/* The delete image control */}
             <span className="delete-image-text" ref={deleteImageBtnRef}>
               − Delete Image
             </span>
 
-            {/* Second child: Label and color picker grouped together */}
+            {/* New Visual Feedback for Interactive Relation Mode */}
+            <span
+              className="select-relation-feedback"
+              ref={selectRelationFeedbackRef}
+              style={{
+                display: "none",
+                marginLeft: "10px",
+                animation: "blinking 1s infinite",
+                cursor: "pointer",
+              }}
+            >
+              Select relation
+            </span>
+
+            {/* Color Picker Group */}
             <div className="color-picker-group">
               <label
                 htmlFor="color-picker"
@@ -1694,6 +1795,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
               />
             </div>
           </div>
+          
         </div>
 
         {/* Mind Map Container */}
