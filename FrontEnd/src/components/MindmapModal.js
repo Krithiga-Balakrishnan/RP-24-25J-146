@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 
-const MindmapModal = ({ show, onClose, selectedText }) => {
+const MindmapModal = ({ show, onClose, selectedText, padId }) => {
   // Create refs for key elements in the modal
   const modalRef = useRef(null);
   const graphRef = useRef(null);
@@ -19,6 +19,8 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
   const [loading, setLoading] = useState(true);
   const selectRelationFeedbackRef = useRef(null);
   const hasFetchedDatabaseRef = useRef(false);
+  const [imageCatalog, setImageCatalog] = useState([]);
+  const imageCatalogRef = useRef([]);
 
   // Global variables for the mind map (internal to this component)
   let nodes = [];
@@ -39,47 +41,70 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
   let interactiveRelationMode = false;
   let selectedSourceForRelation = null;
 
-  // 1) A catalog of 10 images, each with a description
-  //    (Adjust the URLs and descriptions to fit your use case.)
-  const imageCatalog = [
-    {
-      url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRCmgkix4DEJoToCFKP-g8ztCYa9bIuxAC3pA&s",
-      description: "Deep Learning Advantages",
-    },
-    {
-      url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTnGWEwXpRS7z7rVaGrjIWWTdE8_TiYTGiYjA&s",
-      description: "DL Cons",
-    },
-    {
-      url: "https://i0.wp.com/plopdo.com/wp-content/uploads/2021/11/feature-pic.jpg?fit=537%2C322&ssl=1",
-      description: "Data visualization of sales trends",
-    },
-    {
-      url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQUPIfiGgUML8G3ZqsNLHfaCnZK3I5g4tJabQ&s",
-      description: "Transformer based encoding process",
-    },
-    {
-      url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQKGvxtr7vmYvKw_dBgBPf98isHM4Cz6REorg&s",
-      description: "Neural Network architectures overview",
-    },
-    {
-      url: "https://cdn.prod.website-files.com/62d84e447b4f9e7263d31e94/6399a4d27711a5ad2c9bf5cd_ben-sweet-2LowviVHZ-E-unsplash-1.jpeg",
-      description: "Time series forecasting methods",
-    },
-  ];
+  // 1) A catalog of images, each with a description
+  async function fetchImageCatalog() {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    try {
+      // Construct the URL using padId; adjust the URL to your backend
+      const endpointUrl = `${process.env.REACT_APP_BACKEND_API_URL}/api/pads/${padId}/images`;
+      const response = await fetch(endpointUrl, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // sending token in header
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image catalog: ${response.status}`);
+      }
+      const data = await response.json();
+
+      // Extract imagePairs and map the keys to what your code expects:
+      if (data.imagePairs && Array.isArray(data.imagePairs)) {
+        const mappedCatalog = data.imagePairs.map((pair) => {
+          console.log("Mapping image pair:", pair);
+          return {
+            url: pair.image_url,
+            description: pair.image_description,
+          };
+        });
+        console.log("Mapped image catalog:", mappedCatalog);
+        imageCatalogRef.current = mappedCatalog;
+        return mappedCatalog;
+      } else {
+        throw new Error("No imagePairs found in response");
+      }
+    } catch (error) {
+      console.error("Error fetching image catalog:", error);
+      return [];
+    }
+  }
 
   // 1) Preload images locally just as before.
   async function preloadImages(imageCatalog) {
     const promises = imageCatalog.map(async (item) => {
-      const response = await fetch(item.url);
+      const response = await fetch(item.url, { mode: "cors" });
+      if (!response.ok) {
+        throw new Error(
+          `Error fetching image from ${item.url}: ${response.status}`
+        );
+      }
+
       const blob = await response.blob();
       const reader = new FileReader();
       const dataUrlPromise = new Promise((resolve) => {
         reader.onload = () => {
-          item.dataUrl = reader.result; // The base64 data
+          item.dataUrl = reader.result;
+          console.log(
+            "Base64 (first 100 chars):",
+            item.dataUrl.substring(0, 100)
+          );
           resolve();
         };
       });
+
       reader.readAsDataURL(blob);
       await dataUrlPromise;
     });
@@ -107,7 +132,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
     const endpoint = "http://127.0.0.1:8000/match"; // update if needed
     const payload = {
       node_texts: nodes.map((n) => n.text), // now an array of strings
-      image_pairs: imageCatalog.map((item) => ({
+      image_pairs: imageCatalogRef.current.map((item) => ({
         image_url: item.url,
         image_description: item.description,
       })),
@@ -155,27 +180,38 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
   //    1) Check matchedImageMap from API first.
   //    2) If no match, fall back to local matching logic.
   //    3) Return a dataUrl (or null).
+  // Updated getMatchingImage: use preloaded base64 data when possible
   function getMatchingImage(nodeText, imageList) {
-    // a) Convert nodeText to lower case to align with the map’s keys
     const lowerText = nodeText.toLowerCase();
 
-    // b) If we have a match from the API, return that image immediately.
+    // If there's an API match, use it
     if (matchedImageMap[lowerText]) {
-      console.log("Found API match for node text:", nodeText);
-      return matchedImageMap[lowerText];
-    }
-
-    // c) Otherwise, check for a full match in the local image list.
-    //    Here, we require that the image description matches the node text exactly.
-    for (const { dataUrl, description } of imageList) {
-      if (description.toLowerCase() === lowerText) {
-        console.log("Found full local match:", description);
-        return dataUrl;
+      const apiMatch = matchedImageMap[lowerText];
+      console.log("Found API match for node text:", nodeText, apiMatch);
+      // If the API match is an external URL, try to find a corresponding local preloaded image
+      if (apiMatch.startsWith("http")) {
+        const localMatch = imageList.find(
+          (item) => item.url === apiMatch && item.dataUrl
+        );
+        if (localMatch) {
+          console.log("Using local preloaded dataUrl for:", nodeText);
+          return localMatch.dataUrl;
+        }
       }
+      // Otherwise, if it's already a data URL, return it directly
+      return apiMatch;
     }
 
-    console.log("No matching image found for node text:", nodeText);
-    return null; // no match found
+    // Fallback: Look for an exact match in the local image list by description
+    const exactMatch = imageList.find(
+      (item) => item.description.toLowerCase() === lowerText && item.dataUrl
+    );
+    if (exactMatch) {
+      console.log("Found local exact match for node text:", nodeText);
+      return exactMatch.dataUrl;
+    }
+
+    return null;
   }
 
   useEffect(() => {
@@ -232,28 +268,41 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
       const url = URL.createObjectURL(svgBlob);
       const image = new Image();
       image.onload = () => {
-        const scale = 3;
+        const scale = 20;
         const canvas = document.createElement("canvas");
         canvas.width = bbox.width * scale;
         canvas.height = bbox.height * scale;
         const ctx = canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
         ctx.fillStyle = "white";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.scale(scale, scale);
         ctx.drawImage(image, 0, 0);
+        // Use toBlob and check for a valid blob; otherwise fallback to toDataURL.
         canvas.toBlob((blob) => {
-          const link = document.createElement("a");
-          link.href = URL.createObjectURL(blob);
-          link.download = "mindmap.png";
-          link.click();
-          URL.revokeObjectURL(link.href);
+          if (blob) {
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "mindmap.png";
+            link.click();
+            URL.revokeObjectURL(link.href);
+          } else {
+            console.warn("toBlob returned null, falling back to toDataURL");
+            const dataUrl = canvas.toDataURL("image/png");
+            const link = document.createElement("a");
+            link.href = dataUrl;
+            link.download = "mindmap.png";
+            link.click();
+          }
+          // Restore original SVG attributes
+          svgElement.setAttribute("width", originalWidth);
+          svgElement.setAttribute("height", originalHeight);
+          svgElement.setAttribute(
+            "viewBox",
+            `0 0 ${originalWidth} ${originalHeight}`
+          );
         }, "image/png");
-        svgElement.setAttribute("width", originalWidth);
-        svgElement.setAttribute("height", originalHeight);
-        svgElement.setAttribute(
-          "viewBox",
-          `0 0 ${originalWidth} ${originalHeight}`
-        );
       };
       image.src = url;
     };
@@ -543,14 +592,13 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
 
       if (!hasFetchedDatabaseRef.current) {
         fetchFromDatabase()
-        .then(() => {
-          console.log("Mind map data loaded.");
-        })
-        .catch((err) => {
-          console.error("Error fetching mind map data:", err);
-        });
+          .then(() => {
+            console.log("Mind map data loaded.");
+          })
+          .catch((err) => {
+            console.error("Error fetching mind map data:", err);
+          });
       }
-
     };
 
     // ---------- Download Mindmap Handler is defined above as handleDownload ----------
@@ -589,8 +637,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
 
     // ---------- Fetch Mock Data Function ----------
     async function fetchFromDatabase() {
-      try {        
-
+      try {
         hasFetchedDatabaseRef.current = true;
 
         let data;
@@ -926,18 +973,18 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
         const hierarchyData = buildHierarchy(nodes, links);
         applyTreeLayout(hierarchyData);
         await fetchMatchedImages(nodes, imageCatalog)
-        .then(() => {
-          update();
-        })
-        .then(() => {
-          setLoading(false);
-        })
-        .catch((err) =>
-          console.error(
-            "Error fetching matched images after adding node:",
-            err
-          )
-        );
+          .then(() => {
+            update();
+          })
+          .then(() => {
+            setLoading(false);
+          })
+          .catch((err) =>
+            console.error(
+              "Error fetching matched images after adding node:",
+              err
+            )
+          );
       } catch (error) {
         console.error("Error fetching data from mock data:", error);
         setLoading(false);
@@ -1068,7 +1115,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
       group.selectAll("*").remove();
       const matchedUrl = d.imageDeleted
         ? null
-        : getMatchingImage(d.text, imageCatalog);
+        : getMatchingImage(d.text, imageCatalogRef.current);
 
       if (matchedUrl) {
         // Set image dimensions and spacing.
@@ -1209,7 +1256,6 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
                       err
                     )
                   );
-                
               }
               document.body.removeChild(input);
             });
@@ -1501,14 +1547,17 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
       }
     }
 
-    // Call the generate function when the modal mounts
-    // 1) Preload images as data URIs
-    preloadImages(imageCatalog)
-    .then(() => {
-      generateMindmap();
-    })
-    .catch((err) => console.error("Error preloading images:", err));
-  
+    // Instead of using the static imageCatalog, fetch it first,
+    // then preload images and finally generate the mind map.
+    fetchImageCatalog()
+      .then((fetchedCatalog) => {
+        setImageCatalog(fetchedCatalog);
+        return preloadImages(fetchedCatalog);
+      })
+      .then(() => {
+        generateMindmap();
+      })
+      .catch((err) => console.error("Error preloading images:", err));
 
     deleteImageBtnRef.current &&
       deleteImageBtnRef.current.addEventListener("click", () => {
@@ -1542,7 +1591,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
       document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("click", handleDocumentClick);
     };
-  }, [show, onClose, selectedText]);
+  }, [show, onClose, selectedText, padId]);
 
   // The modal is now shown if the "show" prop is true.
   return (
