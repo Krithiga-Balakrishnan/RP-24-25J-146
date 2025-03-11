@@ -18,6 +18,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
   const deleteImageBtnRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const selectRelationFeedbackRef = useRef(null);
+  const hasFetchedDatabaseRef = useRef(false);
 
   // Global variables for the mind map (internal to this component)
   let nodes = [];
@@ -25,7 +26,8 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
   let width = 800;
   let height = 600;
   let colorMap = {};
-  const defaultColorScale = d3.scaleOrdinal(d3.schemeCategory10);
+  // const defaultColorScale = d3.scaleOrdinal(d3.schemeCategory10);
+  const defaultColorScale = () => "#FFFFFF";
   let selectedLevel = null;
   let selectedNode = null;
   let selectedLink = null;
@@ -42,49 +44,32 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
   const imageCatalog = [
     {
       url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRCmgkix4DEJoToCFKP-g8ztCYa9bIuxAC3pA&s",
-      description: "iot",
+      description: "Deep Learning Advantages",
     },
     {
       url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTnGWEwXpRS7z7rVaGrjIWWTdE8_TiYTGiYjA&s",
-      description: "neural networks perceptron artificial biological",
+      description: "DL Cons",
     },
     {
       url: "https://i0.wp.com/plopdo.com/wp-content/uploads/2021/11/feature-pic.jpg?fit=537%2C322&ssl=1",
-      description: "healthcare machine learning diagnosis patterns",
-    },
-    {
-      url: "https://images.ctfassets.net/hrltx12pl8hq/28ECAQiPJZ78hxatLTa7Ts/2f695d869736ae3b0de3e56ceaca3958/free-nature-images.jpg?fit=fill&w=1200&h=630",
-      description: "gps wireless adaptors big data location",
-    },
-    {
-      url: "https://cdn.prod.website-files.com/62d84e447b4f9e7263d31e94/6399a4d27711a5ad2c9bf5cd_ben-sweet-2LowviVHZ-E-unsplash-1.jpeg",
-      description: "classification regression tasks complex data",
+      description: "Data visualization of sales trends",
     },
     {
       url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQUPIfiGgUML8G3ZqsNLHfaCnZK3I5g4tJabQ&s",
-      description: "storage large frameworks information architecture",
-    },
-    {
-      url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTc9APxkj0xClmrU3PpMZglHQkx446nQPG6lA&s",
-      description: "survey overview applications algorithms",
-    },
-    {
-      url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTtnvAOajH9gS4C30cRF7rD_voaTAKly2Ntaw&s",
-      description: "advantages efficient medical fields improvement",
+      description: "Transformer based encoding process",
     },
     {
       url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQKGvxtr7vmYvKw_dBgBPf98isHM4Cz6REorg&s",
-      description: "crucial role big data iot research",
+      description: "Neural Network architectures overview",
     },
     {
-      url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQoFRQjM-wM_nXMA03AGDXgJK3VeX7vtD3ctA&s",
-      description: "support infrastructure sensor machine communication",
+      url: "https://cdn.prod.website-files.com/62d84e447b4f9e7263d31e94/6399a4d27711a5ad2c9bf5cd_ben-sweet-2LowviVHZ-E-unsplash-1.jpeg",
+      description: "Time series forecasting methods",
     },
   ];
 
+  // 1) Preload images locally just as before.
   async function preloadImages(imageCatalog) {
-    // For each entry, fetch the image, convert to blob, then to base64 dataURL.
-    // We'll store the final dataURL in item.dataUrl.
     const promises = imageCatalog.map(async (item) => {
       const response = await fetch(item.url);
       const blob = await response.blob();
@@ -100,27 +85,104 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
     });
 
     await Promise.all(promises);
-    return imageCatalog; // Now each item has dataUrl
+    return imageCatalog; // each item now has dataUrl
   }
 
-  // 2) Helper to find the first image whose description contains
-  //    at least one of the node’s words (case-insensitive).
+  // 2) Create a global (or module-level) cache
+  //    to store the API’s matched images by node text.
+  //    This can also be managed via React state, a context provider, etc.
+  let matchedImageMap = {};
+  // Example format: { "nodeText": "someBase64String", ... }
+
+  // 3) New function to fetch matches from your external API.
+  async function fetchMatchedImages(nodes, imageCatalog) {
+    // Build a request body that your API expects.
+    // (Adjust the structure to match your backend’s needs.)
+    // Only call the API if there is at least one node.
+    if (!nodes || nodes.length === 0) {
+      console.warn("No nodes provided; skipping API call.");
+      return; // or return an empty result / handle it appropriately.
+    }
+
+    const endpoint = "http://127.0.0.1:8000/match"; // update if needed
+    const payload = {
+      node_texts: nodes.map((n) => n.text), // now an array of strings
+      image_pairs: imageCatalog.map((item) => ({
+        image_url: item.url,
+        image_description: item.description,
+      })),
+    };
+    console.log("Payload:", payload);
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch matches: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log("API Response:", data); // Log the complete API response here.
+
+    // Assume the API returns something like:
+    // {
+    //   "matched_pairs": [
+    //     { "node": "IoT data", "image_url": "data:image/png;base64,..." },
+    //     { "node": "Machine Learning", "image_url": "data:image/png;base64,..." }
+    //     ...
+    //   ]
+    // }
+
+    // Clear out the previous map or merge into it as you prefer
+    matchedImageMap = {};
+
+    // Store results in the matchedImageMap for quick lookup:
+    // In this example, we key by node text.
+    if (data.matched_pairs && Array.isArray(data.matched_pairs)) {
+      data.matched_pairs.forEach((pair) => {
+        // pair.node -> text that matched
+        // pair.image_url -> base64 or original link
+        matchedImageMap[pair.node.toLowerCase()] = pair.image_url;
+      });
+    }
+    console.log("Updated matchedImageMap:", matchedImageMap);
+  }
+
+  // 4) Updated getMatchingImage function:
+  //    1) Check matchedImageMap from API first.
+  //    2) If no match, fall back to local matching logic.
+  //    3) Return a dataUrl (or null).
   function getMatchingImage(nodeText, imageList) {
-    const nodeWords = nodeText.toLowerCase().split(/\s+/);
+    // a) Convert nodeText to lower case to align with the map’s keys
+    const lowerText = nodeText.toLowerCase();
+
+    // b) If we have a match from the API, return that image immediately.
+    if (matchedImageMap[lowerText]) {
+      console.log("Found API match for node text:", nodeText);
+      return matchedImageMap[lowerText];
+    }
+
+    // c) Otherwise, check for a full match in the local image list.
+    //    Here, we require that the image description matches the node text exactly.
     for (const { dataUrl, description } of imageList) {
-      const descWords = description.toLowerCase().split(/\s+/);
-      const foundMatch = nodeWords.some((word) => descWords.includes(word));
-      if (foundMatch) {
-        return dataUrl; // <-- Return the base64 dataUrl instead of original url
+      if (description.toLowerCase() === lowerText) {
+        console.log("Found full local match:", description);
+        return dataUrl;
       }
     }
-    return null;
+
+    console.log("No matching image found for node text:", nodeText);
+    return null; // no match found
   }
 
   useEffect(() => {
     if (!show) return;
 
     setLoading(true);
+    hasFetchedDatabaseRef.current = false;
 
     // Get elements via refs
     const modal = modalRef.current;
@@ -196,23 +258,24 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
       image.src = url;
     };
 
-    const handleAddNode = () => { 
+    const handleAddNode = () => {
       const newNodeName = newNodeNameRef.current.value.trim();
       if (!newNodeName) {
         alert("Please enter a valid node name.");
         return;
       }
       addNodeBtn.disabled = true;
-    
+
       // Find the root node – either by checking depth 0 or fallback to the first node
       const rootNode = nodes.find((node) => node.depth === 0) || nodes[0];
-    
+
       let x, y;
       if (rootNode) {
         // Generate a random distance between min and max (in pixels)
         const minDistance = 100;
         const maxDistance = 400;
-        const distance = minDistance + Math.random() * (maxDistance - minDistance);
+        const distance =
+          minDistance + Math.random() * (maxDistance - minDistance);
         // Generate a random angle (in radians)
         const angle = Math.random() * 2 * Math.PI;
         x = rootNode.x + distance * Math.cos(angle);
@@ -223,7 +286,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
         x = container.clientWidth / 2;
         y = container.clientHeight / 2;
       }
-      
+
       // Create a new node with a unique id and pin it at the calculated position.
       const newNode = {
         id: `node-${uniqueNodeCounter++}`,
@@ -234,15 +297,21 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
         fx: x,
         fy: y,
       };
-    
+
       nodes.push(newNode);
-      update();
-    
+
+      // Call API to refresh matched images and then update visualization again
+      fetchMatchedImages(nodes, imageCatalog)
+        .then(() => {
+          update();
+        })
+        .catch((err) =>
+          console.error("Error fetching matched images after adding node:", err)
+        );
+
       addNodeBtn.disabled = false;
       newNodeNameRef.current.value = "";
     };
-    
-    
 
     const addRelationInteractiveSpan =
       document.querySelector(".add-relation-text");
@@ -265,46 +334,6 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
         event.stopPropagation();
       });
     }
-
-    // const handleAddRelation = () => {
-    //   const sourceName = document
-    //     .getElementById("add-relation-source")
-    //     .value.trim();
-    //   const targetName = document
-    //     .getElementById("add-relation-target")
-    //     .value.trim();
-    //   if (!sourceName || !targetName) {
-    //     alert("Please enter both source and target node names.");
-    //     return;
-    //   }
-    //   if (sourceName === targetName) {
-    //     alert("Source and target nodes cannot be the same.");
-    //     return;
-    //   }
-    //   const sourceNode = nodes.find((node) => node.id === sourceName);
-    //   const targetNode = nodes.find((node) => node.id === targetName);
-    //   if (!sourceNode || !targetNode) {
-    //     alert("One or both nodes do not exist. Please enter valid node names.");
-    //     return;
-    //   }
-    //   links.push({
-    //     source: sourceName,
-    //     target: targetName,
-    //     type: "HAS_SUBNODE",
-    //   });
-    //   const nodeMap = new Map(nodes.map((node) => [node.id, node]));
-    //   targetNode.depth = sourceNode.depth + 1;
-    //   updateDepthsRecursively(targetNode, nodeMap, links);
-    //   nodes.forEach((node) => {
-    //     if (!colorMap[node.depth]) {
-    //       colorMap[node.depth] = defaultColorScale(node.depth);
-    //     }
-    //     window.nodeColorMap.set(node.id, colorMap[node.depth]);
-    //   });
-    //   update();
-    //   document.getElementById("add-relation-source").value = "";
-    //   document.getElementById("add-relation-target").value = "";
-    // };
 
     const handleCloseModal = () => {
       modal.style.display = "none";
@@ -511,13 +540,17 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
         .on("tick", ticked);
 
       console.log("Selected Text:", selectedText);
-      fetchFromDatabase()
+
+      if (!hasFetchedDatabaseRef.current) {
+        fetchFromDatabase()
         .then(() => {
           console.log("Mind map data loaded.");
         })
         .catch((err) => {
           console.error("Error fetching mind map data:", err);
         });
+      }
+
     };
 
     // ---------- Download Mindmap Handler is defined above as handleDownload ----------
@@ -556,7 +589,10 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
 
     // ---------- Fetch Mock Data Function ----------
     async function fetchFromDatabase() {
-      try {
+      try {        
+
+        hasFetchedDatabaseRef.current = true;
+
         let data;
         const chosen = selectedText.trim();
         if (chosen === "1") {
@@ -589,6 +625,10 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
                     subnodes: [
                       {
                         name: "IOT Information Collection and Storage",
+                        subnodes: [],
+                      },
+                      {
+                        name: "Deep Learning Disadvantages",
                         subnodes: [],
                       },
                     ],
@@ -860,21 +900,21 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
         // if (!response.ok) {
         //   throw new Error(`Server error: ${response.status}`);
         // }
-    
+
         // const data = await response.json();
-    
+
         // // Check if the API returned an error
         // if (data.error) {
         //   console.error("API returned error: " + data.error);
         //   return;
         // }
-    
+
         // // Instead of checking data.response, check the data.mindmap4 structure
         // if (!data.mindmap4 || !Array.isArray(data.mindmap4.mindmap)) {
         //   throw new Error("Invalid data structure: " + JSON.stringify(data));
         // }
         // const mindmapRoot = data.mindmap4;
-        
+
         // // Clear previous data
         // nodes = [];
         // links = [];
@@ -885,8 +925,19 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
 
         const hierarchyData = buildHierarchy(nodes, links);
         applyTreeLayout(hierarchyData);
-        update();
-        setLoading(false);
+        await fetchMatchedImages(nodes, imageCatalog)
+        .then(() => {
+          update();
+        })
+        .then(() => {
+          setLoading(false);
+        })
+        .catch((err) =>
+          console.error(
+            "Error fetching matched images after adding node:",
+            err
+          )
+        );
       } catch (error) {
         console.error("Error fetching data from mock data:", error);
         setLoading(false);
@@ -943,25 +994,6 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
         });
       }
     }
-
-    // function traverseMindmap(nodeData, parentData) {
-    //   if (!nodeData || !nodeData.name) return;
-    //   if (!nodes.some((existingNode) => existingNode.id === nodeData.name)) {
-    //     nodes.push({ id: nodeData.name, text: nodeData.name });
-    //   }
-    //   if (parentData && parentData.name) {
-    //     links.push({
-    //       source: parentData.name,
-    //       target: nodeData.name,
-    //       type: "HAS_SUBNODE",
-    //     });
-    //   }
-    //   if (Array.isArray(nodeData.subnodes)) {
-    //     nodeData.subnodes.forEach((subnode) =>
-    //       traverseMindmap(subnode, nodeData)
-    //     );
-    //   }
-    // }
 
     function buildHierarchy(nodes, links) {
       const nodeMap = new Map(nodes.map((node) => [node.id, node]));
@@ -1108,8 +1140,19 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
                 if (nodeObj) {
                   nodeObj.text = updatedText;
                 }
-                update();
-                console.log("Node updated successfully:", updatedText);
+
+                // Call API to refresh matched images and then update visualization again
+                fetchMatchedImages(nodes, imageCatalog)
+                  .then(() => {
+                    update();
+                    console.log("Node updated successfully:", updatedText);
+                  })
+                  .catch((err) =>
+                    console.error(
+                      "Error fetching matched images after adding node:",
+                      err
+                    )
+                  );
               }
               document.body.removeChild(input);
             });
@@ -1153,8 +1196,20 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
                 if (nodeObj) {
                   nodeObj.text = updatedText;
                 }
-                update();
-                console.log("Node updated successfully:", updatedText);
+
+                // Call API to refresh matched images and then update visualization again
+                fetchMatchedImages(nodes, imageCatalog)
+                  .then(() => {
+                    update();
+                    console.log("Node updated successfully:", updatedText);
+                  })
+                  .catch((err) =>
+                    console.error(
+                      "Error fetching matched images after adding node:",
+                      err
+                    )
+                  );
+                
               }
               document.body.removeChild(input);
             });
@@ -1449,11 +1504,11 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
     // Call the generate function when the modal mounts
     // 1) Preload images as data URIs
     preloadImages(imageCatalog)
-      .then(() => {
-        // 2) Once images are preloaded, do the rest of your setup
-        generateMindmap();
-      })
-      .catch((err) => console.error("Error preloading images:", err));
+    .then(() => {
+      generateMindmap();
+    })
+    .catch((err) => console.error("Error preloading images:", err));
+  
 
     deleteImageBtnRef.current &&
       deleteImageBtnRef.current.addEventListener("click", () => {
@@ -1708,32 +1763,32 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
 
         {/* Customization Buttons & Inputs */}
         <div className="button-container">
-        <div className="input-group">
-  <input
-    type="text"
-    id="new-node-name"
-    ref={newNodeNameRef}
-    placeholder="Enter new node name"
-    className="add-node-input"
-  />
-  <button
-    id="add-node"
-    className="primary-button add-node-button"
-    ref={addNodeBtnRef}
-  >
-    <i className="bi bi-plus-circle"></i>
-  </button>
-  <button className="primary-button extend-button">Extend</button>
-  <button className="primary-button simplify-button">Simplify</button>
-  <button
-    id="download-map"
-    ref={downloadBtnRef}
-    className="primary-button download-button"
-  >
-    <i className="bi bi-download"></i>
-  </button>
-</div>
-          
+          <div className="input-group">
+            <input
+              type="text"
+              id="new-node-name"
+              ref={newNodeNameRef}
+              placeholder="Enter new node name"
+              className="add-node-input"
+            />
+            <button
+              id="add-node"
+              className="primary-button add-node-button"
+              ref={addNodeBtnRef}
+            >
+              <i className="bi bi-plus-circle"></i>
+            </button>
+            <button className="primary-button extend-button">Extend</button>
+            <button className="primary-button simplify-button">Simplify</button>
+            <button
+              id="download-map"
+              ref={downloadBtnRef}
+              className="primary-button download-button"
+            >
+              <i className="bi bi-download"></i>
+            </button>
+          </div>
+
           <div
             id="color-picker-container"
             ref={colorPickerContainerRef}
@@ -1795,7 +1850,6 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
               />
             </div>
           </div>
-          
         </div>
 
         {/* Mind Map Container */}

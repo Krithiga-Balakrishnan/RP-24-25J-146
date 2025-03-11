@@ -150,4 +150,47 @@ router.post("/uploads", upload.single("image"), (req, res) => {
   res.json({ url: imageUrl });
 });
 
+// Get image-description pairs from a pad by padId
+// In padRoutes.js
+router.get("/:padId/images", async (req, res) => {
+  try {
+    const pad = await Pad.findById(req.params.padId);
+    if (!pad) return res.status(404).json({ msg: "Pad not found" });
+
+    let imagePairs = [];
+    // Loop through sections and subsections to extract images:
+    pad.sections.forEach((section) => {
+      if (section.content && section.content.ops) {
+        section.content.ops.forEach((op) => {
+          if (op.insert && op.insert.imageWithCaption) {
+            imagePairs.push({
+              image_url: op.insert.imageWithCaption.src,
+              image_description: op.insert.imageWithCaption.caption,
+            });
+          }
+        });
+      }
+      if (section.subsections) {
+        section.subsections.forEach((sub) => {
+          if (sub.content && sub.content.ops) {
+            sub.content.ops.forEach((op) => {
+              if (op.insert && op.insert.imageWithCaption) {
+                imagePairs.push({
+                  image_url: op.insert.imageWithCaption.src,
+                  image_description: op.insert.imageWithCaption.caption,
+                });
+              }
+            });
+          }
+        });
+      }
+    });
+
+    res.json({ imagePairs });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: "Server error" });
+  }
+});
+
 module.exports = router;
