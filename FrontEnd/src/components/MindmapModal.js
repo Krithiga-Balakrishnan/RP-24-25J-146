@@ -129,7 +129,7 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
       return; // or return an empty result / handle it appropriately.
     }
 
-    const endpoint = "http://127.0.0.1:8000/match"; // update if needed
+    const endpoint = "https://sanjayan201-my-image-matching-app.hf.space/match"; // update if needed
     const payload = {
       node_texts: nodes.map((n) => n.text), // now an array of strings
       image_pairs: imageCatalogRef.current.map((item) => ({
@@ -640,335 +640,335 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
       try {
         hasFetchedDatabaseRef.current = true;
 
-        let data;
-        const chosen = selectedText.trim();
-        if (chosen === "1") {
-          data = {
-            mindmap: [
-              {
-                name: "IOT and Big Data",
-                subnodes: [
-                  {
-                    name: "IOT",
-                    subnodes: [
-                      { name: "Main Application of Big Data", subnodes: [] },
-                      { name: "High Diversity of Things", subnodes: [] },
-                      {
-                        name: "Machine-to-Machine Communication",
-                        subnodes: [],
-                      },
-                      {
-                        name: "Track and Locate Positions of Vehicles",
-                        subnodes: [
-                          { name: "Sensor Data", subnodes: [] },
-                          { name: "Wireless Adaptors", subnodes: [] },
-                          { name: "GPS", subnodes: [] },
-                        ],
-                      },
-                    ],
-                  },
-                  {
-                    name: "Large Information Frameworks",
-                    subnodes: [
-                      {
-                        name: "IOT Information Collection and Storage",
-                        subnodes: [],
-                      },
-                      {
-                        name: "Deep Learning Disadvantages",
-                        subnodes: [],
-                      },
-                    ],
-                  },
-                ],
-              },
-            ],
-          };
-        } else if (chosen === "2") {
-          data = {
-            mindmap: [
-              {
-                name: "Artificial Neural Networks (ANN)",
-                subnodes: [
-                  {
-                    name: "Developed based on Biological Neurons",
-                    subnodes: [],
-                  },
-                  {
-                    name: "Perceptron",
-                    subnodes: [
-                      { name: "Trained to Predict", subnodes: [] },
-                      { name: "Fixed Threshold", subnodes: [] },
-                    ],
-                  },
-                  {
-                    name: "Architecture",
-                    subnodes: [
-                      { name: "Many Inputs", subnodes: [] },
-                      { name: "Multiple Processing Layers", subnodes: [] },
-                      { name: "Many Outputs", subnodes: [] },
-                    ],
-                  },
-                  {
-                    name: "Complex Data",
-                    subnodes: [
-                      { name: "Classification Tasks", subnodes: [] },
-                      { name: "Regression Tasks", subnodes: [] },
-                    ],
-                  },
-                ],
-              },
-            ],
-          };
-        } else if (chosen === "3") {
-          data = {
-            mindmap: [
-              {
-                name: "Machine Learning in Healthcare",
-                subnodes: [
-                  {
-                    name: "Overview",
-                    subnodes: [
-                      {
-                        name: "Widely used in applications and research",
-                        subnodes: [],
-                      },
-                      { name: "Crucial role in numerous fields", subnodes: [] },
-                      {
-                        name: "Applications",
-                        subnodes: [
-                          {
-                            name: "Diagnose sizeable medical data patterns",
-                            subnodes: [],
-                          },
-                          { name: "Predict diseases", subnodes: [] },
-                        ],
-                      },
-                    ],
-                  },
-                  {
-                    name: "Survey",
-                    subnodes: [
-                      {
-                        name: "Purpose",
-                        subnodes: [
-                          { name: "Highlight previous work", subnodes: [] },
-                          {
-                            name: "Provide information to researchers",
-                            subnodes: [],
-                          },
-                        ],
-                      },
-                      {
-                        name: "Machine Learning Algorithms",
-                        subnodes: [
-                          { name: "Overview", subnodes: [] },
-                          { name: "Applications in healthcare", subnodes: [] },
-                        ],
-                      },
-                    ],
-                  },
-                  {
-                    name: "Advantages",
-                    subnodes: [
-                      {
-                        name: "Efficient support infrastructure for medical fields",
-                        subnodes: [],
-                      },
-                      { name: "Improve healthcare services", subnodes: [] },
-                    ],
-                  },
-                ],
-              },
-            ],
-          };
-        } else {
-          data = {
-            mindmap: [
-              {
-                name: "Rainfall Prediction and Suicide Analysis",
-                subnodes: [
-                  {
-                    name: "Objective",
-                    subnodes: [
-                      {
-                        name: "Reduce the Suicides due to Rainfall",
-                        subnodes: [],
-                      },
-                    ],
-                  },
-                  {
-                    name: "Data Types",
-                    subnodes: [
-                      {
-                        name: "Categorical Data",
-                        subnodes: [
-                          {
-                            name: "Converted for Machine Learning",
-                            subnodes: [],
-                          },
-                        ],
-                      },
-                      {
-                        name: "Continuous Data",
-                        subnodes: [
-                          {
-                            name: "Converted for Machine Learning",
-                            subnodes: [],
-                          },
-                        ],
-                      },
-                    ],
-                  },
-                  {
-                    name: "Experimental Analysis",
-                    subnodes: [
-                      {
-                        name: "Categorical Data",
-                        subnodes: [
-                          {
-                            name: "Random Forest: Highest Accuracy",
-                            subnodes: [
-                              {
-                                name: "Compared to",
-                                subnodes: [
-                                  { name: "SVM", subnodes: [] },
-                                  { name: "Logistic Regression", subnodes: [] },
-                                  { name: "Linear Regression", subnodes: [] },
-                                ],
-                              },
-                            ],
-                          },
-                          {
-                            name: "Logistic Regression",
-                            subnodes: [
-                              {
-                                name: "Highest Accuracy",
-                                subnodes: [
-                                  {
-                                    name: "Compared to",
-                                    subnodes: [
-                                      { name: "SVM", subnodes: [] },
-                                      { name: "Random Forest", subnodes: [] },
-                                      {
-                                        name: "Linear Regression",
-                                        subnodes: [],
-                                      },
-                                    ],
-                                  },
-                                ],
-                              },
-                            ],
-                          },
-                          {
-                            name: "SVM",
-                            subnodes: [
-                              {
-                                name: "Highest Accuracy",
-                                subnodes: [
-                                  {
-                                    name: "Compared to",
-                                    subnodes: [
-                                      {
-                                        name: "Logistic Regression",
-                                        subnodes: [],
-                                      },
-                                      { name: "Random Forest", subnodes: [] },
-                                      {
-                                        name: "Linear Regression",
-                                        subnodes: [],
-                                      },
-                                    ],
-                                  },
-                                ],
-                              },
-                            ],
-                          },
-                          {
-                            name: "Linear Regression",
-                            subnodes: [
-                              {
-                                name: "Highest Accuracy",
-                                subnodes: [
-                                  {
-                                    name: "Compared to",
-                                    subnodes: [
-                                      {
-                                        name: "Logistic Regression",
-                                        subnodes: [],
-                                      },
-                                      { name: "SVM", subnodes: [] },
-                                      { name: "Random Forest", subnodes: [] },
-                                    ],
-                                  },
-                                ],
-                              },
-                            ],
-                          },
-                        ],
-                      },
-                    ],
-                  },
-                  {
-                    name: "Future Scope",
-                    subnodes: [
-                      { name: "Combine Different Datasets", subnodes: [] },
-                      {
-                        name: "Analysis using Different Algorithms",
-                        subnodes: [],
-                      },
-                    ],
-                  },
-                ],
-              },
-            ],
-          };
-        }
-
-        console.log("Mock Data Chosen:", data);
-        nodes = [];
-        links = [];
-        if (data && data.mindmap && Array.isArray(data.mindmap)) {
-          data.mindmap.forEach((mindmapNode) => {
-            traverseMindmap(mindmapNode, null);
-          });
-        }
-
-        // Adjust URL/endpoint as needed:
-        // const baseApiUrl = "https://ceed-34-16-164-131.ngrok-free.app";
-        // const endpoint = "generate";
-
-        // const response = await fetch(`${baseApiUrl}/${endpoint}`, {
-        //   method: "POST",
-        //   headers: { "Content-Type": "application/json" },
-        //   body: JSON.stringify({ content: selectedText }),
-        // });
-
-        // if (!response.ok) {
-        //   throw new Error(`Server error: ${response.status}`);
+        // let data;
+        // const chosen = selectedText.trim();
+        // if (chosen === "1") {
+        //   data = {
+        //     mindmap: [
+        //       {
+        //         name: "IOT and Big Data",
+        //         subnodes: [
+        //           {
+        //             name: "IOT",
+        //             subnodes: [
+        //               { name: "Main Application of Big Data", subnodes: [] },
+        //               { name: "High Diversity of Things", subnodes: [] },
+        //               {
+        //                 name: "Machine-to-Machine Communication",
+        //                 subnodes: [],
+        //               },
+        //               {
+        //                 name: "Track and Locate Positions of Vehicles",
+        //                 subnodes: [
+        //                   { name: "Sensor Data", subnodes: [] },
+        //                   { name: "Wireless Adaptors", subnodes: [] },
+        //                   { name: "GPS", subnodes: [] },
+        //                 ],
+        //               },
+        //             ],
+        //           },
+        //           {
+        //             name: "Large Information Frameworks",
+        //             subnodes: [
+        //               {
+        //                 name: "IOT Information Collection and Storage",
+        //                 subnodes: [],
+        //               },
+        //               {
+        //                 name: "Deep Learning Disadvantages",
+        //                 subnodes: [],
+        //               },
+        //             ],
+        //           },
+        //         ],
+        //       },
+        //     ],
+        //   };
+        // } else if (chosen === "2") {
+        //   data = {
+        //     mindmap: [
+        //       {
+        //         name: "Artificial Neural Networks (ANN)",
+        //         subnodes: [
+        //           {
+        //             name: "Developed based on Biological Neurons",
+        //             subnodes: [],
+        //           },
+        //           {
+        //             name: "Perceptron",
+        //             subnodes: [
+        //               { name: "Trained to Predict", subnodes: [] },
+        //               { name: "Fixed Threshold", subnodes: [] },
+        //             ],
+        //           },
+        //           {
+        //             name: "Architecture",
+        //             subnodes: [
+        //               { name: "Many Inputs", subnodes: [] },
+        //               { name: "Multiple Processing Layers", subnodes: [] },
+        //               { name: "Many Outputs", subnodes: [] },
+        //             ],
+        //           },
+        //           {
+        //             name: "Complex Data",
+        //             subnodes: [
+        //               { name: "Classification Tasks", subnodes: [] },
+        //               { name: "Regression Tasks", subnodes: [] },
+        //             ],
+        //           },
+        //         ],
+        //       },
+        //     ],
+        //   };
+        // } else if (chosen === "3") {
+        //   data = {
+        //     mindmap: [
+        //       {
+        //         name: "Machine Learning in Healthcare",
+        //         subnodes: [
+        //           {
+        //             name: "Overview",
+        //             subnodes: [
+        //               {
+        //                 name: "Widely used in applications and research",
+        //                 subnodes: [],
+        //               },
+        //               { name: "Crucial role in numerous fields", subnodes: [] },
+        //               {
+        //                 name: "Applications",
+        //                 subnodes: [
+        //                   {
+        //                     name: "Diagnose sizeable medical data patterns",
+        //                     subnodes: [],
+        //                   },
+        //                   { name: "Predict diseases", subnodes: [] },
+        //                 ],
+        //               },
+        //             ],
+        //           },
+        //           {
+        //             name: "Survey",
+        //             subnodes: [
+        //               {
+        //                 name: "Purpose",
+        //                 subnodes: [
+        //                   { name: "Highlight previous work", subnodes: [] },
+        //                   {
+        //                     name: "Provide information to researchers",
+        //                     subnodes: [],
+        //                   },
+        //                 ],
+        //               },
+        //               {
+        //                 name: "Machine Learning Algorithms",
+        //                 subnodes: [
+        //                   { name: "Overview", subnodes: [] },
+        //                   { name: "Applications in healthcare", subnodes: [] },
+        //                 ],
+        //               },
+        //             ],
+        //           },
+        //           {
+        //             name: "Advantages",
+        //             subnodes: [
+        //               {
+        //                 name: "Efficient support infrastructure for medical fields",
+        //                 subnodes: [],
+        //               },
+        //               { name: "Improve healthcare services", subnodes: [] },
+        //             ],
+        //           },
+        //         ],
+        //       },
+        //     ],
+        //   };
+        // } else {
+        //   data = {
+        //     mindmap: [
+        //       {
+        //         name: "Rainfall Prediction and Suicide Analysis",
+        //         subnodes: [
+        //           {
+        //             name: "Objective",
+        //             subnodes: [
+        //               {
+        //                 name: "Reduce the Suicides due to Rainfall",
+        //                 subnodes: [],
+        //               },
+        //             ],
+        //           },
+        //           {
+        //             name: "Data Types",
+        //             subnodes: [
+        //               {
+        //                 name: "Categorical Data",
+        //                 subnodes: [
+        //                   {
+        //                     name: "Converted for Machine Learning",
+        //                     subnodes: [],
+        //                   },
+        //                 ],
+        //               },
+        //               {
+        //                 name: "Continuous Data",
+        //                 subnodes: [
+        //                   {
+        //                     name: "Converted for Machine Learning",
+        //                     subnodes: [],
+        //                   },
+        //                 ],
+        //               },
+        //             ],
+        //           },
+        //           {
+        //             name: "Experimental Analysis",
+        //             subnodes: [
+        //               {
+        //                 name: "Categorical Data",
+        //                 subnodes: [
+        //                   {
+        //                     name: "Random Forest: Highest Accuracy",
+        //                     subnodes: [
+        //                       {
+        //                         name: "Compared to",
+        //                         subnodes: [
+        //                           { name: "SVM", subnodes: [] },
+        //                           { name: "Logistic Regression", subnodes: [] },
+        //                           { name: "Linear Regression", subnodes: [] },
+        //                         ],
+        //                       },
+        //                     ],
+        //                   },
+        //                   {
+        //                     name: "Logistic Regression",
+        //                     subnodes: [
+        //                       {
+        //                         name: "Highest Accuracy",
+        //                         subnodes: [
+        //                           {
+        //                             name: "Compared to",
+        //                             subnodes: [
+        //                               { name: "SVM", subnodes: [] },
+        //                               { name: "Random Forest", subnodes: [] },
+        //                               {
+        //                                 name: "Linear Regression",
+        //                                 subnodes: [],
+        //                               },
+        //                             ],
+        //                           },
+        //                         ],
+        //                       },
+        //                     ],
+        //                   },
+        //                   {
+        //                     name: "SVM",
+        //                     subnodes: [
+        //                       {
+        //                         name: "Highest Accuracy",
+        //                         subnodes: [
+        //                           {
+        //                             name: "Compared to",
+        //                             subnodes: [
+        //                               {
+        //                                 name: "Logistic Regression",
+        //                                 subnodes: [],
+        //                               },
+        //                               { name: "Random Forest", subnodes: [] },
+        //                               {
+        //                                 name: "Linear Regression",
+        //                                 subnodes: [],
+        //                               },
+        //                             ],
+        //                           },
+        //                         ],
+        //                       },
+        //                     ],
+        //                   },
+        //                   {
+        //                     name: "Linear Regression",
+        //                     subnodes: [
+        //                       {
+        //                         name: "Highest Accuracy",
+        //                         subnodes: [
+        //                           {
+        //                             name: "Compared to",
+        //                             subnodes: [
+        //                               {
+        //                                 name: "Logistic Regression",
+        //                                 subnodes: [],
+        //                               },
+        //                               { name: "SVM", subnodes: [] },
+        //                               { name: "Random Forest", subnodes: [] },
+        //                             ],
+        //                           },
+        //                         ],
+        //                       },
+        //                     ],
+        //                   },
+        //                 ],
+        //               },
+        //             ],
+        //           },
+        //           {
+        //             name: "Future Scope",
+        //             subnodes: [
+        //               { name: "Combine Different Datasets", subnodes: [] },
+        //               {
+        //                 name: "Analysis using Different Algorithms",
+        //                 subnodes: [],
+        //               },
+        //             ],
+        //           },
+        //         ],
+        //       },
+        //     ],
+        //   };
         // }
 
-        // const data = await response.json();
-
-        // // Check if the API returned an error
-        // if (data.error) {
-        //   console.error("API returned error: " + data.error);
-        //   return;
-        // }
-
-        // // Instead of checking data.response, check the data.mindmap4 structure
-        // if (!data.mindmap4 || !Array.isArray(data.mindmap4.mindmap)) {
-        //   throw new Error("Invalid data structure: " + JSON.stringify(data));
-        // }
-        // const mindmapRoot = data.mindmap4;
-
-        // // Clear previous data
+        // console.log("Mock Data Chosen:", data);
         // nodes = [];
         // links = [];
-        // // Traverse the response structure
-        // mindmapRoot.mindmap.forEach((mindmapNode) => {
-        //   traverseMindmap(mindmapNode, null);
-        // });
+        // if (data && data.mindmap && Array.isArray(data.mindmap)) {
+        //   data.mindmap.forEach((mindmapNode) => {
+        //     traverseMindmap(mindmapNode, null);
+        //   });
+        // }
+
+        // Adjust URL/endpoint as needed:
+        const baseApiUrl = "https://90a6-34-125-226-210.ngrok-free.app";
+        const endpoint = "generate";
+
+        const response = await fetch(`${baseApiUrl}/${endpoint}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: selectedText }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Server error: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Check if the API returned an error
+        if (data.error) {
+          console.error("API returned error: " + data.error);
+          return;
+        }
+
+        // Instead of checking data.response, check the data.mindmap4 structure
+        if (!data || !Array.isArray(data.mindmap)) {
+          throw new Error("Invalid data structure: " + JSON.stringify(data));
+        }
+        const mindmapRoot = data;
+
+        // Clear previous data
+        nodes = [];
+        links = [];
+        // Traverse the response structure
+        mindmapRoot.mindmap.forEach((mindmapNode) => {
+          traverseMindmap(mindmapNode, null);
+        });
 
         const hierarchyData = buildHierarchy(nodes, links);
         applyTreeLayout(hierarchyData);
@@ -987,6 +987,214 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
           );
       } catch (error) {
         console.error("Error fetching data from mock data:", error);
+        setLoading(false);
+      }
+    }
+
+    async function fetchFromExtendDatabase() {
+      try {
+        hasFetchedDatabaseRef.current = true;
+        
+        const baseApiUrl = "https://90a6-34-125-226-210.ngrok-free.app";
+        const endpoint = "extend"; // Use the 'extend' endpoint
+        const response = await fetch(`${baseApiUrl}/${endpoint}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: selectedText }),
+        });
+        if (!response.ok) {
+          throw new Error(`Server error: ${response.status}`);
+        }
+        const data = await response.json();
+        if (data.error) {
+          console.error("API returned error: " + data.error);
+          return;
+        }
+        if (!data || !Array.isArray(data.mindmap)) {
+          throw new Error("Invalid data structure: " + JSON.stringify(data));
+        }
+        const mindmapRoot = data;
+        // Clear previous data
+        nodes = [];
+        links = [];
+        mindmapRoot.mindmap.forEach((mindmapNode) => {
+          traverseMindmap(mindmapNode, null);
+        });
+
+        // let data;
+        // const chosen = selectedText.trim();
+        // data = {
+        //   mindmap: [
+        //     {
+        //       name: "Artificial Neural Networks (ANN)",
+        //       subnodes: [
+        //         {
+        //           name: "Developed based on Biological Neurons",
+        //           subnodes: [],
+        //         },
+        //         {
+        //           name: "Perceptron",
+        //           subnodes: [
+        //             { name: "Trained to Predict", subnodes: [] },
+        //             { name: "Fixed Threshold", subnodes: [] },
+        //           ],
+        //         },
+        //         {
+        //           name: "Architecture",
+        //           subnodes: [
+        //             { name: "Many Inputs", subnodes: [] },
+        //             { name: "Multiple Processing Layers", subnodes: [] },
+        //             { name: "Many Outputs", subnodes: [] },
+        //           ],
+        //         },
+        //         {
+        //           name: "Complex Data",
+        //           subnodes: [
+        //             { name: "Classification Tasks", subnodes: [] },
+        //             { name: "Regression Tasks", subnodes: [] },
+        //           ],
+        //         },
+        //       ],
+        //     },
+        //   ],
+        // };
+
+        // console.log("Mock Data Chosen:", data);
+        // nodes = [];
+        // links = [];
+        // if (data && data.mindmap && Array.isArray(data.mindmap)) {
+        //   data.mindmap.forEach((mindmapNode) => {
+        //     traverseMindmap(mindmapNode, null);
+        //   });
+        // }
+
+        const hierarchyData = buildHierarchy(nodes, links);
+        applyTreeLayout(hierarchyData);
+        await fetchMatchedImages(nodes, imageCatalog)
+          .then(() => update())
+          .then(() => setLoading(false))
+          .catch((err) =>
+            console.error("Error fetching matched images after extend:", err)
+          );
+      } catch (error) {
+        console.error("Error fetching data from extend endpoint:", error);
+        setLoading(false);
+      }
+    }
+
+    async function fetchFromSimplifyDatabase() {
+      try {
+        hasFetchedDatabaseRef.current = true;
+        
+        const baseApiUrl = "https://90a6-34-125-226-210.ngrok-free.app";
+        const endpoint = "simplify"; // Use the 'simplify' endpoint
+        const response = await fetch(`${baseApiUrl}/${endpoint}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: selectedText }),
+        });
+        if (!response.ok) {
+          throw new Error(`Server error: ${response.status}`);
+        }
+        const data = await response.json();
+        if (data.error) {
+          console.error("API returned error: " + data.error);
+          return;
+        }
+        if (!data || !Array.isArray(data.mindmap)) {
+          throw new Error("Invalid data structure: " + JSON.stringify(data));
+        }
+        const mindmapRoot = data;
+        // Clear previous data
+        nodes = [];
+        links = [];
+        mindmapRoot.mindmap.forEach((mindmapNode) => {
+          traverseMindmap(mindmapNode, null);
+        });
+
+        // let data;
+        // const chosen = selectedText.trim();
+        // data = {
+        //   mindmap: [
+        //     {
+        //       name: "Machine Learning in Healthcare",
+        //       subnodes: [
+        //         {
+        //           name: "Overview",
+        //           subnodes: [
+        //             {
+        //               name: "Widely used in applications and research",
+        //               subnodes: [],
+        //             },
+        //             { name: "Crucial role in numerous fields", subnodes: [] },
+        //             {
+        //               name: "Applications",
+        //               subnodes: [
+        //                 {
+        //                   name: "Diagnose sizeable medical data patterns",
+        //                   subnodes: [],
+        //                 },
+        //                 { name: "Predict diseases", subnodes: [] },
+        //               ],
+        //             },
+        //           ],
+        //         },
+        //         {
+        //           name: "Survey",
+        //           subnodes: [
+        //             {
+        //               name: "Purpose",
+        //               subnodes: [
+        //                 { name: "Highlight previous work", subnodes: [] },
+        //                 {
+        //                   name: "Provide information to researchers",
+        //                   subnodes: [],
+        //                 },
+        //               ],
+        //             },
+        //             {
+        //               name: "Machine Learning Algorithms",
+        //               subnodes: [
+        //                 { name: "Overview", subnodes: [] },
+        //                 { name: "Applications in healthcare", subnodes: [] },
+        //               ],
+        //             },
+        //           ],
+        //         },
+        //         {
+        //           name: "Advantages",
+        //           subnodes: [
+        //             {
+        //               name: "Efficient support infrastructure for medical fields",
+        //               subnodes: [],
+        //             },
+        //             { name: "Improve healthcare services", subnodes: [] },
+        //           ],
+        //         },
+        //       ],
+        //     },
+        //   ],
+        // };
+
+        // console.log("Mock Data Chosen:", data);
+        // nodes = [];
+        // links = [];
+        // if (data && data.mindmap && Array.isArray(data.mindmap)) {
+        //   data.mindmap.forEach((mindmapNode) => {
+        //     traverseMindmap(mindmapNode, null);
+        //   });
+        // }
+
+        const hierarchyData = buildHierarchy(nodes, links);
+        applyTreeLayout(hierarchyData);
+        await fetchMatchedImages(nodes, imageCatalog)
+          .then(() => update())
+          .then(() => setLoading(false))
+          .catch((err) =>
+            console.error("Error fetching matched images after simplify:", err)
+          );
+      } catch (error) {
+        console.error("Error fetching data from simplify endpoint:", error);
         setLoading(false);
       }
     }
@@ -1575,6 +1783,43 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
         }
       });
 
+    // Attach event listeners for extend and simplify buttons
+    const extendButton = document.getElementById("extend-button");
+    const simplifyButton = document.getElementById("simplify-button");
+
+    function handleExtend() {
+      // Clear the current mind map
+      d3.select(graphRef.current).select("svg").remove();
+      nodes = [];
+      links = [];
+      setLoading(true);
+      hasFetchedDatabaseRef.current = false;
+      // Re-create the SVG and simulation
+      generateMindmap();
+      // Call the extend endpoint
+      fetchFromExtendDatabase();
+    }
+
+    function handleSimplify() {
+      // Clear the current mind map
+      d3.select(graphRef.current).select("svg").remove();
+      nodes = [];
+      links = [];
+      setLoading(true);
+      hasFetchedDatabaseRef.current = false;
+      // Re-create the SVG and simulation
+      generateMindmap();
+      // Call the simplify endpoint
+      fetchFromSimplifyDatabase();
+    }
+
+    if (extendButton) {
+      extendButton.addEventListener("click", handleExtend);
+    }
+    if (simplifyButton) {
+      simplifyButton.addEventListener("click", handleSimplify);
+    }
+
     // Cleanup: Remove event listeners on unmount
     return () => {
       closeModalBtn.removeEventListener("click", handleCloseModal);
@@ -1590,6 +1835,12 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
       // addRelationBtn.removeEventListener("click", handleAddRelation);
       document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("click", handleDocumentClick);
+      if (extendButton) {
+        extendButton.removeEventListener("click", handleExtend);
+      }
+      if (simplifyButton) {
+        simplifyButton.removeEventListener("click", handleSimplify);
+      }
     };
   }, [show, onClose, selectedText, padId]);
 
@@ -1827,8 +2078,15 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
             >
               <i className="bi bi-plus-circle"></i>
             </button>
-            <button className="primary-button extend-button">Extend</button>
-            <button className="primary-button simplify-button">Simplify</button>
+            <button id="extend-button" className="primary-button extend-button">
+              Extend
+            </button>
+            <button
+              id="simplify-button"
+              className="primary-button simplify-button"
+            >
+              Simplify
+            </button>
             <button
               id="download-map"
               ref={downloadBtnRef}
