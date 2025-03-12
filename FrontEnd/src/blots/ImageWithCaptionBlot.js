@@ -17,6 +17,8 @@ class ImageWithCaptionBlot extends BlockEmbed {
     // Create the <img>
     const img = document.createElement("img");
     img.setAttribute("src", value.src || "");
+    img.style.width = "500px"; // Fixed width
+    img.style.height = "auto"; // Maintain aspect ratio
     node.appendChild(img);
 
     // We do NOT render the caption visually. 

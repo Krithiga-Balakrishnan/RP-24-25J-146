@@ -1,23 +1,35 @@
+// TableWithCaptionBlot.js
 import Quill from "quill";
 const BlockEmbed = Quill.import("blots/block/embed");
 
 class TableWithCaptionBlot extends BlockEmbed {
   static create(value) {
-    // value = { tableHtml, caption }
     const node = super.create();
     node.classList.add("ql-table-with-caption");
-    // Create a container for table HTML
+
+    // Create a wrapper div to ensure table structure stays intact
     const tableWrapper = document.createElement("div");
+    tableWrapper.classList.add("table-wrapper");  // Ensure it's identifiable
     tableWrapper.innerHTML = value.tableHtml || "";
+
+    // Ensure the table cells remain editable
+    const cells = tableWrapper.querySelectorAll("td");
+    cells.forEach((cell) => {
+      cell.setAttribute("contenteditable", "true");
+    });
+
     node.appendChild(tableWrapper);
-    // Create a figcaption to hold the caption (or store it as a data attribute)
+
+    // Optional caption
     const figcaption = document.createElement("figcaption");
     figcaption.innerText = value.caption || "";
     node.appendChild(figcaption);
+
     return node;
   }
+
   static value(node) {
-    const tableWrapper = node.querySelector("div");
+    const tableWrapper = node.querySelector(".table-wrapper");
     const caption = node.querySelector("figcaption")?.innerText || "";
     return {
       tableHtml: tableWrapper ? tableWrapper.innerHTML : "",

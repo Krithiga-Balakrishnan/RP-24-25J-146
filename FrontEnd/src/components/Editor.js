@@ -1,40 +1,43 @@
+
 import React, { useEffect, useRef, useState } from "react";
 import Quill from "quill";
 import "quill/dist/quill.snow.css";
 import ImageWithCaptionBlot from "../blots/ImageWithCaptionBlot.js";
+import TableWithCaptionBlot from "../blots/TableWithCaptionBlot.js";
+import FormulaWithCaptionBlot from "../blots/FormulaWithCaptionBlot.js";
+
 import QuillCursors from "quill-cursors";
 import debounce from "lodash.debounce";
 import TableSizePicker from "./TableSizePicker";
+
 import { Mention } from "quill-mention";
 import "quill-mention/dist/quill.mention.min.css";
+
+// quill-better-table
 import QuillBetterTable from "quill-better-table";
-import TableWithCaptionBlot from "../blots/TableWithCaptionBlot.js";
-import FormulaWithCaptionBlot from "../blots/FormulaWithCaptionBlot.js";
+
+// KaTeX for formulas
 import katex from "katex";
 import "katex/dist/katex.min.css";
 window.katex = katex;
 
+// Register modules and custom blots
+Quill.register("modules/cursors", QuillCursors);
+Quill.register(ImageWithCaptionBlot);
 Quill.register(TableWithCaptionBlot);
 Quill.register(FormulaWithCaptionBlot);
 Quill.register("modules/better-table", QuillBetterTable, true);
-
-// Import quill-mention (named export) and register it
-
 Quill.register({ "modules/mention": Mention }, true);
 
-// Register cursors and your custom image blot
-Quill.register("modules/cursors", QuillCursors);
-Quill.register(ImageWithCaptionBlot);
+// Predefined IEEE sections
+const COMMON_IEEE_SECTIONS = [
+  "Introduction",
+  "Related Work / Literature Review",
+  "Methodology / Proposed Method",
+  "Results / Discussion",
+  "Conclusion (and possibly Future Work)",
+];
 
-// (Optional) Build dynamic tableOptions array if you want a dropdown
-const maxRows = 7;
-const maxCols = 7;
-const tableOptions = [];
-for (let r = 1; r <= maxRows; r++) {
-  for (let c = 1; c <= maxCols; c++) {
-    tableOptions.push(`newtable_${r}_${c}`);
-  }
-}
 
 // Example mention data
 const atValues = [
@@ -46,16 +49,17 @@ const hashValues = [
   { id: 4, value: "Quill" },
 ];
 
-// Predefined IEEE sections
-const COMMON_IEEE_SECTIONS = [
-  "Introduction",
-  "Related Work / Literature Review",
-  "Methodology / Proposed Method",
-  "Results / Discussion",
-  "Conclusion (and possibly Future Work)",
-];
+// (Optional) Build tableOptions array if needed for a dropdown
+const maxRows = 7;
+const maxCols = 7;
+const tableOptions = [];
+for (let r = 1; r <= maxRows; r++) {
+  for (let c = 1; c <= maxCols; c++) {
+    tableOptions.push(`newtable_${r}_${c}`);
+  }
+}
 
-// Define a custom icon for the custom table button
+// Custom icons for our custom toolbar buttons
 const icons = Quill.import("ui/icons");
 icons["customTable"] = `
   <svg viewBox="0 0 18 18" width="18" height="18">
@@ -64,9 +68,15 @@ icons["customTable"] = `
     <line class="ql-stroke" x1="9" y1="3" x2="9" y2="15"></line>
   </svg>
 `;
+icons["customFormula"] = `
+  <svg viewBox="0 0 18 18" width="18" height="18">
+    <path class="ql-stroke" d="M5 5L13 13"></path>
+    <path class="ql-stroke" d="M13 5L5 13"></path>
+  </svg>
+`;
 
-// Toolbar options – every group must be an array.
-// Here we include a custom table button using the key "customTable" only.
+// Toolbar configuration – every group is an array.
+// Two custom buttons are added: one for table insertion and one for formula insertion.
 const toolbarOptions = [
   [{ header: [1, 2, 3, false] }],
   ["bold", "italic", "underline"],
@@ -74,14 +84,13 @@ const toolbarOptions = [
   ["image", "blockquote", "code-block"],
   [{ align: [] }],
   [{ indent: "-1" }, { indent: "+1" }],
-  [{ customTable: true }],
-  ["formula"],
+  [{ customTable: true }, { customFormula: true }],
   ["clean"],
 ];
 
 /* ========= Helper Functions ========= */
 function updateNodeTitleInTree(list = [], nodeId, newTitle) {
-  return list.map(item =>
+  return list.map((item) =>
     item.id === nodeId
       ? { ...item, title: newTitle }
       : { ...item, subsections: updateNodeTitleInTree(item.subsections || [], nodeId, newTitle) }
@@ -89,7 +98,7 @@ function updateNodeTitleInTree(list = [], nodeId, newTitle) {
 }
 
 function updateNodeContentInTree(list = [], nodeId, newContent) {
-  return list.map(item =>
+  return list.map((item) =>
     item.id === nodeId
       ? { ...item, content: newContent }
       : { ...item, subsections: updateNodeContentInTree(item.subsections || [], nodeId, newContent) }
@@ -97,7 +106,7 @@ function updateNodeContentInTree(list = [], nodeId, newContent) {
 }
 
 function addSubsectionInTree(list = [], parentId, newNode) {
-  return list.map(item =>
+  return list.map((item) =>
     item.id === parentId
       ? { ...item, subsections: [...(item.subsections || []), newNode] }
       : { ...item, subsections: addSubsectionInTree(item.subsections || [], parentId, newNode) }
@@ -106,8 +115,8 @@ function addSubsectionInTree(list = [], parentId, newNode) {
 
 function removeNodeFromTree(list = [], nodeId) {
   return list
-    .filter(item => item.id !== nodeId)
-    .map(item => ({
+    .filter((item) => item.id !== nodeId)
+    .map((item) => ({
       ...item,
       subsections: removeNodeFromTree(item.subsections || [], nodeId),
     }));
@@ -130,7 +139,28 @@ function createNode(title) {
     contentId: `content-${id}`,
     content: { ops: [] },
     subsections: [],
+    aiEnhancement: false,
   };
+  
+}
+
+function toggleAiEnhancementInTree(list, nodeId, newValue) {
+  return list.map((item) => {
+    if (item.id === nodeId) {
+      // toggle this node
+      return { ...item, aiEnhancement: newValue };
+    } else {
+      // recursively check children
+      return {
+        ...item,
+        subsections: toggleAiEnhancementInTree(
+          item.subsections || [],
+          nodeId,
+          newValue
+        ),
+      };
+    }
+  });
 }
 
 function useDebouncedValue(initialValue, delay = 500) {
@@ -153,6 +183,7 @@ function Editor({
   setCurrentSelectionText,
   setLastHighlightText,
 }) {
+  // Plain text fields
   const quillRefs = useRef({});
   const [paperTitle, setPaperTitle] = useState("");
   const [abstract, setAbstract] = useState("");
@@ -162,15 +193,14 @@ function Editor({
   const [debouncedAbstract, setDebouncedAbstract] = useDebouncedValue(abstract, 500);
   const [debouncedKeywords, setDebouncedKeywords] = useDebouncedValue(keywords, 500);
 
-  // State for TableSizePicker overlay position and visibility
+  // For our custom embed handlers (table/formula)
+  const activeQuillRef = useRef(null);
   const [showTablePicker, setShowTablePicker] = useState(false);
   const [tablePickerPosition, setTablePickerPosition] = useState({ top: 0, left: 0 });
-  const activeQuillRef = useRef(null);
 
-  // Custom table handler: compute the clicked button's position and open the overlay
+  // Custom handler for the custom table button – positions the overlay near the clicked button
   const handleCustomTable = function () {
     activeQuillRef.current = this.quill;
-    // "this" is the toolbar module instance. Look for the button with class "ql-customTable"
     const button = this.container.querySelector(".ql-customTable");
     if (button) {
       const rect = button.getBoundingClientRect();
@@ -182,7 +212,18 @@ function Editor({
     setShowTablePicker(true);
   };
 
-  // Initialize Quill editors for each section node
+  // Custom handler for the custom formula button
+  const insertFormulaWithCaption = function (quill) {
+    const formula = prompt("Enter the LaTeX formula (e.g. c = \\pm\\sqrt{a^2+b^2})") || "";
+    const caption = prompt("Enter formula caption") || "";
+    const range = quill.getSelection() || { index: quill.getLength() };
+    quill.insertEmbed(range.index, "formulaWithCaption", { formula, caption });
+    quill.setSelection(range.index + 1, 0);
+    // Optionally, insert a newline after the embed:
+    quill.insertText(range.index + 1, "\n");
+  };
+
+  // 1) Initialize Quill editors for each node.
   useEffect(() => {
     console.log("📌 Sections in Editor:", sections);
     function initQuillForNode(node, parentId = null) {
@@ -190,7 +231,6 @@ function Editor({
         const quill = new Quill(`#editor-${node.contentId}`, {
           theme: "snow",
           modules: {
-            // Enable quill-better-table for full table editing (add/remove rows/columns, etc.)
             "better-table": {
               operationMenu: {
                 items: {
@@ -248,42 +288,28 @@ function Editor({
                     if (!data.url) return;
                     const caption = prompt("Enter image caption") || "";
                     const range = this.quill.getSelection() || { index: this.quill.getLength() };
-                    this.quill.insertEmbed(range.index, "imageWithCaption", {
-                      src: data.url,
-                      caption,
-                    });
+                    this.quill.insertEmbed(range.index, "imageWithCaption", { src: data.url, caption });
                     this.quill.setSelection(range.index + 1, 0);
                     const fullContent = this.quill.getContents();
                     const cursor = { index: range.index + 1, length: 0 };
                     if (parentId === null) {
-                      socket.emit("send-changes", {
-                        padId,
-                        sectionId: node.id,
-                        fullContent,
-                        userId,
-                        cursor,
-                      });
+                      socket.emit("send-changes", { padId, sectionId: node.id, fullContent, userId, cursor });
                     } else {
-                      socket.emit("send-changes", {
-                        padId,
-                        sectionId: parentId,
-                        subId: node.id,
-                        fullContent,
-                        userId,
-                        cursor,
-                      });
+                      socket.emit("send-changes", { padId, sectionId: parentId, subId: node.id, fullContent, userId, cursor });
                     }
                   };
                 },
-                // Bind our custom table handler for the custom table button.
+                // Bind our custom table and formula handlers
                 customTable: handleCustomTable,
-                // Handler for dropdown table insertion from the toolbar.
+                customFormula: function () {
+                  insertFormulaWithCaption(this.quill);
+                },
+                // (Optional) Handler for dropdown table insertion if needed:
                 "Table-Input": function (value) {
                   if (value) {
                     const parts = value.split("_");
                     const rows = parseInt(parts[1], 10);
                     const cols = parseInt(parts[2], 10);
-                    // Use better-table module's insertTable function.
                     this.quill.getModule("better-table").insertTable(rows, cols);
                   }
                 },
@@ -291,8 +317,10 @@ function Editor({
             },
           },
         });
+      
+                
         quillRefs.current[node.contentId] = quill;
-        if (node.content?.ops) {
+        if (node.content && node.content.ops) {
           quill.setContents(node.content);
         }
         quill.on("text-change", (delta, oldDelta, source) => {
@@ -301,24 +329,11 @@ function Editor({
             const range = quill.getSelection();
             const cursor = range ? { index: range.index, length: range.length } : { index: 0, length: 0 };
             if (parentId === null) {
-              socket.emit("send-changes", {
-                padId,
-                sectionId: node.id,
-                fullContent,
-                userId,
-                cursor,
-              });
+              socket.emit("send-changes", { padId, sectionId: node.id, fullContent, userId, cursor });
             } else {
-              socket.emit("send-changes", {
-                padId,
-                sectionId: parentId,
-                subId: node.id,
-                fullContent,
-                userId,
-                cursor,
-              });
+              socket.emit("send-changes", { padId, sectionId: parentId, subId: node.id, fullContent, userId, cursor });
             }
-            setSections(prev => updateNodeContentInTree(prev, node.id, fullContent));
+            setSections((prev) => updateNodeContentInTree(prev, node.id, fullContent));
           }
         });
         quill.on("selection-change", (range, oldRange, source) => {
@@ -330,42 +345,88 @@ function Editor({
             } else {
               setCurrentSelectionText("");
             }
-            socket.emit("cursor-selection", {
-              padId,
-              userId,
-              cursor: range,
-              nodeId: node.id,
-            });
+            socket.emit("cursor-selection", { padId, userId, cursor: range, nodeId: node.id });
           }
         });
       }
-      (node.subsections || []).forEach(child => initQuillForNode(child, node.id));
+      (node.subsections || []).forEach((child) => initQuillForNode(child, node.id));
     }
-    sections.forEach(node => initQuillForNode(node, null));
-  }, [sections, socket, setSections, userId, setCurrentSelectionText, setLastHighlightText]);
+    sections.forEach((node) => initQuillForNode(node, null));
+  }, [sections, socket, setSections, userId]);
 
-  // Callback from the TableSizePicker overlay to insert a table into the active Quill editor.
+  // Handler for inserting a table via our custom overlay
   const handleTableSelect = (rows, cols) => {
     if (activeQuillRef.current) {
-      const tableModule = activeQuillRef.current.getModule("better-table");
-      if (tableModule && typeof tableModule.insertTable === "function") {
-        tableModule.insertTable(rows, cols);
-        console.log("Inserted table:", rows, "x", cols);
-      } else {
-        console.error("better-table module is not available on this Quill instance.");
+      const caption = prompt("Enter table caption") || "";
+      // Build minimal HTML for the table embed
+      let tableHtml = "<table class='custom-table'><tbody>";
+      for (let r = 0; r < rows; r++) {
+        tableHtml += "<tr>";
+        for (let c = 0; c < cols; c++) {
+          tableHtml += "<td>      </td>";
+        }
+        tableHtml += "</tr>";
       }
+      tableHtml += "</tbody></table>";
+      const range = activeQuillRef.current.getSelection() || { index: activeQuillRef.current.getLength() };
+      activeQuillRef.current.insertEmbed(range.index, "tableWithCaption", { tableHtml, caption });
+      // Insert a newline after the embed so the cursor moves to a new paragraph
+      activeQuillRef.current.insertText(range.index + 1, "\n");
+      activeQuillRef.current.setSelection(range.index + 2, 0);
+      console.log(`Inserted a ${rows}x${cols} table with caption: "${caption}"`);
+      attachTableCellListeners(activeQuillRef.current, range.index);
     }
     setShowTablePicker(false);
-
-    
   };
 
-  // Socket listeners for remote changes and loading the pad.
+
+  // [ADDED] Helper to attach blur listeners to all <td> in the newly inserted table
+function attachTableCellListeners(quill, embedIndex) {
+  // Wait a tick so Quill updates the DOM
+  setTimeout(() => {
+    // The editor DOM we just inserted the table into
+    const editorEl = quill.root.parentNode; 
+    // Grab the figure for the newly inserted table
+    // embedIndex is where we inserted the table in the Delta
+    const tableFigure = editorEl.querySelector(
+      `figure.ql-table-with-caption:nth-of-type(${embedIndex + 1})`
+    );
+    if (!tableFigure) return;
+
+    // For every <td>, on blur => re-insert the table
+    const cells = tableFigure.querySelectorAll("td");
+    cells.forEach((cell) => {
+      cell.addEventListener("blur", () => {
+        // Read the updated HTML from the figure
+        const wrapper = tableFigure.querySelector(".table-wrapper");
+        const newTableHtml = wrapper ? wrapper.innerHTML : "";
+        const captionEl = tableFigure.querySelector("figcaption");
+        const newCaption = captionEl ? captionEl.innerText : "";
+
+        // Remove the old embed
+        const blot = Quill.find(tableFigure);
+        if (!blot) return;
+        const oldIndex = quill.getIndex(blot);
+
+        quill.deleteText(oldIndex, 1);
+        // Insert updated embed with new HTML
+        quill.insertEmbed(oldIndex, "tableWithCaption", {
+          tableHtml: newTableHtml,
+          caption: newCaption,
+        });
+        // Insert a newline to keep spacing
+        quill.insertText(oldIndex + 1, "\n");
+        quill.setSelection(oldIndex + 2, 0);
+      });
+    });
+  }, 0);
+}
+
+  // Socket listeners for remote changes and loading the pad remain unchanged
   useEffect(() => {
     socket.on(
       "receive-changes",
       ({ sectionId, subId, fullContent, userId: senderId, cursor }) => {
-        console.log("🔵 [Client] Received fullContent update:", JSON.stringify(fullContent, null, 2));
         const nodeId = subId || sectionId;
         const contentId = getNodeContentId(sections, nodeId);
         if (contentId && quillRefs.current[contentId]) {
@@ -384,7 +445,7 @@ function Editor({
 
     socket.on("remote-cursor", ({ userId: remoteUserId, cursor, color, nodeId }) => {
       if (remoteUserId === userId) return;
-      Object.keys(quillRefs.current).forEach(contentId => {
+      Object.keys(quillRefs.current).forEach((contentId) => {
         const quill = quillRefs.current[contentId];
         const cursors = quill.getModule("cursors");
         if (cursors) {
@@ -420,7 +481,7 @@ function Editor({
     };
   }, [socket, sections, setSections, setAuthors, setReferences, userId]);
 
-  // Top-level field update handlers.
+  // Top-level field update handlers remain unchanged
   const handleTitleChange = (e) => {
     const newVal = e.target.value;
     setPaperTitle(newVal);
@@ -523,6 +584,7 @@ function Editor({
   };
 
   const renderNode = (node, indent = 0) => (
+    
     <div
       key={node.id}
       style={{
@@ -531,8 +593,9 @@ function Editor({
         padding: 10,
         marginBottom: 10,
       }}
+      className="sub-section"
     >
-      <div style={{ display: "flex", alignItems: "center" }}>
+      <div style={{ display: "flex", alignItems: "center" }} >
         <input
           style={{ fontSize: "1.2rem", fontWeight: "bold", flexGrow: 1 }}
           value={node.title}
@@ -553,6 +616,30 @@ function Editor({
             })
           }
         />
+
+<label style={{ marginLeft: 10 }}>
+<input
+  type="checkbox"
+  checked={!!node.aiEnhancement}
+  onChange={(e) => {
+    const newValue = e.target.checked;
+    const updated = toggleAiEnhancementInTree(sections, node.id, newValue);
+    setSections(updated);
+    socket.emit("update-pad", {
+      padId,
+      sections: updated,
+      authors,
+      references,
+      title: paperTitle,
+      abstract,
+      keyword: keywords,
+    });
+  }}
+/>
+
+        {" AI?"}
+      </label>
+
         <button onClick={() => removeNode(node.id)} style={{ marginLeft: 5 }}>
           🗑️
         </button>
@@ -560,40 +647,518 @@ function Editor({
       <div
         id={`editor-${node.contentId}`}
         style={{ height: 200, border: "1px solid #ccc", marginBottom: 10 }}
+        className="editor-container"
       />
-      <button className="custom-button" onClick={() => addSubsection(node.id)} style={{ marginBottom: 5 }}>
+      <button onClick={() => addSubsection(node.id)} style={{ marginBottom: 5 }} className="custom-button">
         ➕ Add Subsection
       </button>
-      {node.subsections && node.subsections.map((child) => renderNode(child, indent + 1))}
+      {node.subsections &&
+        node.subsections.map((child) => renderNode(child, indent + 1))}
     </div>
+  
   );
 
   return (
-    <div>
-      {showTablePicker && (
+    // <div>
+    //   {showTablePicker && (
+    //     <div
+    //       style={{
+    //         position: "absolute",
+    //         top: tablePickerPosition.top,
+    //         left: tablePickerPosition.left,
+    //         zIndex: 1000,
+    //       }}
+    //     >
+    //       <TableSizePicker
+    //         onSelect={(rows, cols) => handleTableSelect(rows, cols)}
+    //         onClose={() => setShowTablePicker(false)}
+    //       />
+    //     </div>
+    //   )} 
+    //   {/* Plain text fields */}
+    //   <div style={{ border: "1px solid #000", padding: 10, marginBottom: 20 }}>
+    //     <h1 style={{ margin: 0 }}>Paper Title</h1>
+    //     <input
+    //       style={{
+    //         width: "100%",
+    //         fontSize: "1.5rem",
+    //         fontWeight: "bold",
+    //         marginBottom: 10,
+    //       }}
+    //       placeholder="Enter paper title here..."
+    //       value={paperTitle}
+    //       onChange={(e) => {
+    //         setPaperTitle(e.target.value);
+    //         // Do not emit here
+    //       }}
+    //       onBlur={() => {
+    //         socket.emit("update-pad", {
+    //           padId,
+    //           sections,
+    //           authors,
+    //           references,
+    //           title: paperTitle,
+    //           abstract,
+    //           keyword: keywords,
+    //         });
+    //       }}
+    //     />
+    //     <h2>Abstract</h2>
+    //     <textarea
+    //       style={{
+    //         width: "100%",
+    //         height: 100,
+    //         fontSize: "1rem",
+    //         marginBottom: 10,
+    //       }}
+    //       placeholder="Enter abstract here..."
+    //       value={abstract}
+    //       onChange={(e) => {
+    //         setAbstract(e.target.value);
+    //       }}
+    //       onBlur={() => {
+    //         socket.emit("update-pad", {
+    //           padId,
+    //           sections,
+    //           authors,
+    //           references,
+    //           title: paperTitle,
+    //           abstract: abstract,
+    //           keyword: keywords,
+    //         });
+    //       }}
+    //     />
+    //     <h2>Keywords</h2>
+    //     <input
+    //       style={{ width: "100%", fontSize: "1rem", marginBottom: 10 }}
+    //       placeholder="Enter keywords here..."
+    //       value={keywords}
+    //       onChange={(e) => {
+    //         setKeywords(e.target.value);
+    //       }}
+    //       onBlur={() => {
+    //         socket.emit("update-pad", {
+    //           padId,
+    //           sections,
+    //           authors,
+    //           references,
+    //           title: paperTitle,
+    //           abstract,
+    //           keyword: keywords,
+    //         });
+    //       }}
+    //     />
+    //   </div>
+
+    //   {/* Section Controls */}
+    //   <button
+    //     onClick={addSection}
+    //     style={{ marginBottom: 10, marginRight: 10 }}
+    //   >
+    //     ➕ Add Blank Section
+    //   </button>
+    //   {COMMON_IEEE_SECTIONS.map((title, idx) => (
+    //     <button
+    //       key={idx}
+    //       style={{ marginRight: 5, marginBottom: 10 }}
+    //       onClick={() => {
+    //         const newSection = createNode(title);
+    //         const updated = [...sections, newSection];
+    //         setSections(updated);
+    //         socket.emit("update-pad", {
+    //           padId,
+    //           sections: updated,
+    //           authors,
+    //           references,
+    //           title: paperTitle,
+    //           abstract,
+    //           keyword: keywords,
+    //         });
+    //       }}
+    //     >
+    //       ➕ {title}
+    //     </button>
+    //   ))}
+    //   {sections.map((sec) => renderNode(sec))}
+
+    //   {/* Authors Section */}
+    //   <div style={{ marginTop: 30, padding: 10, border: "1px solid #ccc" }}>
+    //     <h2>Authors</h2>
+    //     <button
+    //       onClick={() => {
+    //         const newAuthor = {
+    //           id: `author-${Date.now()}`,
+    //           name: "New Author",
+    //           affiliation: "",
+    //           email: "",
+    //         };
+    //         const updatedAuthors = [...authors, newAuthor];
+    //         setAuthors(updatedAuthors);
+    //         socket.emit("update-pad", {
+    //           padId,
+    //           sections,
+    //           authors: updatedAuthors,
+    //           references,
+    //           title: paperTitle,
+    //           abstract,
+    //           keyword: keywords,
+    //         });
+    //       }}
+    //     >
+    //       ➕ Add Author
+    //     </button>
+    //     <ul>
+    //       {authors.map((author) => (
+    //         <li key={author.id}>
+    //           <input
+    //             type="text"
+    //             value={author.name}
+    //             onChange={(e) => {
+    //               const updatedAuthors = authors.map((a) =>
+    //                 a.id === author.id ? { ...a, name: e.target.value } : a
+    //               );
+    //               setAuthors(updatedAuthors);
+    //               // socket.emit("update-pad", {
+    //               //   padId,
+    //               //   sections,
+    //               //   authors: updatedAuthors,
+    //               //   references,
+    //               //   title: paperTitle,
+    //               //   abstract,
+    //               //   keyword: keywords,
+    //               // });
+    //             }}
+    //             onBlur={handleNodeTitleBlur}
+    //             placeholder="Author Name"
+    //           />
+    //           <input
+    //             type="text"
+    //             value={author.affiliation}
+    //             onChange={(e) => {
+    //               const updatedAuthors = authors.map((a) =>
+    //                 a.id === author.id
+    //                   ? { ...a, affiliation: e.target.value }
+    //                   : a
+    //               );
+    //               setAuthors(updatedAuthors);
+    //               // socket.emit("update-pad", {
+    //               //   padId,
+    //               //   sections,
+    //               //   authors: updatedAuthors,
+    //               //   references,
+    //               //   title: paperTitle,
+    //               //   abstract,
+    //               //   keyword: keywords,
+    //               // });
+    //             }}
+
+    //             onBlur={handleNodeTitleBlur}
+
+    //             placeholder="Affiliation"
+    //           />
+    //           <input
+    //             type="text"
+    //             value={author.email}
+    //             onChange={(e) => {
+    //               const updatedAuthors = authors.map((a) =>
+    //                 a.id === author.id ? { ...a, email: e.target.value } : a
+    //               );
+    //               setAuthors(updatedAuthors);
+    //               // socket.emit("update-pad", {
+    //               //   padId,
+    //               //   sections,
+    //               //   authors: updatedAuthors,
+    //               //   references,
+    //               //   title: paperTitle,
+    //               //   abstract,
+    //               //   keyword: keywords,
+    //               // });
+    //             }}
+    //             onBlur={handleNodeTitleBlur}
+    //             placeholder="Email"
+    //           />
+    //           <button
+    //             onClick={() => {
+    //               const updatedAuthors = authors.filter(
+    //                 (a) => a.id !== author.id
+    //               );
+    //               setAuthors(updatedAuthors);
+    //               socket.emit("update-pad", {
+    //                 padId,
+    //                 sections,
+    //                 authors: updatedAuthors,
+    //                 references,
+    //                 title: paperTitle,
+    //                 abstract,
+    //                 keyword: keywords,
+    //               });
+    //             }}
+    //             style={{ marginLeft: 5 }}
+    //           >
+    //             🗑️ Remove Author
+    //           </button>
+    //         </li>
+    //       ))}
+    //     </ul>
+    //   </div>
+
+    //   {/* References Section */}
+    //   <div style={{ marginTop: 30, padding: 10, border: "1px solid #ccc" }}>
+    //     <h2>References</h2>
+    //     <button
+    //       onClick={() => {
+    //         const newReference = {
+    //           id: `ref-${Date.now()}`,
+    //           key: "",
+    //           author: "",
+    //           title: "",
+    //           journal: "",
+    //           year: "",
+    //           volume: "",
+    //           number: "",
+    //           pages: "",
+    //         };
+    //         const updatedReferences = [...references, newReference];
+    //         setReferences(updatedReferences);
+    //         socket.emit("update-pad", {
+    //           padId,
+    //           sections,
+    //           authors,
+    //           references: updatedReferences,
+    //           title: paperTitle,
+    //           abstract,
+    //           keyword: keywords,
+    //         });
+    //       }}
+    //     >
+    //       ➕ Add Reference
+    //     </button>
+    //     <ul>
+    //       {references.map((reference) => (
+    //         <li key={reference.id}>
+    //           <input
+    //             type="text"
+    //             value={reference.key}
+    //             onChange={(e) => {
+    //               const updatedReferences = references.map((r) =>
+    //                 r.id === reference.id ? { ...r, key: e.target.value } : r
+    //               );
+    //               setReferences(updatedReferences);
+    //               // socket.emit("update-pad", {
+    //               //   padId,
+    //               //   sections,
+    //               //   authors,
+    //               //   references: updatedReferences,
+    //               //   title: paperTitle,
+    //               //   abstract,
+    //               //   keyword: keywords,
+    //               // });
+    //             }}
+    //             onBlur={handleNodeTitleBlur}
+    //             placeholder="Reference Key"
+    //           />
+    //           <input
+    //             type="text"
+    //             value={reference.author}
+    //             onChange={(e) => {
+    //               const updatedReferences = references.map((r) =>
+    //                 r.id === reference.id ? { ...r, author: e.target.value } : r
+    //               );
+    //               setReferences(updatedReferences);
+    //               // socket.emit("update-pad", {
+    //               //   padId,
+    //               //   sections,
+    //               //   authors,
+    //               //   references: updatedReferences,
+    //               //   title: paperTitle,
+    //               //   abstract,
+    //               //   keyword: keywords,
+    //               // });
+    //             }}
+    //             onBlur={handleNodeTitleBlur}
+    //             placeholder="Author(s)"
+    //           />
+    //           <input
+    //             type="text"
+    //             value={reference.title}
+    //             onChange={(e) => {
+    //               const updatedReferences = references.map((r) =>
+    //                 r.id === reference.id ? { ...r, title: e.target.value } : r
+    //               );
+    //               setReferences(updatedReferences);
+    //               // socket.emit("update-pad", {
+    //               //   padId,
+    //               //   sections,
+    //               //   authors,
+    //               //   references: updatedReferences,
+    //               //   title: paperTitle,
+    //               //   abstract,
+    //               //   keyword: keywords,
+    //               // });
+    //             }}
+    //             onBlur={handleNodeTitleBlur}
+    //             placeholder="Title"
+    //           />
+    //           <input
+    //             type="text"
+    //             value={reference.journal}
+    //             onChange={(e) => {
+    //               const updatedReferences = references.map((r) =>
+    //                 r.id === reference.id
+    //                   ? { ...r, journal: e.target.value }
+    //                   : r
+    //               );
+    //               setReferences(updatedReferences);
+    //               // socket.emit("update-pad", {
+    //               //   padId,
+    //               //   sections,
+    //               //   authors,
+    //               //   references: updatedReferences,
+    //               //   title: paperTitle,
+    //               //   abstract,
+    //               //   keyword: keywords,
+    //               // });
+    //             }}
+    //             onBlur={handleNodeTitleBlur}
+    //             placeholder="Journal"
+    //           />
+    //           <input
+    //             type="text"
+    //             value={reference.year}
+    //             onChange={(e) => {
+    //               const updatedReferences = references.map((r) =>
+    //                 r.id === reference.id ? { ...r, year: e.target.value } : r
+    //               );
+    //               setReferences(updatedReferences);
+    //               // socket.emit("update-pad", {
+    //               //   padId,
+    //               //   sections,
+    //               //   authors,
+    //               //   references: updatedReferences,
+    //               //   title: paperTitle,
+    //               //   abstract,
+    //               //   keyword: keywords,
+    //               // });
+    //             }}
+    //             onBlur={handleNodeTitleBlur}
+    //             placeholder="Year"
+    //           />
+    //           <input
+    //             type="text"
+    //             value={reference.volume}
+    //             onChange={(e) => {
+    //               const updatedReferences = references.map((r) =>
+    //                 r.id === reference.id ? { ...r, volume: e.target.value } : r
+    //               );
+    //               setReferences(updatedReferences);
+    //               // socket.emit("update-pad", {
+    //               //   padId,
+    //               //   sections,
+    //               //   authors,
+    //               //   references: updatedReferences,
+    //               //   title: paperTitle,
+    //               //   abstract,
+    //               //   keyword: keywords,
+    //               // });
+
+    //             }}
+    //             onBlur={handleNodeTitleBlur}
+    //             placeholder="Volume"
+    //           />
+    //           <input
+    //             type="text"
+    //             value={reference.number}
+    //             onChange={(e) => {
+    //               const updatedReferences = references.map((r) =>
+    //                 r.id === reference.id ? { ...r, number: e.target.value } : r
+    //               );
+    //               setReferences(updatedReferences);
+    //               // socket.emit("update-pad", {
+    //               //   padId,
+    //               //   sections,
+    //               //   authors,
+    //               //   references: updatedReferences,
+    //               //   title: paperTitle,
+    //               //   abstract,
+    //               //   keyword: keywords,
+    //               // });
+    //             }}
+    //             onBlur={handleNodeTitleBlur}
+    //             placeholder="Number"
+    //           />
+    //           <input
+    //             type="text"
+    //             value={reference.pages}
+    //             onChange={(e) => {
+    //               const updatedReferences = references.map((r) =>
+    //                 r.id === reference.id ? { ...r, pages: e.target.value } : r
+    //               );
+    //               setReferences(updatedReferences);
+    //               // socket.emit("update-pad", {
+    //               //   padId,
+    //               //   sections,
+    //               //   authors,
+    //               //   references: updatedReferences,
+    //               //   title: paperTitle,
+    //               //   abstract,
+    //               //   keyword: keywords,
+    //               // });
+    //             }}
+    //             onBlur={handleNodeTitleBlur}
+    //             placeholder="Pages"
+    //           />
+    //           <button
+    //             onClick={() => {
+    //               const updatedReferences = references.filter(
+    //                 (r) => r.id !== reference.id
+    //               );
+    //               setReferences(updatedReferences);
+    //               socket.emit("update-pad", {
+    //                 padId,
+    //                 sections,
+    //                 authors,
+    //                 references: updatedReferences,
+    //                 title: paperTitle,
+    //                 abstract,
+    //                 keyword: keywords,
+    //               });
+    //             }}
+    //             style={{ marginLeft: 5 }}
+    //           >
+    //             🗑️ Remove Reference
+    //           </button>
+    //         </li>
+    //       ))}
+    //     </ul>
+    //   </div>
+    // </div>
+    <div className="editor-container">
+          
+       {showTablePicker && (
         <div
-          style={{
+           style={{
             position: "absolute",
             top: tablePickerPosition.top,
             left: tablePickerPosition.left,
             zIndex: 1000,
-          }}
-        >
-          <TableSizePicker
-            onSelect={(rows, cols) => handleTableSelect(rows, cols)}
-            onClose={() => setShowTablePicker(false)}
-          />
-        </div>
-      )}
-
+           }}
+         >
+           <TableSizePicker
+             onSelect={(rows, cols) => handleTableSelect(rows, cols)}
+             onClose={() => setShowTablePicker(false)}
+           />
+         </div>
+       )} 
+      
+      {/* Plain text fields */}
       <div className="paper-section">
-        <h1>Paper Title</h1>
+        <h1 className="section-title">Paper Title</h1>
         <input
-          className="input-field"
+          className="input-field title-input"
           placeholder="Enter paper title here..."
           value={paperTitle}
-          onChange={handleTitleChange}
-          onBlur={() =>
+          onChange={(e) => setPaperTitle(e.target.value)}
+          onBlur={() => {
             socket.emit("update-pad", {
               padId,
               sections,
@@ -602,16 +1167,16 @@ function Editor({
               title: paperTitle,
               abstract,
               keyword: keywords,
-            })
-          }
+            });
+          }}
         />
-        <h2>Abstract</h2>
+        <h2 className="section-subtitle">Abstract</h2>
         <textarea
-          className="textarea-field"
+          className="textarea-field abstract-input"
           placeholder="Enter abstract here..."
           value={abstract}
-          onChange={handleAbstractChange}
-          onBlur={() =>
+          onChange={(e) => setAbstract(e.target.value)}
+          onBlur={() => {
             socket.emit("update-pad", {
               padId,
               sections,
@@ -620,16 +1185,16 @@ function Editor({
               title: paperTitle,
               abstract,
               keyword: keywords,
-            })
-          }
+            });
+          }}
         />
-        <h2>Keywords</h2>
+        <h2 className="section-subtitle">Keywords</h2>
         <input
-          className="input-field"
+          className="input-field keyword-input"
           placeholder="Enter keywords here..."
           value={keywords}
-          onChange={handleKeywordsChange}
-          onBlur={() =>
+          onChange={(e) => setKeywords(e.target.value)}
+          onBlur={() => {
             socket.emit("update-pad", {
               padId,
               sections,
@@ -638,18 +1203,19 @@ function Editor({
               title: paperTitle,
               abstract,
               keyword: keywords,
-            })
-          }
+            });
+          }}
         />
       </div>
 
+      {/* Section Controls */}
       <button className="custom-button" onClick={addSection}>
         ➕ Add Blank Section
       </button>
       {COMMON_IEEE_SECTIONS.map((title, idx) => (
         <button
           key={idx}
-          className="custom-button"
+          className="custom-button predefined-section-btn"
           onClick={() => {
             const newSection = createNode(title);
             const updated = [...sections, newSection];
@@ -668,157 +1234,165 @@ function Editor({
           ➕ {title}
         </button>
       ))}
-
       {sections.map((sec) => renderNode(sec))}
 
+      {/* Authors Section */}
       <div className="authors-section">
-        <h2>Authors</h2>
-        <button
-          className="custom-button"
-          onClick={() => {
-            const newAuthor = {
-              id: `author-${Date.now()}`,
-              name: "New Author",
-              affiliation: "",
-              email: "",
-            };
-            setAuthors([...authors, newAuthor]);
-            socket.emit("update-pad", {
-              padId,
-              sections,
-              authors: [...authors, newAuthor],
-              references,
-              title: paperTitle,
-              abstract,
-              keyword: keywords,
-            });
-          }}
-        >
+        <h2 className="section-subtitle">Authors</h2>
+        <button className="custom-button" onClick={() => {
+          const newAuthor = {
+            id: `author-${Date.now()}`,
+            name: "New Author",
+            affiliation: "",
+            email: "",
+          };
+          const updatedAuthors = [...authors, newAuthor];
+          setAuthors(updatedAuthors);
+          socket.emit("update-pad", {
+            padId,
+            sections,
+            authors: updatedAuthors,
+            references,
+            title: paperTitle,
+            abstract,
+            keyword: keywords,
+          });
+        }}>
           ➕ Add Author
         </button>
-        <ul>
+        <ul className="author-list">
           {authors.map((author) => (
             <li key={author.id} className="list-item">
               <input
-                className="input-small"
+                className="input-small author-name"
                 type="text"
                 value={author.name}
                 placeholder="Author Name"
-                onChange={(e) =>
-                  setAuthors(
-                    authors.map((a) =>
-                      a.id === author.id ? { ...a, name: e.target.value } : a
-                    )
-                  )
-                }
+                onChange={(e) => {
+                  const updatedAuthors = authors.map((a) =>
+                    a.id === author.id ? { ...a, name: e.target.value } : a
+                  );
+                  setAuthors(updatedAuthors);
+                }}
+                onBlur={handleNodeTitleBlur}
               />
               <input
-                className="input-small"
+                className="input-small author-affiliation"
                 type="text"
                 value={author.affiliation}
                 placeholder="Affiliation"
-                onChange={(e) =>
-                  setAuthors(
-                    authors.map((a) =>
-                      a.id === author.id ? { ...a, affiliation: e.target.value } : a
-                    )
-                  )
-                }
+                onChange={(e) => {
+                  const updatedAuthors = authors.map((a) =>
+                    a.id === author.id ? { ...a, affiliation: e.target.value } : a
+                  );
+                  setAuthors(updatedAuthors);
+                }}
+                onBlur={handleNodeTitleBlur}
               />
               <input
-                className="input-small"
+                className="input-small author-email"
                 type="text"
                 value={author.email}
                 placeholder="Email"
-                onChange={(e) =>
-                  setAuthors(
-                    authors.map((a) =>
-                      a.id === author.id ? { ...a, email: e.target.value } : a
-                    )
-                  )
-                }
-              />
-              <button
-                className="remove-button"
-                onClick={() => {
-                  setAuthors(authors.filter((a) => a.id !== author.id));
-                  socket.emit("update-pad", {
-                    padId,
-                    sections,
-                    authors: authors.filter((a) => a.id !== author.id),
-                    references,
-                    title: paperTitle,
-                    abstract,
-                    keyword: keywords,
-                  });
+                onChange={(e) => {
+                  const updatedAuthors = authors.map((a) =>
+                    a.id === author.id ? { ...a, email: e.target.value } : a
+                  );
+                  setAuthors(updatedAuthors);
                 }}
-              >
-                🗑️ Remove
+                onBlur={handleNodeTitleBlur}
+              />
+              <button className="remove-button" onClick={() => {
+                const updatedAuthors = authors.filter((a) => a.id !== author.id);
+                setAuthors(updatedAuthors);
+                socket.emit("update-pad", {
+                  padId,
+                  sections,
+                  authors: updatedAuthors,
+                  references,
+                  title: paperTitle,
+                  abstract,
+                  keyword: keywords,
+                });
+              }}>
+                🗑️ Remove Author
               </button>
             </li>
           ))}
         </ul>
       </div>
 
+      {/* References Section */}
       <div className="references-section">
-        <h2>References</h2>
-        <button
-          className="custom-button"
-          onClick={() => {
-            const newReference = {
-              id: `ref-${Date.now()}`,
-              key: "",
-              author: "",
-              title: "",
-              journal: "",
-              year: "",
-              volume: "",
-              number: "",
-              pages: "",
-            };
-            setReferences([...references, newReference]);
-          }}
-        >
+        <h2 className="section-subtitle">References</h2>
+        <button className="custom-button" onClick={() => {
+          const newReference = {
+            id: `ref-${Date.now()}`,
+            key: "",
+            author: "",
+            title: "",
+            journal: "",
+            year: "",
+            volume: "",
+            number: "",
+            pages: "",
+          };
+          const updatedReferences = [...references, newReference];
+          setReferences(updatedReferences);
+          socket.emit("update-pad", {
+            padId,
+            sections,
+            authors,
+            references: updatedReferences,
+            title: paperTitle,
+            abstract,
+            keyword: keywords,
+          });
+        }}>
           ➕ Add Reference
         </button>
-        <ul>
+        <ul className="reference-list">
           {references.map((reference) => (
             <li key={reference.id} className="list-item">
-              <input
-                className="input-small"
-                type="text"
-                value={reference.key}
-                placeholder="Reference Key"
-                onChange={(e) =>
-                  setReferences(
-                    references.map((r) =>
-                      r.id === reference.id ? { ...r, key: e.target.value } : r
-                    )
-                  )
-                }
-              />
-              <button
-                className="remove-button"
-                onClick={() => {
-                  setReferences(references.filter((r) => r.id !== reference.id));
-                  socket.emit("update-pad", {
-                    padId,
-                    sections,
-                    authors,
-                    references: references.filter((r) => r.id !== reference.id),
-                    title: paperTitle,
-                    abstract,
-                    keyword: keywords,
-                  });
-                }}
-              >
-                🗑️ Remove
+              <input className="input-small reference-key" type="text" value={reference.key} placeholder="Reference Key" onChange={(e) => {
+                const updatedReferences = references.map((r) =>
+                  r.id === reference.id ? { ...r, key: e.target.value } : r
+                );
+                setReferences(updatedReferences);
+              }} onBlur={handleNodeTitleBlur} />
+              <input className="input-small reference-author" type="text" value={reference.author} placeholder="Author(s)" onChange={(e) => {
+                const updatedReferences = references.map((r) =>
+                  r.id === reference.id ? { ...r, author: e.target.value } : r
+                );
+                setReferences(updatedReferences);
+              }} onBlur={handleNodeTitleBlur} />
+              <input className="input-small reference-title" type="text" value={reference.title} placeholder="Title" onChange={(e) => {
+                const updatedReferences = references.map((r) =>
+                  r.id === reference.id ? { ...r, title: e.target.value } : r
+                );
+                setReferences(updatedReferences);
+              }} onBlur={handleNodeTitleBlur} />
+              <button className="remove-button" onClick={() => {
+                const updatedReferences = references.filter((r) => r.id !== reference.id);
+                setReferences(updatedReferences);
+                socket.emit("update-pad", {
+                  padId,
+                  sections,
+                  authors,
+                  references: updatedReferences,
+                  title: paperTitle,
+                  abstract,
+                  keyword: keywords,
+                });
+              }}>
+                🗑️ Remove Reference
               </button>
             </li>
           ))}
         </ul>
       </div>
-    </div>
+</div>
+
   );
 }
 
