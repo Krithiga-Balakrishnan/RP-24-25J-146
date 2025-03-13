@@ -269,6 +269,7 @@ const PadPage = () => {
               show={showMindmap}
               onClose={() => setShowMindmap(false)}
               selectedText={selectedText}
+              padId={padId}
             />
           )}
         </div>

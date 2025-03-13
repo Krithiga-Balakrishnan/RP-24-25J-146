@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 
-const MindmapModal = ({ show, onClose, selectedText }) => {
+const MindmapModal = ({ show, onClose, selectedText, padId }) => {
   // Create refs for key elements in the modal
   const modalRef = useRef(null);
   const graphRef = useRef(null);
@@ -16,6 +16,11 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
   const colorPickerContainerRef = useRef(null);
   const [fullScreenImageUrl, setFullScreenImageUrl] = useState(null);
   const deleteImageBtnRef = useRef(null);
+  const [loading, setLoading] = useState(true);
+  const selectRelationFeedbackRef = useRef(null);
+  const hasFetchedDatabaseRef = useRef(false);
+  const [imageCatalog, setImageCatalog] = useState([]);
+  const imageCatalogRef = useRef([]);
 
   // Global variables for the mind map (internal to this component)
   let nodes = [];
@@ -23,7 +28,8 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
   let width = 800;
   let height = 600;
   let colorMap = {};
-  const defaultColorScale = d3.scaleOrdinal(d3.schemeCategory10);
+  // const defaultColorScale = d3.scaleOrdinal(d3.schemeCategory10);
+  const defaultColorScale = () => "#FFFFFF";
   let selectedLevel = null;
   let selectedNode = null;
   let selectedLink = null;
@@ -31,89 +37,188 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
   let isAddNodeListenerAttached = false;
   let isAddRelationListenerAttached = false;
   let isDeleteListenerAttached = false;
+  let zoomBehavior;
+  let interactiveRelationMode = false;
+  let selectedSourceForRelation = null;
 
-  // 1) A catalog of 10 images, each with a description
-  //    (Adjust the URLs and descriptions to fit your use case.)
-  const imageCatalog = [
-    {
-      url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRCmgkix4DEJoToCFKP-g8ztCYa9bIuxAC3pA&s",
-      description: "iot",
-    },
-    {
-      url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTnGWEwXpRS7z7rVaGrjIWWTdE8_TiYTGiYjA&s",
-      description: "neural networks perceptron artificial biological",
-    },
-    {
-      url: "https://i0.wp.com/plopdo.com/wp-content/uploads/2021/11/feature-pic.jpg?fit=537%2C322&ssl=1",
-      description: "healthcare machine learning diagnosis patterns",
-    },
-    {
-      url: "https://images.ctfassets.net/hrltx12pl8hq/28ECAQiPJZ78hxatLTa7Ts/2f695d869736ae3b0de3e56ceaca3958/free-nature-images.jpg?fit=fill&w=1200&h=630",
-      description: "gps wireless adaptors big data location",
-    },
-    {
-      url: "https://cdn.prod.website-files.com/62d84e447b4f9e7263d31e94/6399a4d27711a5ad2c9bf5cd_ben-sweet-2LowviVHZ-E-unsplash-1.jpeg",
-      description: "classification regression tasks complex data",
-    },
-    {
-      url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQUPIfiGgUML8G3ZqsNLHfaCnZK3I5g4tJabQ&s",
-      description: "storage large frameworks information architecture",
-    },
-    {
-      url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTc9APxkj0xClmrU3PpMZglHQkx446nQPG6lA&s",
-      description: "survey overview applications algorithms",
-    },
-    {
-      url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTtnvAOajH9gS4C30cRF7rD_voaTAKly2Ntaw&s",
-      description: "advantages efficient medical fields improvement",
-    },
-    {
-      url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQKGvxtr7vmYvKw_dBgBPf98isHM4Cz6REorg&s",
-      description: "crucial role big data iot research",
-    },
-    {
-      url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQoFRQjM-wM_nXMA03AGDXgJK3VeX7vtD3ctA&s",
-      description: "support infrastructure sensor machine communication",
-    },
-  ];
+  // 1) A catalog of images, each with a description
+  async function fetchImageCatalog() {
+    const token = localStorage.getItem("token");
+    if (!token) return;
 
+    try {
+      // Construct the URL using padId; adjust the URL to your backend
+      const endpointUrl = `${process.env.REACT_APP_BACKEND_API_URL}/api/pads/${padId}/images`;
+      const response = await fetch(endpointUrl, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // sending token in header
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image catalog: ${response.status}`);
+      }
+      const data = await response.json();
+
+      // Extract imagePairs and map the keys to what your code expects:
+      if (data.imagePairs && Array.isArray(data.imagePairs)) {
+        const mappedCatalog = data.imagePairs.map((pair) => {
+          console.log("Mapping image pair:", pair);
+          return {
+            url: pair.image_url,
+            description: pair.image_description,
+          };
+        });
+        console.log("Mapped image catalog:", mappedCatalog);
+        imageCatalogRef.current = mappedCatalog;
+        return mappedCatalog;
+      } else {
+        throw new Error("No imagePairs found in response");
+      }
+    } catch (error) {
+      console.error("Error fetching image catalog:", error);
+      return [];
+    }
+  }
+
+  // 1) Preload images locally just as before.
   async function preloadImages(imageCatalog) {
-    // For each entry, fetch the image, convert to blob, then to base64 dataURL.
-    // We'll store the final dataURL in item.dataUrl.
     const promises = imageCatalog.map(async (item) => {
-      const response = await fetch(item.url);
+      const response = await fetch(item.url, { mode: "cors" });
+      if (!response.ok) {
+        throw new Error(
+          `Error fetching image from ${item.url}: ${response.status}`
+        );
+      }
+
       const blob = await response.blob();
       const reader = new FileReader();
       const dataUrlPromise = new Promise((resolve) => {
         reader.onload = () => {
-          item.dataUrl = reader.result; // The base64 data
+          item.dataUrl = reader.result;
+          console.log(
+            "Base64 (first 100 chars):",
+            item.dataUrl.substring(0, 100)
+          );
           resolve();
         };
       });
+
       reader.readAsDataURL(blob);
       await dataUrlPromise;
     });
 
     await Promise.all(promises);
-    return imageCatalog; // Now each item has dataUrl
+    return imageCatalog; // each item now has dataUrl
   }
 
-  // 2) Helper to find the first image whose description contains
-  //    at least one of the node’s words (case-insensitive).
-  function getMatchingImage(nodeText, imageList) {
-    const nodeWords = nodeText.toLowerCase().split(/\s+/);
-    for (const { dataUrl, description } of imageList) {
-      const descWords = description.toLowerCase().split(/\s+/);
-      const foundMatch = nodeWords.some((word) => descWords.includes(word));
-      if (foundMatch) {
-        return dataUrl; // <-- Return the base64 dataUrl instead of original url
-      }
+  // 2) Create a global (or module-level) cache
+  //    to store the API’s matched images by node text.
+  //    This can also be managed via React state, a context provider, etc.
+  let matchedImageMap = {};
+  // Example format: { "nodeText": "someBase64String", ... }
+
+  // 3) New function to fetch matches from your external API.
+  async function fetchMatchedImages(nodes, imageCatalog) {
+    // Build a request body that your API expects.
+    // (Adjust the structure to match your backend’s needs.)
+    // Only call the API if there is at least one node.
+    if (!nodes || nodes.length === 0) {
+      console.warn("No nodes provided; skipping API call.");
+      return; // or return an empty result / handle it appropriately.
     }
+
+    const endpoint = "https://sanjayan201-my-image-matching-app.hf.space/match"; // update if needed
+    const payload = {
+      node_texts: nodes.map((n) => n.text), // now an array of strings
+      image_pairs: imageCatalogRef.current.map((item) => ({
+        image_url: item.url,
+        image_description: item.description,
+      })),
+    };
+    console.log("Payload:", payload);
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch matches: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log("API Response:", data); // Log the complete API response here.
+
+    // Assume the API returns something like:
+    // {
+    //   "matched_pairs": [
+    //     { "node": "IoT data", "image_url": "data:image/png;base64,..." },
+    //     { "node": "Machine Learning", "image_url": "data:image/png;base64,..." }
+    //     ...
+    //   ]
+    // }
+
+    // Clear out the previous map or merge into it as you prefer
+    matchedImageMap = {};
+
+    // Store results in the matchedImageMap for quick lookup:
+    // In this example, we key by node text.
+    if (data.matched_pairs && Array.isArray(data.matched_pairs)) {
+      data.matched_pairs.forEach((pair) => {
+        // pair.node -> text that matched
+        // pair.image_url -> base64 or original link
+        matchedImageMap[pair.node.toLowerCase()] = pair.image_url;
+      });
+    }
+    console.log("Updated matchedImageMap:", matchedImageMap);
+  }
+
+  // 4) Updated getMatchingImage function:
+  //    1) Check matchedImageMap from API first.
+  //    2) If no match, fall back to local matching logic.
+  //    3) Return a dataUrl (or null).
+  // Updated getMatchingImage: use preloaded base64 data when possible
+  function getMatchingImage(nodeText, imageList) {
+    const lowerText = nodeText.toLowerCase();
+
+    // If there's an API match, use it
+    if (matchedImageMap[lowerText]) {
+      const apiMatch = matchedImageMap[lowerText];
+      console.log("Found API match for node text:", nodeText, apiMatch);
+      // If the API match is an external URL, try to find a corresponding local preloaded image
+      if (apiMatch.startsWith("http")) {
+        const localMatch = imageList.find(
+          (item) => item.url === apiMatch && item.dataUrl
+        );
+        if (localMatch) {
+          console.log("Using local preloaded dataUrl for:", nodeText);
+          return localMatch.dataUrl;
+        }
+      }
+      // Otherwise, if it's already a data URL, return it directly
+      return apiMatch;
+    }
+
+    // Fallback: Look for an exact match in the local image list by description
+    const exactMatch = imageList.find(
+      (item) => item.description.toLowerCase() === lowerText && item.dataUrl
+    );
+    if (exactMatch) {
+      console.log("Found local exact match for node text:", nodeText);
+      return exactMatch.dataUrl;
+    }
+
     return null;
   }
 
   useEffect(() => {
     if (!show) return;
+
+    setLoading(true);
+    hasFetchedDatabaseRef.current = false;
 
     // Get elements via refs
     const modal = modalRef.current;
@@ -163,28 +268,41 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
       const url = URL.createObjectURL(svgBlob);
       const image = new Image();
       image.onload = () => {
-        const scale = 3;
+        const scale = 20;
         const canvas = document.createElement("canvas");
         canvas.width = bbox.width * scale;
         canvas.height = bbox.height * scale;
         const ctx = canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
         ctx.fillStyle = "white";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.scale(scale, scale);
         ctx.drawImage(image, 0, 0);
+        // Use toBlob and check for a valid blob; otherwise fallback to toDataURL.
         canvas.toBlob((blob) => {
-          const link = document.createElement("a");
-          link.href = URL.createObjectURL(blob);
-          link.download = "mindmap.png";
-          link.click();
-          URL.revokeObjectURL(link.href);
+          if (blob) {
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "mindmap.png";
+            link.click();
+            URL.revokeObjectURL(link.href);
+          } else {
+            console.warn("toBlob returned null, falling back to toDataURL");
+            const dataUrl = canvas.toDataURL("image/png");
+            const link = document.createElement("a");
+            link.href = dataUrl;
+            link.download = "mindmap.png";
+            link.click();
+          }
+          // Restore original SVG attributes
+          svgElement.setAttribute("width", originalWidth);
+          svgElement.setAttribute("height", originalHeight);
+          svgElement.setAttribute(
+            "viewBox",
+            `0 0 ${originalWidth} ${originalHeight}`
+          );
         }, "image/png");
-        svgElement.setAttribute("width", originalWidth);
-        svgElement.setAttribute("height", originalHeight);
-        svgElement.setAttribute(
-          "viewBox",
-          `0 0 ${originalWidth} ${originalHeight}`
-        );
       };
       image.src = url;
     };
@@ -196,65 +314,75 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
         return;
       }
       addNodeBtn.disabled = true;
-      if (nodes.some((node) => node.id === newNodeName)) {
-        alert(
-          "A node with this name already exists. Please use a different name."
-        );
-        addNodeBtn.disabled = false;
-        return;
+
+      // Find the root node – either by checking depth 0 or fallback to the first node
+      const rootNode = nodes.find((node) => node.depth === 0) || nodes[0];
+
+      let x, y;
+      if (rootNode) {
+        // Generate a random distance between min and max (in pixels)
+        const minDistance = 100;
+        const maxDistance = 400;
+        const distance =
+          minDistance + Math.random() * (maxDistance - minDistance);
+        // Generate a random angle (in radians)
+        const angle = Math.random() * 2 * Math.PI;
+        x = rootNode.x + distance * Math.cos(angle);
+        y = rootNode.y + distance * Math.sin(angle);
+      } else {
+        // Fallback: center of the container if no node exists yet
+        const container = graphRef.current;
+        x = container.clientWidth / 2;
+        y = container.clientHeight / 2;
       }
+
+      // Create a new node with a unique id and pin it at the calculated position.
       const newNode = {
-        id: newNodeName,
+        id: `node-${uniqueNodeCounter++}`,
         text: newNodeName,
-        x: nodes.length > 0 ? d3.mean(nodes, (node) => node.x) || 400 : 400,
-        y: nodes.length > 0 ? d3.mean(nodes, (node) => node.y) || 300 : 400,
-        depth: null,
+        x: x,
+        y: y,
+        depth: 0,
+        fx: x,
+        fy: y,
       };
+
       nodes.push(newNode);
-      update();
+
+      // Call API to refresh matched images and then update visualization again
+      fetchMatchedImages(nodes, imageCatalog)
+        .then(() => {
+          update();
+        })
+        .catch((err) =>
+          console.error("Error fetching matched images after adding node:", err)
+        );
+
       addNodeBtn.disabled = false;
       newNodeNameRef.current.value = "";
     };
 
-    const handleAddRelation = () => {
-      const sourceName = document
-        .getElementById("add-relation-source")
-        .value.trim();
-      const targetName = document
-        .getElementById("add-relation-target")
-        .value.trim();
-      if (!sourceName || !targetName) {
-        alert("Please enter both source and target node names.");
-        return;
-      }
-      if (sourceName === targetName) {
-        alert("Source and target nodes cannot be the same.");
-        return;
-      }
-      const sourceNode = nodes.find((node) => node.id === sourceName);
-      const targetNode = nodes.find((node) => node.id === targetName);
-      if (!sourceNode || !targetNode) {
-        alert("One or both nodes do not exist. Please enter valid node names.");
-        return;
-      }
-      links.push({
-        source: sourceName,
-        target: targetName,
-        type: "HAS_SUBNODE",
-      });
-      const nodeMap = new Map(nodes.map((node) => [node.id, node]));
-      targetNode.depth = sourceNode.depth + 1;
-      updateDepthsRecursively(targetNode, nodeMap, links);
-      nodes.forEach((node) => {
-        if (!colorMap[node.depth]) {
-          colorMap[node.depth] = defaultColorScale(node.depth);
+    const addRelationInteractiveSpan =
+      document.querySelector(".add-relation-text");
+    if (addRelationInteractiveSpan) {
+      addRelationInteractiveSpan.addEventListener("click", (event) => {
+        // Prevent duplicate activation
+        if (!interactiveRelationMode) {
+          if (selectedNode) {
+            interactiveRelationMode = true;
+            selectedSourceForRelation = selectedNode;
+            // Instead of an alert, update visual feedback:
+            addRelationInteractiveSpan.style.display = "none";
+            if (selectRelationFeedbackRef.current) {
+              selectRelationFeedbackRef.current.style.display = "inline-block";
+            }
+          } else {
+            alert("Please click on a node first to set it as the source.");
+          }
         }
-        window.nodeColorMap.set(node.id, colorMap[node.depth]);
+        event.stopPropagation();
       });
-      update();
-      document.getElementById("add-relation-source").value = "";
-      document.getElementById("add-relation-target").value = "";
-    };
+    }
 
     const handleCloseModal = () => {
       modal.style.display = "none";
@@ -264,6 +392,17 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
     };
 
     const handleDocumentClick = () => {
+      if (interactiveRelationMode) {
+        interactiveRelationMode = false;
+        selectedSourceForRelation = null;
+        if (addRelationInteractiveSpan) {
+          addRelationInteractiveSpan.style.display = "inline-block";
+        }
+        if (selectRelationFeedbackRef.current) {
+          selectRelationFeedbackRef.current.style.display = "none";
+        }
+      }
+
       if (colorPickerContainer) {
         colorPickerContainer.style.display = "none";
       }
@@ -400,7 +539,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
     downloadButton.addEventListener("click", handleDownload);
     document.addEventListener("click", handleDocumentClick);
     addNodeBtn.addEventListener("click", handleAddNode);
-    addRelationBtn.addEventListener("click", handleAddRelation);
+    // addRelationBtn.addEventListener("click", handleAddRelation);
     document.addEventListener("keydown", handleKeyDown);
     isAddNodeListenerAttached = true;
     isAddRelationListenerAttached = true;
@@ -424,9 +563,9 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
       linkGroup = zoomGroup.append("g").attr("class", "links");
       nodeGroup = zoomGroup.append("g").attr("class", "nodes");
 
-      const zoomBehavior = d3
+      zoomBehavior = d3
         .zoom()
-        .scaleExtent([0.5, 5])
+        .scaleExtent([0.05, 5])
         .on("zoom", (event) => {
           zoomGroup.attr("transform", event.transform);
         });
@@ -450,16 +589,57 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
         .on("tick", ticked);
 
       console.log("Selected Text:", selectedText);
-      fetchFromDatabase()
-        .then(() => console.log("Mind map data loaded."))
-        .catch((err) => console.error("Error fetching mind map data:", err));
+
+      if (!hasFetchedDatabaseRef.current) {
+        fetchFromDatabase()
+          .then(() => {
+            console.log("Mind map data loaded.");
+          })
+          .catch((err) => {
+            console.error("Error fetching mind map data:", err);
+          });
+      }
     };
 
     // ---------- Download Mindmap Handler is defined above as handleDownload ----------
 
+    // Zoom beaviour function
+    function fitToScreen() {
+      // 1) Get container size
+      const container = document.getElementById("mindmapContainer");
+      if (!container) return;
+      const containerWidth = container.clientWidth;
+      const containerHeight = container.clientHeight;
+
+      // 2) Measure bounding box of zoomGroup
+      const bbox = zoomGroup.node().getBBox();
+      if (!bbox.width || !bbox.height) return; // No content or not rendered yet?
+
+      // 3) Compute scale so the content fits
+      const scale = Math.min(
+        containerWidth / bbox.width,
+        containerHeight / bbox.height
+      );
+
+      // 4) Compute translation to center
+      const tx = (containerWidth - bbox.width * scale) / 2 - bbox.x * scale;
+      const ty = (containerHeight - bbox.height * scale) / 2 - bbox.y * scale;
+
+      // 5) Apply transform with a transition
+      svg
+        .transition()
+        .duration(750)
+        .call(
+          zoomBehavior.transform,
+          d3.zoomIdentity.translate(tx, ty).scale(scale)
+        );
+    }
+
     // ---------- Fetch Mock Data Function ----------
     async function fetchFromDatabase() {
       try {
+        hasFetchedDatabaseRef.current = true;
+
         let data;
         const chosen = selectedText.trim();
         if (chosen === "1") {
@@ -492,6 +672,10 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
                     subnodes: [
                       {
                         name: "IOT Information Collection and Storage",
+                        subnodes: [],
+                      },
+                      {
+                        name: "Deep Learning Disadvantages",
                         subnodes: [],
                       },
                     ],
@@ -536,7 +720,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
               },
             ],
           };
-        } else {
+        } else if (chosen === "3") {
           data = {
             mindmap: [
               {
@@ -598,7 +782,149 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
               },
             ],
           };
+        } else {
+          data = {
+            mindmap: [
+              {
+                name: "Rainfall Prediction and Suicide Analysis",
+                subnodes: [
+                  {
+                    name: "Objective",
+                    subnodes: [
+                      {
+                        name: "Reduce the Suicides due to Rainfall",
+                        subnodes: [],
+                      },
+                    ],
+                  },
+                  {
+                    name: "Data Types",
+                    subnodes: [
+                      {
+                        name: "Categorical Data",
+                        subnodes: [
+                          {
+                            name: "Converted for Machine Learning",
+                            subnodes: [],
+                          },
+                        ],
+                      },
+                      {
+                        name: "Continuous Data",
+                        subnodes: [
+                          {
+                            name: "Converted for Machine Learning",
+                            subnodes: [],
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                  {
+                    name: "Experimental Analysis",
+                    subnodes: [
+                      {
+                        name: "Categorical Data",
+                        subnodes: [
+                          {
+                            name: "Random Forest: Highest Accuracy",
+                            subnodes: [
+                              {
+                                name: "Compared to",
+                                subnodes: [
+                                  { name: "SVM", subnodes: [] },
+                                  { name: "Logistic Regression", subnodes: [] },
+                                  { name: "Linear Regression", subnodes: [] },
+                                ],
+                              },
+                            ],
+                          },
+                          {
+                            name: "Logistic Regression",
+                            subnodes: [
+                              {
+                                name: "Highest Accuracy",
+                                subnodes: [
+                                  {
+                                    name: "Compared to",
+                                    subnodes: [
+                                      { name: "SVM", subnodes: [] },
+                                      { name: "Random Forest", subnodes: [] },
+                                      {
+                                        name: "Linear Regression",
+                                        subnodes: [],
+                                      },
+                                    ],
+                                  },
+                                ],
+                              },
+                            ],
+                          },
+                          {
+                            name: "SVM",
+                            subnodes: [
+                              {
+                                name: "Highest Accuracy",
+                                subnodes: [
+                                  {
+                                    name: "Compared to",
+                                    subnodes: [
+                                      {
+                                        name: "Logistic Regression",
+                                        subnodes: [],
+                                      },
+                                      { name: "Random Forest", subnodes: [] },
+                                      {
+                                        name: "Linear Regression",
+                                        subnodes: [],
+                                      },
+                                    ],
+                                  },
+                                ],
+                              },
+                            ],
+                          },
+                          {
+                            name: "Linear Regression",
+                            subnodes: [
+                              {
+                                name: "Highest Accuracy",
+                                subnodes: [
+                                  {
+                                    name: "Compared to",
+                                    subnodes: [
+                                      {
+                                        name: "Logistic Regression",
+                                        subnodes: [],
+                                      },
+                                      { name: "SVM", subnodes: [] },
+                                      { name: "Random Forest", subnodes: [] },
+                                    ],
+                                  },
+                                ],
+                              },
+                            ],
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                  {
+                    name: "Future Scope",
+                    subnodes: [
+                      { name: "Combine Different Datasets", subnodes: [] },
+                      {
+                        name: "Analysis using Different Algorithms",
+                        subnodes: [],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          };
         }
+
         console.log("Mock Data Chosen:", data);
         nodes = [];
         links = [];
@@ -609,13 +935,13 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
         }
 
         // Adjust URL/endpoint as needed:
-        // const baseApiUrl = "https://edf5-34-143-234-222.ngrok-free.app";
+        // const baseApiUrl = "https://90a6-34-125-226-210.ngrok-free.app";
         // const endpoint = "generate";
 
         // const response = await fetch(`${baseApiUrl}/${endpoint}`, {
         //   method: "POST",
         //   headers: { "Content-Type": "application/json" },
-        //   body: JSON.stringify({ input_text: selectedText }),
+        //   body: JSON.stringify({ content: selectedText }),
         // });
 
         // if (!response.ok) {
@@ -623,44 +949,304 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
         // }
 
         // const data = await response.json();
-        // console.log("Parsed JSON Data:", data);
-        // const mindmapRoot = data.response;
+
+        // // Check if the API returned an error
+        // if (data.error) {
+        //   console.error("API returned error: " + data.error);
+        //   return;
+        // }
+
+        // // Instead of checking data.response, check the data.mindmap4 structure
+        // if (!data || !Array.isArray(data.mindmap)) {
+        //   throw new Error("Invalid data structure: " + JSON.stringify(data));
+        // }
+        // const mindmapRoot = data;
 
         // // Clear previous data
         // nodes = [];
         // links = [];
-
-        // // Recursively traverse the returned structure
-        // if (mindmapRoot && mindmapRoot.mindmap && Array.isArray(mindmapRoot.mindmap)) {
-        //   mindmapRoot.mindmap.forEach((mindmapNode) => {
-        //     traverseMindmap(mindmapNode, null);
-        //   });
-        // }
+        // // Traverse the response structure
+        // mindmapRoot.mindmap.forEach((mindmapNode) => {
+        //   traverseMindmap(mindmapNode, null);
+        // });
 
         const hierarchyData = buildHierarchy(nodes, links);
         applyTreeLayout(hierarchyData);
-        update();
+        await fetchMatchedImages(nodes, imageCatalog)
+          .then(() => {
+            update();
+          })
+          .then(() => {
+            setLoading(false);
+          })
+          .catch((err) =>
+            console.error(
+              "Error fetching matched images after adding node:",
+              err
+            )
+          );
       } catch (error) {
         console.error("Error fetching data from mock data:", error);
+        setLoading(false);
       }
     }
 
+    async function fetchFromExtendDatabase() {
+      try {
+        hasFetchedDatabaseRef.current = true;
+
+        // const baseApiUrl = "https://90a6-34-125-226-210.ngrok-free.app";
+        // const endpoint = "extend"; // Use the 'extend' endpoint
+        // const response = await fetch(`${baseApiUrl}/${endpoint}`, {
+        //   method: "POST",
+        //   headers: { "Content-Type": "application/json" },
+        //   body: JSON.stringify({ content: selectedText }),
+        // });
+        // if (!response.ok) {
+        //   throw new Error(`Server error: ${response.status}`);
+        // }
+        // const data = await response.json();
+        // if (data.error) {
+        //   console.error("API returned error: " + data.error);
+        //   return;
+        // }
+        // if (!data || !Array.isArray(data.mindmap)) {
+        //   throw new Error("Invalid data structure: " + JSON.stringify(data));
+        // }
+        // const mindmapRoot = data;
+        // // Clear previous data
+        // nodes = [];
+        // links = [];
+        // mindmapRoot.mindmap.forEach((mindmapNode) => {
+        //   traverseMindmap(mindmapNode, null);
+        // });
+
+        let data;
+        const chosen = selectedText.trim();
+        data = {
+          mindmap: [
+            {
+              name: "Artificial Neural Networks (ANN)",
+              subnodes: [
+                {
+                  name: "Developed based on Biological Neurons",
+                  subnodes: [],
+                },
+                {
+                  name: "Perceptron",
+                  subnodes: [
+                    { name: "Trained to Predict", subnodes: [] },
+                    { name: "Fixed Threshold", subnodes: [] },
+                  ],
+                },
+                {
+                  name: "Architecture",
+                  subnodes: [
+                    { name: "Many Inputs", subnodes: [] },
+                    { name: "Multiple Processing Layers", subnodes: [] },
+                    { name: "Many Outputs", subnodes: [] },
+                  ],
+                },
+                {
+                  name: "Complex Data",
+                  subnodes: [
+                    { name: "Classification Tasks", subnodes: [] },
+                    { name: "Regression Tasks", subnodes: [] },
+                  ],
+                },
+              ],
+            },
+          ],
+        };
+
+        console.log("Mock Data Chosen:", data);
+        nodes = [];
+        links = [];
+        if (data && data.mindmap && Array.isArray(data.mindmap)) {
+          data.mindmap.forEach((mindmapNode) => {
+            traverseMindmap(mindmapNode, null);
+          });
+        }
+
+        const hierarchyData = buildHierarchy(nodes, links);
+        applyTreeLayout(hierarchyData);
+        await fetchMatchedImages(nodes, imageCatalog)
+          .then(() => update())
+          .then(() => setLoading(false))
+          .catch((err) =>
+            console.error("Error fetching matched images after extend:", err)
+          );
+      } catch (error) {
+        console.error("Error fetching data from extend endpoint:", error);
+        setLoading(false);
+      }
+    }
+
+    async function fetchFromSimplifyDatabase() {
+      try {
+        hasFetchedDatabaseRef.current = true;
+
+        // const baseApiUrl = "https://90a6-34-125-226-210.ngrok-free.app";
+        // const endpoint = "simplify"; // Use the 'simplify' endpoint
+        // const response = await fetch(`${baseApiUrl}/${endpoint}`, {
+        //   method: "POST",
+        //   headers: { "Content-Type": "application/json" },
+        //   body: JSON.stringify({ content: selectedText }),
+        // });
+        // if (!response.ok) {
+        //   throw new Error(`Server error: ${response.status}`);
+        // }
+        // const data = await response.json();
+        // if (data.error) {
+        //   console.error("API returned error: " + data.error);
+        //   return;
+        // }
+        // if (!data || !Array.isArray(data.mindmap)) {
+        //   throw new Error("Invalid data structure: " + JSON.stringify(data));
+        // }
+        // const mindmapRoot = data;
+        // // Clear previous data
+        // nodes = [];
+        // links = [];
+        // mindmapRoot.mindmap.forEach((mindmapNode) => {
+        //   traverseMindmap(mindmapNode, null);
+        // });
+
+        let data;
+        const chosen = selectedText.trim();
+        data = {
+          mindmap: [
+            {
+              name: "Machine Learning in Healthcare",
+              subnodes: [
+                {
+                  name: "Overview",
+                  subnodes: [
+                    {
+                      name: "Widely used in applications and research",
+                      subnodes: [],
+                    },
+                    { name: "Crucial role in numerous fields", subnodes: [] },
+                    {
+                      name: "Applications",
+                      subnodes: [
+                        {
+                          name: "Diagnose sizeable medical data patterns",
+                          subnodes: [],
+                        },
+                        { name: "Predict diseases", subnodes: [] },
+                      ],
+                    },
+                  ],
+                },
+                {
+                  name: "Survey",
+                  subnodes: [
+                    {
+                      name: "Purpose",
+                      subnodes: [
+                        { name: "Highlight previous work", subnodes: [] },
+                        {
+                          name: "Provide information to researchers",
+                          subnodes: [],
+                        },
+                      ],
+                    },
+                    {
+                      name: "Machine Learning Algorithms",
+                      subnodes: [
+                        { name: "Overview", subnodes: [] },
+                        { name: "Applications in healthcare", subnodes: [] },
+                      ],
+                    },
+                  ],
+                },
+                {
+                  name: "Advantages",
+                  subnodes: [
+                    {
+                      name: "Efficient support infrastructure for medical fields",
+                      subnodes: [],
+                    },
+                    { name: "Improve healthcare services", subnodes: [] },
+                  ],
+                },
+              ],
+            },
+          ],
+        };
+
+        console.log("Mock Data Chosen:", data);
+        nodes = [];
+        links = [];
+        if (data && data.mindmap && Array.isArray(data.mindmap)) {
+          data.mindmap.forEach((mindmapNode) => {
+            traverseMindmap(mindmapNode, null);
+          });
+        }
+
+        const hierarchyData = buildHierarchy(nodes, links);
+        applyTreeLayout(hierarchyData);
+        await fetchMatchedImages(nodes, imageCatalog)
+          .then(() => update())
+          .then(() => setLoading(false))
+          .catch((err) =>
+            console.error("Error fetching matched images after simplify:", err)
+          );
+      } catch (error) {
+        console.error("Error fetching data from simplify endpoint:", error);
+        setLoading(false);
+      }
+    }
+
+    // 1) Maintain a global map from "rawName" => count
+    //    so we can produce unique IDs.
+    const uniqueNameCount = new Map();
+
+    function createUniqueId(rawName) {
+      // If we haven't seen this name, start at 1.
+      if (!uniqueNameCount.has(rawName)) {
+        uniqueNameCount.set(rawName, 1);
+        return rawName; // first time => ID is just the rawName
+      } else {
+        // If we have seen it, increment and append a suffix
+        const currentCount = uniqueNameCount.get(rawName) + 1;
+        uniqueNameCount.set(rawName, currentCount);
+        // Example suffix: "GPS (2)", "GPS (3)", etc.
+        return `${rawName} (${currentCount})`;
+      }
+    }
+
+    // 2) Modify your traverseMindmap to always create a new node
+    //    with a unique ID. Also remove the old "if (!nodes.some())" check
+    let uniqueNodeCounter = 1;
+
     function traverseMindmap(nodeData, parentData) {
       if (!nodeData || !nodeData.name) return;
-      if (!nodes.some((existingNode) => existingNode.id === nodeData.name)) {
-        nodes.push({ id: nodeData.name, text: nodeData.name });
-      }
-      if (parentData && parentData.name) {
+
+      // Generate a unique ID by appending a counter
+      const uniqueId = `${nodeData.name}-${uniqueNodeCounter++}`;
+
+      // Create the node with a unique id and separate text
+      nodes.push({
+        id: uniqueId, // unique identifier that never changes
+        text: nodeData.name, // display text which may be changed later
+      });
+
+      // If there's a parent, create a link using parent's unique id
+      if (parentData && parentData.id) {
         links.push({
-          source: parentData.name,
-          target: nodeData.name,
+          source: parentData.id,
+          target: uniqueId,
           type: "HAS_SUBNODE",
         });
       }
+
+      // Recurse on subnodes
       if (Array.isArray(nodeData.subnodes)) {
-        nodeData.subnodes.forEach((subnode) =>
-          traverseMindmap(subnode, nodeData)
-        );
+        nodeData.subnodes.forEach((subnode) => {
+          traverseMindmap(subnode, { id: uniqueId });
+        });
       }
     }
 
@@ -715,13 +1301,19 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
     }
 
     function applyTreeLayout(hierarchyData) {
-      const treeLayout = d3.tree().size([width, height - 100]);
+      const treeLayout = d3
+        .tree()
+        .nodeSize([200, 200])
+        .separation((a, b) => (a.parent === b.parent ? 2 : 2));
       const treeData = treeLayout(hierarchyData);
       treeData.descendants().forEach((d) => {
         const node = nodes.find((n) => n.id === d.data.id);
         if (node) {
           node.x = d.x;
           node.y = d.y;
+          // Freeze the position so the simulation doesn't move the nodes
+          node.fx = d.x;
+          node.fy = d.y;
         }
       });
     }
@@ -731,7 +1323,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
       group.selectAll("*").remove();
       const matchedUrl = d.imageDeleted
         ? null
-        : getMatchingImage(d.text, imageCatalog);
+        : getMatchingImage(d.text, imageCatalogRef.current);
 
       if (matchedUrl) {
         // Set image dimensions and spacing.
@@ -796,20 +1388,26 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
             input.addEventListener("blur", () => {
               const updatedText = input.value.trim();
               if (updatedText && updatedText !== d.text) {
+                // Only update the text, not the id
                 d.text = updatedText;
-                const oldID = d.id;
-                d.id = updatedText;
-                const nodeObj = nodes.find((n) => n.id === oldID);
+                // Also update the corresponding node in the nodes array
+                const nodeObj = nodes.find((n) => n.id === d.id);
                 if (nodeObj) {
-                  nodeObj.id = updatedText;
                   nodeObj.text = updatedText;
                 }
-                links.forEach((link) => {
-                  if (link.source === oldID) link.source = updatedText;
-                  if (link.target === oldID) link.target = updatedText;
-                });
-                update();
-                console.log("Node updated successfully:", updatedText);
+
+                // Call API to refresh matched images and then update visualization again
+                fetchMatchedImages(nodes, imageCatalog)
+                  .then(() => {
+                    update();
+                    console.log("Node updated successfully:", updatedText);
+                  })
+                  .catch((err) =>
+                    console.error(
+                      "Error fetching matched images after adding node:",
+                      err
+                    )
+                  );
               }
               document.body.removeChild(input);
             });
@@ -846,20 +1444,26 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
             input.addEventListener("blur", () => {
               const updatedText = input.value.trim();
               if (updatedText && updatedText !== d.text) {
+                // Only update the text, not the id
                 d.text = updatedText;
-                const oldID = d.id;
-                d.id = updatedText;
-                const nodeObj = nodes.find((n) => n.id === oldID);
+                // Also update the corresponding node in the nodes array
+                const nodeObj = nodes.find((n) => n.id === d.id);
                 if (nodeObj) {
-                  nodeObj.id = updatedText;
                   nodeObj.text = updatedText;
                 }
-                links.forEach((link) => {
-                  if (link.source === oldID) link.source = updatedText;
-                  if (link.target === oldID) link.target = updatedText;
-                });
-                update();
-                console.log("Node updated successfully:", updatedText);
+
+                // Call API to refresh matched images and then update visualization again
+                fetchMatchedImages(nodes, imageCatalog)
+                  .then(() => {
+                    update();
+                    console.log("Node updated successfully:", updatedText);
+                  })
+                  .catch((err) =>
+                    console.error(
+                      "Error fetching matched images after adding node:",
+                      err
+                    )
+                  );
               }
               document.body.removeChild(input);
             });
@@ -958,6 +1562,46 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
                   .on("end", dragended)
               )
               .on("click", (event, d) => {
+                if (interactiveRelationMode) {
+                  if (
+                    selectedSourceForRelation &&
+                    selectedSourceForRelation.id === d.id
+                  ) {
+                    alert(
+                      "Source and target nodes cannot be the same. Please select a different target node."
+                    );
+                    event.stopPropagation();
+                    return;
+                  }
+                  // Create the relation (link) as before.
+                  links.push({
+                    source: selectedSourceForRelation.id,
+                    target: d.id,
+                    type: "HAS_SUBNODE",
+                  });
+                  const nodeMap = new Map(nodes.map((node) => [node.id, node]));
+                  d.depth = selectedSourceForRelation.depth + 1;
+                  updateDepthsRecursively(d, nodeMap, links);
+                  nodes.forEach((node) => {
+                    if (!colorMap[node.depth]) {
+                      colorMap[node.depth] = defaultColorScale(node.depth);
+                    }
+                    window.nodeColorMap.set(node.id, colorMap[node.depth]);
+                  });
+                  // Reset interactive mode and update visual feedback.
+                  interactiveRelationMode = false;
+                  selectedSourceForRelation = null;
+                  if (addRelationInteractiveSpan) {
+                    addRelationInteractiveSpan.style.display = "inline-block";
+                  }
+                  if (selectRelationFeedbackRef.current) {
+                    selectRelationFeedbackRef.current.style.display = "none";
+                  }
+                  update();
+                  event.stopPropagation();
+                  return;
+                }
+
                 selectedLevel = d.depth;
                 const colorPickerContainer = colorPickerContainerRef.current;
                 const colorPicker = colorPickerRef.current;
@@ -1008,6 +1652,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
       simulation.alpha(1).restart();
       console.log("Nodes:", nodes);
       console.log("Links:", links);
+      window.requestAnimationFrame(() => fitToScreen());
     }
 
     function ticked() {
@@ -1110,11 +1755,14 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
       }
     }
 
-    // Call the generate function when the modal mounts
-    // 1) Preload images as data URIs
-    preloadImages(imageCatalog)
+    // Instead of using the static imageCatalog, fetch it first,
+    // then preload images and finally generate the mind map.
+    fetchImageCatalog()
+      .then((fetchedCatalog) => {
+        setImageCatalog(fetchedCatalog);
+        return preloadImages(fetchedCatalog);
+      })
       .then(() => {
-        // 2) Once images are preloaded, do the rest of your setup
         generateMindmap();
       })
       .catch((err) => console.error("Error preloading images:", err));
@@ -1135,6 +1783,43 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
         }
       });
 
+    // Attach event listeners for extend and simplify buttons
+    const extendButton = document.getElementById("extend-button");
+    const simplifyButton = document.getElementById("simplify-button");
+
+    function handleExtend() {
+      // Clear the current mind map
+      d3.select(graphRef.current).select("svg").remove();
+      nodes = [];
+      links = [];
+      setLoading(true);
+      hasFetchedDatabaseRef.current = false;
+      // Re-create the SVG and simulation
+      generateMindmap();
+      // Call the extend endpoint
+      fetchFromExtendDatabase();
+    }
+
+    function handleSimplify() {
+      // Clear the current mind map
+      d3.select(graphRef.current).select("svg").remove();
+      nodes = [];
+      links = [];
+      setLoading(true);
+      hasFetchedDatabaseRef.current = false;
+      // Re-create the SVG and simulation
+      generateMindmap();
+      // Call the simplify endpoint
+      fetchFromSimplifyDatabase();
+    }
+
+    if (extendButton) {
+      extendButton.addEventListener("click", handleExtend);
+    }
+    if (simplifyButton) {
+      simplifyButton.addEventListener("click", handleSimplify);
+    }
+
     // Cleanup: Remove event listeners on unmount
     return () => {
       closeModalBtn.removeEventListener("click", handleCloseModal);
@@ -1147,11 +1832,17 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
       downloadBtnRef.current &&
         downloadBtnRef.current.removeEventListener("click", handleDownload);
       addNodeBtn.removeEventListener("click", handleAddNode);
-      addRelationBtn.removeEventListener("click", handleAddRelation);
+      // addRelationBtn.removeEventListener("click", handleAddRelation);
       document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("click", handleDocumentClick);
+      if (extendButton) {
+        extendButton.removeEventListener("click", handleExtend);
+      }
+      if (simplifyButton) {
+        simplifyButton.removeEventListener("click", handleSimplify);
+      }
     };
-  }, [show, onClose, selectedText]);
+  }, [show, onClose, selectedText, padId]);
 
   // The modal is now shown if the "show" prop is true.
   return (
@@ -1182,23 +1873,20 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
           gap: 10px;
           margin-bottom: 10px;
         }
-        /* Each row with inputs and buttons */
-        .input-group {
-          display: flex;
-          width: 100%;
-          gap: 10px;
-        }
-        /* Input fields only: keep existing padding and border radius */
-        .input-group input {
-          flex-grow: 1;
-          padding: 10px;
+        /* Input Group adjustments */
+        .input-group-custom .form-control {
+          border-radius: 5px 0 0 5px;
+          padding: 9px;
           border: 1px solid #ccc;
-          border-radius: 5px;
         }
-        /* Remove background or color from local .input-group button,
-           so your .primary-button global styles can shine through */
-        .input-group button {
-          flex-grow: 1;
+        .input-group-custom .btn {
+          border-radius: 0 5px 5px 0;
+          padding: 9px 10px;
+          border: none;
+          cursor: pointer;
+        }
+        /* Other button adjustments */
+        .btn-custom {
           padding: 10px;
           border-radius: 5px;
           border: none;
@@ -1224,22 +1912,8 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
         }
         /* Mobile-specific adjustments */
         @media (max-width: 768px) {
-          /* Force elements with these classes to share the same row side by side */
-          .mobile-move-next,
-          .mobile-move-bottom {
-            width: 48%;           /* Each takes ~half width */
-            max-width: none;      /* Remove the 300px cap */
-            margin-top: 10px;
-            align-self: center;
-          }
-          /* Keep .mobile-move-bottom items ordered after the others in the same .input-group */
-          .mobile-move-bottom {
-            order: 1;
-          }
-          .input-group {
-            flex-wrap: wrap;
-            justify-content: center;
-            margin-bottom: 10px;
+          #color-picker-container {
+            justify-content: space-between !important;
           }
         }
         /* Blinking animations for nodes and links */
@@ -1264,40 +1938,28 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
             opacity: 0;
           }
         }
-        .add-image-text {
+        @keyframes blinking {
+          0% { opacity: 1; }
+          50% { opacity: 0; }
+          100% { opacity: 1; }
+        }
+        .add-image-text,
+        .delete-image-text,
+        .add-relation-text {
           color: var(--primary-color);
           cursor: pointer;
           transition: color 0.3s ease;
           display: inline-block;
           margin-right: 20px;
         }
-        .add-image-text:hover {
-          color: var(--secondary-color);
-        }
-        .delete-image-text {
-          color: var(--primary-color);
-          cursor: pointer;
-          transition: color 0.3s ease;
-          display: inline-block;
-          margin-right: 20px;
-        }
-        .delete-image-text:hover {
+        .add-image-text:hover,
+        .delete-image-text:hover,
+        .add-relation-text:hover {
           color: var(--secondary-color);
         }
         .color-picker-group {
           display: inline-flex;
           align-items: center;
-        }
-        /* Mobile: push first child to left and second child to right */
-        @media (max-width: 768px) {
-          #color-picker-container {
-            justify-content: space-between !important;
-          }
-        }
-        @media (min-width: 768px) {
-          #color-picker-container {
-            text-align: end !important;
-          }
         }
       `}</style>
 
@@ -1342,68 +2004,83 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
             id="close-modal"
             ref={closeModalBtnRef}
             style={{
-              padding: "5px 10px",
-              backgroundColor: "#f44336",
-              color: "white",
+              backgroundColor: "transparent",
               border: "none",
-              borderRadius: "5px",
               cursor: "pointer",
             }}
           >
-            X
+            <i
+              className="bi bi-x-lg"
+              style={{
+                color: "var(--primary-color)",
+                fontSize: "1.5rem",
+                transform: "scale(20)",
+              }}
+            ></i>
           </button>
         </div>
 
-        {/* Customization Buttons & Inputs */}
+        {/* Customization Buttons & Inputs with Bootstrap Grid */}
         <div className="button-container">
-          <div className="input-group">
-            <input
-              type="text"
-              id="new-node-name"
-              ref={newNodeNameRef}
-              placeholder="Enter new node name"
-            />
-            <button
-              id="add-node"
-              className="primary-button"
-              ref={addNodeBtnRef}
-            >
-              Add Node
-            </button>
-            <button className="mobile-move-bottom primary-button">
-              Extend
-            </button>
-            <button className="mobile-move-bottom primary-button">
-              Simplify
-            </button>
-          </div>
-          <div className="input-group">
-            <input
-              type="text"
-              id="add-relation-source"
-              placeholder="Enter new relation source"
-            />
-            <input
-              type="text"
-              id="add-relation-target"
-              placeholder="Enter new relation target"
-            />
-            <button
-              id="add-relation"
-              ref={addRelationBtnRef}
-              className="mobile-move-next primary-button"
-            >
-              Add Relation
-            </button>
-            <button
-              id="download-map"
-              ref={downloadBtnRef}
-              className="mobile-move-bottom primary-button"
-            >
-              Download
-            </button>
+          <div className="row g-2 align-items-center">
+            {/* Add Node Input & Button in one column using Input Group */}
+            <div className="col-12 col-md-6 d-flex flex-wrap align-items-center">
+              <div className="p-1 input-group input-group-custom">
+                <input
+                  type="text"
+                  id="new-node-name"
+                  ref={newNodeNameRef}
+                  placeholder="Enter new node name"
+                  className="form-control add-node-input"
+                />
+                <button
+                  id="add-node"
+                  className="btn btn-primary primary-button add-node-button"
+                  ref={addNodeBtnRef}
+                >
+                  <i className="bi bi-plus-circle"></i>
+                </button>
+              </div>
+            </div>
+            {/* Other Buttons Column */}
+            <div className="col-12 col-md-6 d-flex flex-wrap align-items-center">
+              <div className="p-1 col-4">
+                <button
+                  id="extend-button"
+                  className="btn btn-primary primary-button extend-button btn-custom w-100"
+                >
+                  Extend
+                </button>
+              </div>
+              <div className="p-1 col-4">
+                <button
+                  id="simplify-button"
+                  className="btn btn-primary primary-button simplify-button btn-custom w-100"
+                >
+                  Simplify
+                </button>
+              </div>
+              <div className="p-1 col-2">
+                <button
+                  id="save-map"
+                  className="btn btn-primary primary-button save-button btn-custom w-100"
+                >
+                  <i className="bi bi-save"></i>
+                </button>
+              </div>
+              <div className="p-1 col-2">
+                <button
+                  id="download-map"
+                  ref={downloadBtnRef}
+                  className="btn btn-primary primary-button download-button btn-custom w-100"
+                >
+                  <i className="bi bi-download"></i>
+                </button>
+              </div>
+            </div>
           </div>
 
+          {/* Color Picker & Relation Controls */}
           <div
             id="color-picker-container"
             ref={colorPickerContainerRef}
@@ -1417,13 +2094,28 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* First child: "Add Image" text */}
-            {/* <span className="add-image-text">+ Add Image</span> */}
+            {/* The interactive relation trigger */}
+            <span className="add-relation-text" style={{ cursor: "pointer" }}>
+              + Add Relation
+            </span>
+            {/* The delete image control */}
             <span className="delete-image-text" ref={deleteImageBtnRef}>
               − Delete Image
             </span>
-
-            {/* Second child: Label and color picker grouped together */}
+            {/* Visual Feedback for Interactive Relation Mode */}
+            <span
+              className="select-relation-feedback"
+              ref={selectRelationFeedbackRef}
+              style={{
+                display: "none",
+                marginLeft: "10px",
+                animation: "blinking 1s infinite",
+                cursor: "pointer",
+              }}
+            >
+              Select relation
+            </span>
+            {/* Color Picker Group */}
             <div className="color-picker-group">
               <label
                 htmlFor="color-picker"
@@ -1466,6 +2158,26 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
             ref={graphRef}
             style={{ width: "100%", height: "100%" }}
           ></div>
+          {loading && (
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "rgba(255, 255, 255, 0.8)",
+                zIndex: 1000,
+                fontSize: "1.5rem",
+                color: "#555",
+              }}
+            >
+              Loading...
+            </div>
+          )}
         </div>
       </div>
 
@@ -1481,10 +2193,10 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
-            zIndex: 2000, // above the rest
+            zIndex: 2000,
             cursor: "pointer",
           }}
-          onClick={() => setFullScreenImageUrl(null)} // close on click
+          onClick={() => setFullScreenImageUrl(null)}
         >
           <img
             src={fullScreenImageUrl}
