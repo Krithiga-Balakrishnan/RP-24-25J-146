@@ -172,27 +172,61 @@ const PadPage = () => {
 
   // Fetch pad details from REST endpoint
   const FetchPadData = async () => {
+    // const token = localStorage.getItem("token");
+    // if (!token) return;
+
+    // try {
+    //   const res = await fetch(
+    //     `${process.env.REACT_APP_BACKEND_API_URL}/api/convert/${padId}`,
+    //     {
+    //       headers: { Authorization: token },
+    //     }
+    //   );
+
+    //   if (!res.ok) {
+    //     console.error("❌ Failed to fetch pad:", res.status);
+    //     return;
+    //   }
+
+    //   const data = await res.json();
+    //   console.log("📜 Pad Data for IEEE doc:", data);
+    // } catch (error) {
+    //   console.error("❌ Error fetching pad:", error);
+    // }
     const token = localStorage.getItem("token");
-    if (!token) return;
+  if (!token) {
+    console.error("No token found");
+    return;
+  }
 
-    try {
-      const res = await fetch(
-        `${process.env.REACT_APP_BACKEND_API_URL}/api/convert/${padId}`,
-        {
-          headers: { Authorization: token },
-        }
-      );
-
-      if (!res.ok) {
-        console.error("❌ Failed to fetch pad:", res.status);
-        return;
+  try {
+    const response = await fetch(
+      `${process.env.REACT_APP_BACKEND_API_URL}/api/convert/${padId}`,
+      {
+        headers: { Authorization: token },
       }
-
-      const data = await res.json();
-      console.log("📜 Pad Data for IEEE doc:", data);
-    } catch (error) {
-      console.error("❌ Error fetching pad:", error);
+    );
+    if (!response.ok) {
+      console.error("❌ Failed to fetch pad:", response.status);
+      return;
     }
+
+    // Get the file as a blob
+    const blob = await response.blob();
+    // Create a URL for the blob
+    const url = window.URL.createObjectURL(blob);
+    // Create a temporary anchor element
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "output_paper.pdf"; // Desired file name
+    document.body.appendChild(a);
+    a.click();
+    // Clean up: remove the anchor and revoke the URL object
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("❌ Error fetching pad:", error);
+  }
   };
 
   return (

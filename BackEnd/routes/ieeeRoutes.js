@@ -9,125 +9,31 @@ const axios = require("axios");
 const Pad = require("../models/Pad");
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 const he = require("he");
+const cheerio = require("cheerio");
 
 const outputDir = path.join(__dirname, "../output");
 if (!fs.existsSync(outputDir)) {
   fs.mkdirSync(outputDir, { recursive: true });
 }
 
+const abbreviationMap = {};
+
+function processAbbreviations(text) {
+  const regex = /\b([A-Za-z\s]+)\s\((\b[A-Z]{2,}\b)\)/g;
+  return text.replace(regex, (match, fullForm, abbr) => {
+    if (!abbreviationMap[abbr]) {
+      abbreviationMap[abbr] = fullForm;
+      return `${fullForm} (${abbr})`;  // ✅ Fixed: Added backticks
+    }
+    return abbr;
+  });
+}
+
 // Helper to chunk authors
 function chunkArray(array, size) {
-  const chunks = [];
-  for (let i = 0; i < array.length; i += size) {
-    chunks.push(array.slice(i, i + size));
-  }
-  return chunks;
-}
-
-/* ==================== convertDeltaToLatex =====================
-   This function processes the Delta in one pass so that every op 
-   (plain text or embed) is rendered in the original order.
-   Floats use the [H] specifier.
-*/
-function convertDeltaToLatex(delta) {
-  if (!delta || !delta.ops || !Array.isArray(delta.ops)) return "";
-  let result = "";
-
-  delta.ops.forEach((op) => {
-    if (typeof op.insert === "string") {
-      // Escape LaTeX special characters in plain text.
-      result += op.insert.replace(/([_%#&{}])/g, "\\$1");
-    }
-    // Image embed
-    else if (typeof op.insert === "object" && op.insert.imageWithCaption) {
-      const { src = "", caption = "Image" } = op.insert.imageWithCaption;
-      let imagePath = src;
-      const uploadsIndex = imagePath.indexOf("uploads");
-      if (uploadsIndex !== -1) {
-        imagePath = imagePath.substring(uploadsIndex);
-        if (imagePath[0] !== "/") {
-          imagePath = "/" + imagePath;
-        }
-        imagePath = "../" + imagePath;
-      }
-      result += `
-\\begin{figure}[H]
-\\centering
-\\includegraphics[width=0.5\\textwidth]{${imagePath}}
-\\caption{${caption}}
-\\end{figure}
-`;
-    }
-    // Formula embed
-    else if (typeof op.insert === "object" && op.insert.formulaWithCaption) {
-      const { formula = "", caption = "" } = op.insert.formulaWithCaption;
-      result += `
-\\begin{equation}
-${formula}
-\\end{equation}
-\\textit{${caption}}
-`;
-    }
-    // Table embed
-    else if (typeof op.insert === "object" && op.insert.tableWithCaption) {
-      const { tableHtml = "", caption = "Table" } = op.insert.tableWithCaption;
-      const tabularLatex = convertHtmlTableToLatex(tableHtml);
-      result += `
-\\begin{table}[H]
-\\centering
-\\caption{${caption}}
-${tabularLatex}
-\\end{table}
-`;
-    }
-  });
-
-  return result;
-}
-
-// Fully decode HTML entities using he
-function decodeFully(str) {
-  let prev;
-  let out = str;
-  do {
-    prev = out;
-    out = he.decode(out);
-  } while (out !== prev);
-  return out;
-}
-
-// Convert simple HTML table to LaTeX tabular
-function convertHtmlTableToLatex(tableHtml) {
-  const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
-  let rows = [];
-  let match;
-  while ((match = rowRegex.exec(tableHtml)) !== null) {
-    rows.push(match[1]);
-  }
-
-  const cellRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
-  const tableData = rows.map((rowHtml) => {
-    let cells = [];
-    let cellMatch;
-    while ((cellMatch = cellRegex.exec(rowHtml)) !== null) {
-      let cellText = cellMatch[1].replace(/<.*?>/g, "").trim();
-      cellText = decodeFully(cellText);
-      cellText = cellText.replace(/([_%#&{}])/g, "\\$1");
-      cells.push(cellText);
-    }
-    return cells;
-  });
-
-  const maxCols = Math.max(...tableData.map((r) => r.length), 0);
-  let latex = `\\begin{tabular}{|${"c|".repeat(maxCols)}}\n\\hline\n`;
-  tableData.forEach((cells) => {
-    while (cells.length < maxCols) {
-      cells.push("");
-    }
-    latex += cells.join(" & ") + " \\\\\n\\hline\n";
-  });
-  latex += "\\end{tabular}\n";
-  return latex;
+  return Array.from({ length: Math.ceil(array.length / size) }, (_, i) =>
+    array.slice(i * size, i * size + size)
+  );
 }
 
 // Naive plain text converter from Delta
@@ -142,90 +48,245 @@ function convertDeltaToPlainText(delta) {
   return result;
 }
 
-const abbreviationMap = {};
-function processAbbreviations(text) {
-  const regex = /\b([A-Za-z\s]+)\s\((\b[A-Z]{2,}\b)\)/g;
-  return text.replace(regex, (match, fullForm, abbr) => {
-    if (!abbreviationMap[abbr]) {
-      abbreviationMap[abbr] = fullForm;
-      return `${fullForm} (${abbr})`;
-    }
-    return abbr;
-  });
+// Fully decode HTML entities recursively until all are resolved
+function decodeFully(str) {
+  let prev;
+  let out = str;
+  do {
+    prev = out;
+    out = he.decode(out); // Decode HTML entities
+  } while (out !== prev); // Keep decoding until no more changes
+  return out;
 }
 
-/* ==================== Convert ONLY aiEnhancement Sections ===================== */
+
+
+/* ==================== Convert Delta to LaTeX ===================== */
+// function convertDeltaToLatex(delta) {
+//   if (!delta || !delta.ops || !Array.isArray(delta.ops)) return "";
+//   let result = "";
+
+//   delta.ops.forEach((op) => {
+//     if (typeof op.insert === "string") {
+//       result += op.insert.replace(/([_%#&{}])/g, "\\$1");
+//     }
+//     // Image embed
+//     else if (op.insert.imageWithCaption) {
+//       const { src = "", caption = "Image" } = op.insert.imageWithCaption;
+//       let imagePath = `../uploads/${src.split("uploads/").pop()}`;
+//       result += `
+// \\begin{figure}[H]
+// \\centering
+// \\includegraphics[width=0.5\\textwidth]{${imagePath}}
+// \\caption{${caption}}
+// \\end{figure}
+// `;
+//     }
+//     // Formula embed
+//     else if (op.insert.formulaWithCaption) {
+//       const { formula = "", caption = "" } = op.insert.formulaWithCaption;
+//       result += `
+// \\begin{equation}
+// ${formula}
+// \\end{equation}
+// \\textit{${caption}}
+// `;
+//     }
+//     // Table embed
+//     else if (op.insert.tableWithCaption) {
+//       const { tableHtml = "", caption = "Table" } = op.insert.tableWithCaption;
+//       const tabularLatex = convertHtmlTableToLatex(tableHtml);
+//       result += `
+// \\begin{table}[H]
+// \\centering
+// \\caption{${caption}}
+// ${tabularLatex}
+// \\end{table}
+// `;
+//     }
+//   });
+
+//   return result;
+// }
+
+// Convert HTML table to LaTeX tabular
+
+// Convert simple HTML table to LaTeX tabular format
+
+
+
+// Convert simple HTML table to LaTeX tabular format
+
+
+function convertHtmlTableToLatex(tableHtml) {
+  // Load the HTML into Cheerio
+  const $ = cheerio.load(tableHtml);
+
+  let rows = [];
+  // $(tr).find("td").each((j, td) => {
+  //   let cellText = $(td).text().trim();
+  //   // Optionally, escape LaTeX special characters
+  //   cellText = cellText.replace(/([_%#&{}])/g, "\\$1");
+  //   cells.push(cellText);
+  // });
+  
+  $("tr").each((i, tr) => {
+    let cells = [];
+    $(tr).find("td").each((j, td) => {
+      let cellHtml = $(td).html() || "";
+      // Fully decode HTML entities using he
+      let cellText = he.decode(cellHtml);
+      // Replace one or more occurrences of "&amp;" with a single "&"
+      cellText = cellText.replace(/(&amp;)+/g, "&");
+      // Also remove any stray "amp;" if still present
+      cellText = cellText.replace(/amp;/g, "");
+      // Escape LaTeX special characters
+      cellText = cellText.replace(/([_%#&{}])/g, "\\$1");
+      cells.push(cellText.trim());
+    });
+    if (cells.length > 0) {
+      rows.push(cells);
+    }
+  });
+
+  // Determine maximum columns
+  const maxCols = Math.max(...rows.map(r => r.length), 0);
+  let latex = `\\begin{tabular}{|${"c|".repeat(maxCols)}}\n\\hline\n`;
+  rows.forEach(cells => {
+    // Ensure each row has the same number of cells
+    while (cells.length < maxCols) {
+      cells.push("");
+    }
+    latex += cells.join(" & ") + " \\\\\n\\hline\n";
+  });
+  latex += "\\end{tabular}\n";
+  return latex;
+}
+
+
+
+
+// **Extract images, tables, and formulas before sending text to AI**
+function extractNonTextElements(delta) {
+  let elements = [];
+  let cleanOps = [];
+
+  if (!delta || !delta.ops || !Array.isArray(delta.ops)) return { cleanDelta: delta, elements };
+
+  delta.ops.forEach((op, index) => {
+    if (typeof op.insert === "string") {
+      cleanOps.push(op);
+    } 
+    // Image
+    else if (op.insert.imageWithCaption) {
+      elements.push({ index, type: "image", content: op.insert.imageWithCaption });
+    } 
+    // Formula
+    else if (op.insert.formulaWithCaption) {
+      elements.push({ index, type: "formula", content: op.insert.formulaWithCaption });
+    } 
+    // Table
+    else if (op.insert.tableWithCaption) {
+      elements.push({ index, type: "table", content: op.insert.tableWithCaption });
+    }
+  });
+
+  return { cleanDelta: { ops: cleanOps }, elements };
+}
+
+// **Reinsert images, tables, and formulas after AI enhancement**
+function reinsertNonTextElements(text, elements) {
+  elements.forEach((element) => {
+    if (element.type === "image") {
+      let { src = "", caption = "Image" } = element.content;
+      let imagePath = `../uploads/${src.split("uploads/").pop()}`;
+      text += `\n\\begin{figure}[H]\n\\centering\n\\includegraphics[width=0.5\\textwidth]{${imagePath}}\n\\caption{${caption}}\n\\end{figure}\n`;
+    }
+    else if (element.type === "formula") {
+      let { formula = "", caption = "" } = element.content;
+      text += `\n\\begin{equation}\n${formula}\n\\end{equation}\n\\textit{${caption}}\n`;
+    }
+    else if (element.type === "table") {
+      let { tableHtml = "", caption = "Table" } = element.content;
+      let tabularLatex = convertHtmlTableToLatex(tableHtml);
+      text += `\n\\begin{table}[H]\n\\centering\n\\caption{${caption}}\n${tabularLatex}\n\\end{table}\n`;
+    }
+  });
+  return text;
+}
+
+// Convert AI-enhanced sections properly
+// async function convertSectionsByFullText(sections) {
+//   for (let section of sections) {
+//     if (!section.aiEnhancement) {
+//       section.content = convertDeltaToLatex(section.originalDelta || {});
+//     } else {
+//       const plainText = convertDeltaToLatex(section.originalDelta || {});
+//       if (plainText.trim()) {
+//         try {
+//           const response = await axios.post("https://your-ai-api-url.com/convert", {
+//             section: section.title, content: plainText
+//           });
+//           section.content = response.data.converted_text || plainText;
+//         } catch (apiErr) {
+//           console.error("Conversion API error:", apiErr);
+//           section.content = plainText;
+//         }
+//       } else {
+//         section.content = "";
+//       }
+//     }
+//     if (section.subsections) await convertSectionsByFullText(section.subsections);
+//   }
+// }
+
+// **AI-enhanced text processing**
 async function convertSectionsByFullText(sections) {
   for (let section of sections) {
-    if (!section.aiEnhancement) {
-      section.content = convertDeltaToPlainText(section.originalDelta || {});
-    } else {
-      const plainText = convertDeltaToPlainText(section.originalDelta || {});
-      if (plainText.trim()) {
-        try {
-          const response = await axios.post(
-            "https://f068-34-16-191-207.ngrok-free.app/convert",
-            { section: section.title, content: plainText }
-          );
-          section.content = processAbbreviations(response.data.converted_text || plainText);
-        } catch (apiErr) {
-          console.error("Conversion API error:", apiErr);
-          section.content = processAbbreviations(plainText);
-        }
-      } else {
-        section.content = "";
+    let { cleanDelta, elements } = extractNonTextElements(section.originalDelta || {});
+    let cleanText = convertDeltaToPlainText(cleanDelta);
+
+    if (section.aiEnhancement && cleanText.trim()) {
+      try {
+        const response = await axios.post("https://6874-35-240-202-232.ngrok-free.app/convert", {
+          section: section.title, content: cleanText
+        });
+        section.content = processAbbreviations(response.data.converted_text || cleanText);
+      } catch (apiErr) {
+        console.error("Conversion API error:", apiErr);
+        section.content = processAbbreviations(cleanText);
       }
+    } else {
+      section.content = processAbbreviations(cleanText);
     }
-    if (section.subsections && section.subsections.length) {
-      await convertSectionsByFullText(section.subsections);
-    }
+
+    section.content = reinsertNonTextElements(section.content, elements);
+
+    if (section.subsections) await convertSectionsByFullText(section.subsections);
   }
 }
 
-// Prepare section LaTeX by converting the original Delta in one pass.
-function prepareSectionLatex(section) {
-  return convertDeltaToLatex(section.originalDelta || {});
-}
-
+// Render and Compile LaTeX
 router.get("/:padId", async (req, res) => {
   try {
     const pad = await Pad.findById(req.params.padId);
     if (!pad) return res.status(404).json({ msg: "Pad not found" });
 
-    const authors = Array.isArray(pad.authors) ? pad.authors : [];
-    const authorsRows = chunkArray(authors, 3);
+    const authorsRows = chunkArray(pad.authors || [], 3);
 
-    const processedSections = (Array.isArray(pad.sections) ? pad.sections : []).map((section) => ({
+    const processedSections = pad.sections.map((section) => ({
       title: section.title || "Untitled Section",
       originalDelta: section.content,
       aiEnhancement: section.aiEnhancement || false,
-      subsections: (section.subsections || []).map((sub) => ({
+      subsections: section.subsections?.map((sub) => ({
         title: sub.title || "Untitled Subsection",
         originalDelta: sub.content,
         aiEnhancement: sub.aiEnhancement || false,
         subsections: []
-      })),
+      })) || []
     }));
 
     await convertSectionsByFullText(processedSections);
-
-    processedSections.forEach((section) => {
-      section.content = prepareSectionLatex(section);
-      if (section.subsections && section.subsections.length) {
-        section.subsections.forEach((sub) => {
-          sub.content = prepareSectionLatex(sub);
-        });
-      }
-    });
-
-    let cleanedImagePath = pad.image_path || "default_image_path.jpg";
-    const uploadsIndex = cleanedImagePath.indexOf("uploads");
-    if (uploadsIndex !== -1) {
-      cleanedImagePath = cleanedImagePath.substring(uploadsIndex);
-      if (cleanedImagePath[0] !== "/") {
-        cleanedImagePath = "/" + cleanedImagePath;
-      }
-    }
 
     const content = {
       title: pad.title || "Untitled Document",
@@ -233,40 +294,72 @@ router.get("/:padId", async (req, res) => {
       abstract: pad.abstract || "",
       keyword: pad.keyword || "",
       sections: processedSections,
-      image_path: cleanedImagePath,
+      image_path: pad.image_path || "default_image_path.jpg",
       references: pad.references || []
     };
 
+    // const templatePath = path.join(__dirname, "../templates/ieee_template.tex.ejs");
+    // ejs.renderFile(templatePath, content, {}, (err, latexOutput) => {
+    //   if (err) {
+    //     console.error("Error rendering LaTeX template:", err);
+    //     return res.status(500).json({ msg: "Error rendering LaTeX template", error: err });
+    //   }
+
+    //   const outputTexPath = path.join(outputDir, "output_paper.tex").replace(/\\/g, "/");
+    //   fs.writeFileSync(outputTexPath, latexOutput, "utf8");
+
+    //   const command = `pdflatex -interaction=nonstopmode -output-directory "${outputDir}" "${outputTexPath}"`;
+    //   exec(command, (error, stdout, stderr) => {
+    //     if (error) {
+    //       console.error(`Error compiling LaTeX: ${error.message}`);
+    //       return res.status(500).json({ msg: "Error compiling LaTeX", error: error.message });
+          
+    //     }
+    //     const outputPdfPath = path.join(outputDir, "output_paper.pdf");
+    //     if (fs.existsSync(outputPdfPath)) {
+    //       return res.download(outputPdfPath, "output_paper.pdf");
+    //     }
+    //     res.download(outputPdfPath, "output_paper.pdf", (err) => {
+    //       if (err) {
+    //         console.error("Error sending PDF file:", err);
+    //         return res.status(500).json({ msg: "Error sending PDF file", error: err });
+    //       }
+    //     });
+    //   });
+    // });
     const templatePath = path.join(__dirname, "../templates/ieee_template.tex.ejs");
-    ejs.renderFile(templatePath, content, {}, (err, latexOutput) => {
-      if (err) {
-        console.error("Error rendering LaTeX template:", err);
-        return res.status(500).json({ msg: "Error rendering LaTeX template", error: err });
-      }
+ejs.renderFile(templatePath, content, {}, (err, latexOutput) => {
+  if (err) {
+    console.error("Error rendering LaTeX template:", err);
+    return res.status(500).json({ msg: "Error rendering LaTeX template", error: err });
+  }
 
-      const outputTexPath = path.join(outputDir, "output_paper.tex").replace(/\\/g, "/");
-      fs.writeFileSync(outputTexPath, latexOutput, "utf8");
+  const outputTexPath = path.join(outputDir, "output_paper.tex").replace(/\\/g, "/");
+  fs.writeFileSync(outputTexPath, latexOutput, "utf8");
 
-      const normalizedOutputDir = outputDir.replace(/\\/g, "/");
-      const command = `pdflatex -interaction=nonstopmode -output-directory "${normalizedOutputDir}" "${outputTexPath}"`;
-      console.log("LaTeX command:", command);
-
-      exec(command, { shell: true, env: process.env }, (error, stdout, stderr) => {
-        console.log("STDOUT:", stdout);
-        console.log("STDERR:", stderr);
-        if (error) {
-          console.error(`Error compiling LaTeX: ${error.message}`);
-          return res.status(500).json({ msg: "Error compiling LaTeX", error: error.message });
+  const command = `pdflatex -interaction=nonstopmode -output-directory "${outputDir}" "${outputTexPath}"`;
+  exec(command, (error, stdout, stderr) => {
+    // Log stdout/stderr for debugging purposes
+    console.log("STDOUT:", stdout);
+    console.log("STDERR:", stderr);
+    
+    const outputPdfPath = path.join(outputDir, "output_paper.pdf");
+    if (fs.existsSync(outputPdfPath)) {
+      // Even if error exists, if the PDF is there, send it.
+      return res.download(outputPdfPath, "output_paper.pdf", (err) => {
+        if (err) {
+          console.error("Error sending PDF file:", err);
+          return res.status(500).json({ msg: "Error sending PDF file", error: err });
         }
-        const outputPdfPath = path.join(outputDir, "output_paper.pdf");
-        res.download(outputPdfPath, "output_paper.pdf", (err) => {
-          if (err) {
-            console.error("Error sending PDF file:", err);
-            return res.status(500).json({ msg: "Error sending PDF file", error: err });
-          }
-        });
       });
-    });
+    } else {
+      // If the file does not exist, then return an error.
+      console.error(`Error compiling LaTeX: ${error.message}`);
+      return res.status(500).json({ msg: "Error compiling LaTeX", error: error.message });
+    }
+  });
+});
+
   } catch (err) {
     console.error("Server error:", err);
     res.status(500).json({ msg: "Server Error", error: err });
