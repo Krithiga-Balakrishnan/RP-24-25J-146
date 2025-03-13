@@ -1,0 +1,70 @@
+.auth-container {
+    display: flex;
+    min-height: 100vh;
+    align-items: center;
+    justify-content: center;
+    background-color: #fef7ff;
+    padding: 1rem;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 1000px;
+    background-color: #fef7ff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    margin: 0;
+}
+
+.form-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.auth-form {
+    width: 100%;
+    max-width: 400px;
+}
+
+.image-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background-color: white;
+}
+
+.auth-image {
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+}
+
+.social-login {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.social-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    border: none;
+}
+
+/* Make sure the form is responsive */
+@media (max-width: 768px) {
+    .auth-card {
+        box-shadow: none;
+    }
+
+    .form-container {
+        padding: 1.5rem;
+    }
+}
