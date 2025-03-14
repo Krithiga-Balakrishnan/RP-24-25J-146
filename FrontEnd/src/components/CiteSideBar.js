@@ -65,7 +65,7 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, onCitationData }) => {
       setError(null);
 
       try {
-        const response = await fetch("https://00b7-35-194-44-243.ngrok-free.app/search/", {
+        const response = await fetch("https://ecad-34-123-39-240.ngrok-free.app/search/", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -136,18 +136,29 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, onCitationData }) => {
         setLoadingCitation(false);
       });
   }
-  // function highlightMatch(abstract, matchedSection) {
-  //   if (!abstract || !matchedSection) return abstract;
 
-  //   // Escape special characters for regex (to prevent errors)
-  //   const escapedMatch = matchedSection.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  function highlightMatch(abstract, matchedSentences) {
+    if (!abstract || !matchedSentences || matchedSentences.length === 0) return abstract;
 
-  //   // Replace matched section with highlighted span
-  //   return abstract.replace(
-  //     new RegExp(escapedMatch, "gi"),
-  //     match => `<span style="background-color: violet; font-weight: bold;">${match}</span>`
-  //   );
-  // }
+    let highlightedAbstract = abstract;
+
+    matchedSentences.forEach(({ sentence }) => {
+      if (!sentence) return;
+
+      // Escape special characters for regex
+      const escapedMatch = sentence.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+      // Highlight matched sentence in the abstract
+      highlightedAbstract = highlightedAbstract.replace(
+        new RegExp(escapedMatch, "gi"),
+        match => `<span style="background-color: violet; font-weight: bold;">${match}</span>`
+      );
+    });
+
+    return highlightedAbstract;
+  }
+
+
   function handleInsertCitation() {
     // if (!selectedPaper) return;
     console.log("🚀 Insert Citation button clicked!");  // Add this
@@ -537,9 +548,9 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, onCitationData }) => {
               }}
             >
               {selectedPaper && selectedPaper.abstract ? selectedPaper.abstract : "No abstract available."}
-              {/* {selectedPaper && selectedPaper.abstract ? (
-                <p dangerouslySetInnerHTML={{ __html: highlightMatch(selectedPaper.abstract, selectedPaper.matched_section) }} />
-              ) : "No abstract available."} */}
+              {selectedPaper && selectedPaper.abstract ? (
+                <p dangerouslySetInnerHTML={{ __html: highlightMatch(selectedPaper.abstract, selectedPaper.matched_sentences) }} />
+              ) : "No abstract available."}
             </div>
           </div>
         </div>
