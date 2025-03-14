@@ -5,6 +5,7 @@ const menuData = [
   { label: "Home", icon: "🏠", route: "/" },
   { label: "Mind Map", icon: "✍️", route: "#" },
   { label: "IEEE", icon: "🔄", route: "#" },
+  { label: "Contributor", icon: "✏️", route: "#" },
   { label: "Write", icon: "📝", route: "#" },
   { label: "Cite", icon: "🔬", route: "#" },
   { label: "Translate", icon: "🌐", route: "#" },
