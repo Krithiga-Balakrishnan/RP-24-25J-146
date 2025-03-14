@@ -65,7 +65,7 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, onCitationData }) => {
       setError(null);
 
       try {
-        const response = await fetch("https://1c60-35-186-184-243.ngrok-free.app/search/", {
+        const response = await fetch("https://00b7-35-194-44-243.ngrok-free.app/search/", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -112,7 +112,7 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, onCitationData }) => {
       selected_paper_ids: [paper.paper_id],
     };
 
-    fetch("https://4af3-34-150-169-37.ngrok-free.app/generate_citations/", {
+    fetch("https://591f-34-106-47-17.ngrok-free.app/generate_citations/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestBody),
@@ -136,18 +136,18 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, onCitationData }) => {
         setLoadingCitation(false);
       });
   }
-  function highlightMatch(abstract, matchedSection) {
-    if (!abstract || !matchedSection) return abstract;
+  // function highlightMatch(abstract, matchedSection) {
+  //   if (!abstract || !matchedSection) return abstract;
 
-    // Escape special characters for regex (to prevent errors)
-    const escapedMatch = matchedSection.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  //   // Escape special characters for regex (to prevent errors)
+  //   const escapedMatch = matchedSection.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-    // Replace matched section with highlighted span
-    return abstract.replace(
-      new RegExp(escapedMatch, "gi"),
-      match => `<span style="background-color: violet; font-weight: bold;">${match}</span>`
-    );
-  }
+  //   // Replace matched section with highlighted span
+  //   return abstract.replace(
+  //     new RegExp(escapedMatch, "gi"),
+  //     match => `<span style="background-color: violet; font-weight: bold;">${match}</span>`
+  //   );
+  // }
   function handleInsertCitation() {
     // if (!selectedPaper) return;
     console.log("🚀 Insert Citation button clicked!");  // Add this
@@ -536,10 +536,10 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, onCitationData }) => {
                 wordBreak: "break-word",
               }}
             >
-              {/* {selectedPaper && selectedPaper.abstract ? selectedPaper.abstract : "No abstract available."} */}
-              {selectedPaper && selectedPaper.abstract ? (
+              {selectedPaper && selectedPaper.abstract ? selectedPaper.abstract : "No abstract available."}
+              {/* {selectedPaper && selectedPaper.abstract ? (
                 <p dangerouslySetInnerHTML={{ __html: highlightMatch(selectedPaper.abstract, selectedPaper.matched_section) }} />
-              ) : "No abstract available."}
+              ) : "No abstract available."} */}
             </div>
           </div>
         </div>
