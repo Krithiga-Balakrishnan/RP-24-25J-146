@@ -5,6 +5,7 @@
   "dependencies": {
     "bootstrap": "^5.3.3",
     "bootstrap-icons": "^1.11.3",
+    "canvg": "^4.0.3",
     "cra-template": "1.2.0",
     "d3": "^7.9.0",
     "framer-motion": "^12.5.0",
@@ -15,6 +16,7 @@
     "quill": "^2.0.3",
     "quill-cursors": "^4.0.4",
     "react": "^18.3.1",
+    "react-animated-text": "^0.1.4",
     "react-bootstrap": "^2.10.9",
     "react-dom": "^18.3.1",
     "react-fast-marquee": "^1.6.5",

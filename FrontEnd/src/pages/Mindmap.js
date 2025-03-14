@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
 import Lottie from "react-lottie-player";
 import Marquee from "react-fast-marquee";
-import { FloatingPaper } from "../animation/FloatingPaper";
+import FloatingShapes from "../animation/flying-shapes.json";
 import MindmapDocument from "../animation/mindmap-document.json";
 import { Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import MindmapModal from "../components/TextToMindmapModal";
 
 const Mindmap = () => {
   const [uploadDropdownOpen, setUploadDropdownOpen] = useState(false);
@@ -18,10 +19,56 @@ const Mindmap = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortOrder, setSortOrder] = useState("desc");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 6;
+
+  const [loopNum, setLoopNum] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [rotatingText, setRotatingText] = useState("");
+  const [delta, setDelta] = useState(300 - Math.random() * 100);
+  const [index, setIndex] = useState(1);
+  const toRotate = [
+    "Watch your ideas connect",
+    "See your thoughts take shape",
+    "Your ideas unfolding",
+    "Thoughts coming together",
+    "Your vision in motion",
+    "Moments of insight",
+  ];
+  const period = 1000;
+
+  const [showMindmap, setShowMindmap] = useState(false);
+  const [selectedText, setSelectedText] = useState("");
+  const [textValue, setTextValue] = useState("");
 
   const toggleDropdown = () => {
     setUploadDropdownOpen(!uploadDropdownOpen);
+  };
+
+  const tick = () => {
+    let i = loopNum % toRotate.length;
+    let fullText = toRotate[i];
+    let updatedText = isDeleting
+      ? fullText.substring(0, rotatingText.length - 1)
+      : fullText.substring(0, rotatingText.length + 1);
+
+    setRotatingText(updatedText);
+
+    if (isDeleting) {
+      setDelta((prevDelta) => prevDelta / 2);
+    }
+
+    if (!isDeleting && updatedText === fullText) {
+      setIsDeleting(true);
+      setIndex((prevIndex) => prevIndex - 1);
+      setDelta(period);
+    } else if (isDeleting && updatedText === "") {
+      setIsDeleting(false);
+      setLoopNum(loopNum + 1);
+      setIndex(1);
+      setDelta(500);
+    } else {
+      setIndex((prevIndex) => prevIndex + 1);
+    }
   };
 
   // 1) Fetch files for this user (similar to fetchPads in Home.js)
@@ -62,6 +109,16 @@ const Mindmap = () => {
     fetchFiles();
   }, [navigate]);
 
+  useEffect(() => {
+    let ticker = setInterval(() => {
+      tick();
+    }, delta);
+
+    return () => {
+      clearInterval(ticker);
+    };
+  }, [rotatingText]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -81,8 +138,7 @@ const Mindmap = () => {
       title: `Mind Map ${i + 1}`,
       // Create descending dates (one day apart)
       date: new Date(Date.now() - i * 86400000).toISOString(),
-      image:
-        "https://www.nykaa.com/beauty-blog/wp-content/uploads/images/issue320/deepika3.jpg", // Replace with your image URL if needed
+      image: "https://4kwallpapers.com/images/walls/thumbs_3t/7023.jpg", // Replace with your image URL if needed
     }));
     setMindmaps(data);
   }, []);
@@ -119,8 +175,15 @@ const Mindmap = () => {
 
   // When user clicks "Generate" on a file, navigate to page
   const handleFileSelect = (file) => {
-    navigate(`/mindmap/${file._id}`, { state: file });
-  };  
+    navigate(`/mindmap/pad/${file._id}`, { state: file });
+  };
+
+  // When "Generate Mind Map" is clicked, capture the textarea text and open the modal
+  const handleGenerateMindmap = () => {
+    console.log("Selected Text: ", textValue);
+    setSelectedText(textValue);
+    setShowMindmap(true);
+  };
 
   return (
     <div className="container py-3 mindmap-container">
@@ -143,7 +206,7 @@ const Mindmap = () => {
       {/* 2) "My documents" heading */}
       <div className="row mb-3">
         <div className="col">
-          <h2 className="mb-4">My documents</h2>
+          <h2 className="mb-4">Creative Canvas for Mind Map</h2>
         </div>
       </div>
 
@@ -170,17 +233,22 @@ const Mindmap = () => {
           <div className="mindmap-textarea-container position-relative">
             <textarea
               className="form-control mindmap-textarea mindmap-custom-focus"
-              placeholder="Enter your text..."
+              placeholder="Enter your text to convert into mindmap ......"
               rows={5}
+              value={textValue}
+              onChange={(e) => setTextValue(e.target.value)}
             />
-            <button className="btn primary-button mindmap-generate-button">
-              Generate
+            <button
+              className="btn primary-button mindmap-generate-button"
+              onClick={handleGenerateMindmap}
+            >
+              Generate Mind Map
             </button>
           </div>
         </div>
       </div>
 
-      {/* 5) Document-mindmap row with FloatingPaper background */}
+      {/* 5) Document-mindmap row with FloatingShapes background */}
       <div className="row mb-5">
         {/* A single column that centers and handles horizontal spacing responsibly */}
         <div className="col-12 px-2 px-md-3">
@@ -188,15 +256,22 @@ const Mindmap = () => {
             className="drag-drop-container document-mindmap position-relative d-flex flex-column flex-md-row align-items-center"
             style={{ minHeight: "200px" }}
           >
-            {/* Background animation: FloatingPaper */}
+            {/* Background animation: FloatingShapes */}
             <div
-              className="position-absolute top-0 bottom-0 start-0 end-0 overflow-hidden"
+              className="position-absolute top-0 bottom-0 start-0 end-0 d-flex justify-content-center align-items-center overflow-hidden"
               style={{ zIndex: 0 }}
             >
-              <FloatingPaper count={60} />
+              <div
+                className="lottie-container"
+                style={{ position: "relative" }}
+              >
+                <Lottie loop animationData={FloatingShapes} play />
+                {/* Fade overlay applied only to FloatingShapes */}
+                <div className="mindmap-fade-overlay" />
+              </div>
             </div>
 
-            {/* Left column (Lottie) - on mobile, this appears on top (order-1) */}
+            {/* Left column (Lottie) - on mobile, this appears on top */}
             <div
               className="col-12 col-md-6 d-flex justify-content-center order-1 order-md-1"
               style={{ zIndex: 1 }}
@@ -209,25 +284,31 @@ const Mindmap = () => {
               />
             </div>
 
-            {/* Right column (Text + button) - on mobile, below (order-2) */}
+            {/* Right column (Text + button) - on mobile, below */}
             <div
               ref={dropdownRef}
               className="
-          col-12 col-md-6
-          d-flex flex-column justify-content-center
-          align-items-center align-items-md-start
-          text-center text-md-start
-          position-relative
-          order-2 order-md-2
-        "
+        col-12 col-md-6
+        d-flex flex-column justify-content-center
+        align-items-center align-items-md-start
+        text-center text-md-start
+        position-relative
+        order-2 order-md-2
+      "
               style={{ zIndex: 1 }}
             >
-              <h3 className="mb-3">Drag & Drop your files here</h3>
+              <h3 className="mb-2 txt-rotate">
+                <span className="wrap">{rotatingText}</span>
+              </h3>
+              <h3 className="mb-3">
+                Visualize Your Document, Available Now !!!
+              </h3>
+
               <button
-                className="primary-button px-4 py-2"
+                className="btn primary-button px-4 py-2"
                 onClick={toggleDropdown}
               >
-                Upload a file
+                Pick a Pad
               </button>
               {uploadDropdownOpen && (
                 <div
@@ -238,14 +319,14 @@ const Mindmap = () => {
                     left: 0,
                     right: 0,
                     zIndex: 2,
-                    maxHeight: "10rem", // ~5 items high, adjust as needed
-                    overflowY: "auto", // enable scrolling
+                    maxHeight: "10rem",
+                    overflowY: "auto",
                   }}
                 >
                   <ul className="list-unstyled mb-0">
                     {files.map((file) => (
                       <li
-                        key={file._id} // or file.id
+                        key={file._id}
                         className="d-flex justify-content-between align-items-center py-1"
                       >
                         <span>{file.name}</span>
@@ -268,7 +349,7 @@ const Mindmap = () => {
       {/* 6) Mind Maps List Section */}
       <div className="row mb-4">
         <div className="col-12 col-md-6 mb-2 mb-md-0">
-          <h3>Your Mind Maps</h3>
+          <h4>Saved Mind Maps</h4>
         </div>
         <div className="col-12 col-md-6 d-flex justify-content-md-end align-items-center gap-2">
           {/* Dropdown for sorting */}
@@ -314,36 +395,61 @@ const Mindmap = () => {
       </div>
       <div className="row mb-5">
         <div className="col">
-          {/* Mind maps list as a 2-column grid on laptops */}
-          <div className="row">
+          {/* Mind maps list as a grid: 1 column on mobile, 2 columns on medium screens */}
+          <div className="row row-cols-1 row-cols-md-2 g-3">
             {paginatedMindmaps.map((item) => (
-              <div key={item.id} className="col-12 col-md-6 mb-3">
-                <div className="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between border p-3 rounded">
-                  <div className="d-flex align-items-center mb-2 mb-md-0">
+              <div
+                key={item.id}
+                className="col"
+                style={{ cursor: "pointer" }}
+                onMouseEnter={(e) => {
+                  // Apply a subtle shadow on hover
+                  e.currentTarget.querySelector(".card").style.boxShadow =
+                    "0 2px 6px rgba(0,0,0,0.1)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.querySelector(".card").style.boxShadow =
+                    "none";
+                }}
+              >
+                <div
+                  className="card h-100"
+                  onClick={() => {
+                    // For example, navigate(`/mindmap/${item.id}`)
+                  }}
+                  style={{
+                    transition: "box-shadow 0.2s",
+                    borderRadius: "8px",
+                    border: "1px solid #e5e5e5",
+                  }}
+                >
+                  <div className="card-body d-flex align-items-center">
+                    {/* Image on left */}
                     <img
                       src={item.image}
                       alt={item.title}
                       className="me-3"
                       style={{
-                        width: "80px",
-                        height: "80px",
+                        width: "120px",
+                        height: "60px",
                         objectFit: "cover",
                       }}
                     />
-                    <div>
-                      <h5 className="mb-1">{item.title}</h5>
+                    {/* Container for title and date */}
+                    <div className="d-flex flex-column flex-md-row justify-content-md-between align-items-start align-items-md-center w-100">
+                      <p className="mb-1">{item.title}</p>
+                      <p className="mindmap-small-text text-muted mt-2 mt-md-0">
+                        {new Date(item.date).toLocaleDateString()}
+                      </p>
                     </div>
                   </div>
-                  <span className="text-muted">
-                    {new Date(item.date).toLocaleDateString()}
-                  </span>
                 </div>
               </div>
             ))}
           </div>
 
           {/* Pagination dots */}
-          <div className="d-flex justify-content-center align-items-center mt-3">
+          <div className="d-flex justify-content-center align-items-center mt-5">
             {Array.from({ length: totalPages }).map((_, index) => {
               const pageNumber = index + 1;
               return (
@@ -368,6 +474,14 @@ const Mindmap = () => {
           </div>
         </div>
       </div>
+      {/* Render Mindmap Modal */}
+      {showMindmap && (
+        <MindmapModal
+          show={showMindmap}
+          onClose={() => setShowMindmap(false)}
+          selectedText={selectedText}
+        />
+      )}
     </div>
   );
 };
