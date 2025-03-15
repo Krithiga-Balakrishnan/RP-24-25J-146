@@ -38,6 +38,7 @@ import Ieee from "./pages/Ieee";
 import Profile from "./pages/Profile";
 import ProtectedRoute from "./pages/ProtectedRoute";
 import LoadingScreen from "./pages/LoadingScreen";
+import DocumentMindmap from "./pages/DocumentMindmap";
 
 import { UserProvider } from "./context/UserContext";
 
@@ -65,6 +66,7 @@ function App() {
             <Route path="/citations" element={<Citations />} />
             <Route path="/ieee" element={<Ieee />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/mindmap/:mindmap" element={<DocumentMindmap />} />
           </Route>
 
           {/* Catch-all → login */}

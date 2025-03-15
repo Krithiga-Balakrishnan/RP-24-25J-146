@@ -477,7 +477,91 @@ body {
 
 
 /* Krithi */
-
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 /* Saara */
 
 /* Sanjayan */
+
+.running-text h6{
+  line-height:unset;
+}
+
+.mindmap-textarea-intro-container{
+  background-color: var(--primary-color);
+  color: #fff;
+  padding: 0.5rem 2rem;
+}
+
+/* Wrapper around the textarea + button */
+.mindmap-textarea-container {
+  position: relative;
+  width: 100%;
+}
+
+/* Textarea styling (already in your code) */
+.mindmap-textarea {
+  width: 100%;
+  resize: vertical;
+  padding: 1rem;
+  box-sizing: border-box;
+  border: 1px solid var(--secondary-color)!important;
+}
+
+/* Absolutely position the "Generate" button inside .mindmap-textarea-container */
+.mindmap-generate-button {
+  position: absolute!important;
+  bottom: 1rem;
+  right: 1rem;
+}
+
+.form-select:focus, .form-control:focus, .mindmap-custom-focus:focus {
+  border-color: var(--secondary-color) !important;
+  box-shadow: 0 0 0 0.25rem rgba(162,135,176,0.25)!important;
+}
+
+/* A modern style with dashed border, box-shadow, and subtle hover effect */
+.drag-drop-container {
+  position: relative;
+  border: 2px dashed var(--secondary-color);
+  border-radius: 12px;
+  padding: 3rem 2rem;
+  width: 100%;
+  background-color: #fff;
+  transition: background-color 0.3s, box-shadow 0.3s;
+}
+
+.drag-drop-container {
+  background-color: var(--tertiary-color);
+}
+
+/* On hover, subtly change background or shadow for a modern effect */
+.drag-drop-container:hover {
+  box-shadow: 0 16px 16px  rgba(162,135,176,0.25)!important;
+}
+
+/* Title styling */
+.drag-drop-title {
+  font-family: "Roboto Condensed", serif;
+  font-weight: 600;
+}
+
+/* If you include an image or Lottie, you can style it here */
+.drag-drop-icon {
+  width: 80px;
+  height: auto;
+}
+
+
+/* Optional: Style adjustments for the dropdown */
+.dropdown-menu {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 0.25rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
