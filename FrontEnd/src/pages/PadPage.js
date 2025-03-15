@@ -169,7 +169,38 @@ const PadPage = () => {
   };
 
   /*------------------------------------------------------------------------------------------*/
+  const handleConvertToAcademic = async () => {
+    const textToConvert = lastSelectedText || selectedText;
+    
+    if (!textToConvert.trim()) {
+      alert("No text selected for conversion.");
+      return;
+    }
 
+    try {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/api/convert/convert-text`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ content: textToConvert }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to convert text.");
+      }
+
+      const data = await response.json();
+      console.log("Converted Academic Text:", data.converted_text);
+
+      // Replace selected text in the editor with converted text
+      setSelectedText(data.converted_text);
+    } catch (error) {
+      console.error("Error converting text:", error);
+    }
+};
+
+  
   // Fetch pad details from REST endpoint
   const FetchPadData = async () => {
     // const token = localStorage.getItem("token");
@@ -250,6 +281,7 @@ const PadPage = () => {
             padId={padId}
             onToggleSidebar={toggleSidebar}
             sidebarOpen={sidebarOpen}
+            onConvertToAcademic={handleConvertToAcademic}
           />
         </div>
         <div className="container my-3">

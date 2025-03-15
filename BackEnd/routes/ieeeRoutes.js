@@ -248,7 +248,7 @@ async function convertSectionsByFullText(sections) {
 
     if (section.aiEnhancement && cleanText.trim()) {
       try {
-        const response = await axios.post("https://6874-35-240-202-232.ngrok-free.app/convert", {
+        const response = await axios.post("https://4eeb-34-125-186-198.ngrok-free.app/convert", {
           section: section.title, content: cleanText
         });
         section.content = processAbbreviations(response.data.converted_text || cleanText);
@@ -365,5 +365,43 @@ ejs.renderFile(templatePath, content, {}, (err, latexOutput) => {
     res.status(500).json({ msg: "Server Error", error: err });
   }
 });
+
+
+
+
+
+/*-------------------------------------------------------------------------------------------------*/
+const AI_CONVERSION_API = "https://4eeb-34-125-186-198.ngrok-free.app/convert";
+
+router.post("/convert-text", async (req, res) => {
+  try {
+    const { content } = req.body;
+    console.log("i received the content",content)
+    
+    if (!content || content.trim() === "") {
+      return res.status(400).json({ msg: "No text provided for conversion." });
+    }
+
+    console.log("🔄 Sending text to AI API for conversion...");
+      const section="";
+    // Send request to AI API
+    const response = await axios.post(AI_CONVERSION_API, {
+      section,
+      content,
+    });
+
+    if (response.data && response.data.converted_text) {
+      console.log("✅ AI Conversion Success:", response.data.converted_text);
+      return res.json({ converted_text: response.data.converted_text });
+    } else {
+      console.error("⚠️ AI API Response Format Unexpected:", response.data);
+      return res.status(500).json({ msg: "Unexpected response from AI API." });
+    }
+  } catch (error) {
+    console.error("❌ Error calling AI API:", error.message);
+    return res.status(500).json({ msg: "Error converting text.", error: error.message });
+  }
+});
+
 
 module.exports = router;
