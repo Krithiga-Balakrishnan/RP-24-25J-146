@@ -185,13 +185,13 @@ app.use("/api/convert", ieeeRoutes);
 app.use("/api/users", usersRoutes);
 
 // Use in Local
-server.listen(4000, () => {
-  console.log("✅ Server running on port 4000");
-});
+// server.listen(4000, () => {
+//   console.log("✅ Server running on port 4000");
+// });
 
 
 // Use when hosted
-// const port = process.env.PORT || 8080;
-// server.listen(port, "0.0.0.0", () => {
-//   console.log(`✅ Server running on port ${port}`);
-// });
+const port = process.env.PORT || 4000;
+server.listen(port, "0.0.0.0", () => {
+  console.log(`✅ Server running on port ${port}`);
+});

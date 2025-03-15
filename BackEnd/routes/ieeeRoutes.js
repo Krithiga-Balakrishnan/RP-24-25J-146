@@ -1,63 +1,42 @@
+// routes/ieeeRoute.js
 const express = require("express");
 const router = express.Router();
 const ejs = require("ejs");
 const path = require("path");
 const fs = require("fs");
 const { exec } = require("child_process");
-const axios = require("axios"); // For calling the conversion API
+const axios = require("axios");
 const Pad = require("../models/Pad");
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+const he = require("he");
+const cheerio = require("cheerio");
 
-
-// Ensure the output directory exists.
 const outputDir = path.join(__dirname, "../output");
 if (!fs.existsSync(outputDir)) {
   fs.mkdirSync(outputDir, { recursive: true });
 }
 
-// Helper: Chunk an array into sub-arrays of length 'size'.
-function chunkArray(array, size) {
-  const chunks = [];
-  for (let i = 0; i < array.length; i += size) {
-    chunks.push(array.slice(i, i + size));
-  }
-  return chunks;
-}
+const abbreviationMap = {};
 
-// Helper: Convert Quill Delta content (including images) to LaTeX-friendly string.
-function convertDeltaToLatex(delta) {
-  if (!delta || !delta.ops || !Array.isArray(delta.ops)) return "";
-  let result = "";
-  delta.ops.forEach((op) => {
-    if (typeof op.insert === "string") {
-      // Escape special LaTeX characters
-      result += op.insert.replace(/([_%#&{}])/g, "\\$1");
-    } else if (typeof op.insert === "object" && op.insert.imageWithCaption) {
-      const imageData = op.insert.imageWithCaption;
-      let src = imageData.src || "";
-      const caption = imageData.caption || "Image";
-      const uploadsIndex = src.indexOf("uploads");
-      if (uploadsIndex !== -1) {
-        src = src.substring(uploadsIndex);
-        if (src[0] !== "/") {
-          src = "/" + src;
-        }
-        // Make the path relative to output directory
-        src = "../" + src;
-      }
-      result += `
-\\begin{figure}[h]
-\\centering
-\\includegraphics[width=0.5\\textwidth]{${src}}
-\\caption{${caption}}
-\\end{figure}
-`;
+function processAbbreviations(text) {
+  const regex = /\b([A-Za-z\s]+)\s\((\b[A-Z]{2,}\b)\)/g;
+  return text.replace(regex, (match, fullForm, abbr) => {
+    if (!abbreviationMap[abbr]) {
+      abbreviationMap[abbr] = fullForm;
+      return `${fullForm} (${abbr})`;  // ✅ Fixed: Added backticks
     }
+    return abbr;
   });
-  return result;
 }
 
-// Helper: Convert Delta content to plain text (ignoring images).
+// Helper to chunk authors
+function chunkArray(array, size) {
+  return Array.from({ length: Math.ceil(array.length / size) }, (_, i) =>
+    array.slice(i * size, i * size + size)
+  );
+}
+
+// Naive plain text converter from Delta
 function convertDeltaToPlainText(delta) {
   if (!delta || !delta.ops || !Array.isArray(delta.ops)) return "";
   let result = "";
@@ -65,191 +44,364 @@ function convertDeltaToPlainText(delta) {
     if (typeof op.insert === "string") {
       result += op.insert;
     }
-    // Skip object inserts (images)
   });
   return result;
 }
 
+// Fully decode HTML entities recursively until all are resolved
+function decodeFully(str) {
+  let prev;
+  let out = str;
+  do {
+    prev = out;
+    out = he.decode(out); // Decode HTML entities
+  } while (out !== prev); // Keep decoding until no more changes
+  return out;
+}
 
 
 
+/* ==================== Convert Delta to LaTeX ===================== */
+// function convertDeltaToLatex(delta) {
+//   if (!delta || !delta.ops || !Array.isArray(delta.ops)) return "";
+//   let result = "";
+
+//   delta.ops.forEach((op) => {
+//     if (typeof op.insert === "string") {
+//       result += op.insert.replace(/([_%#&{}])/g, "\\$1");
+//     }
+//     // Image embed
+//     else if (op.insert.imageWithCaption) {
+//       const { src = "", caption = "Image" } = op.insert.imageWithCaption;
+//       let imagePath = `../uploads/${src.split("uploads/").pop()}`;
+//       result += `
+// \\begin{figure}[H]
+// \\centering
+// \\includegraphics[width=0.5\\textwidth]{${imagePath}}
+// \\caption{${caption}}
+// \\end{figure}
+// `;
+//     }
+//     // Formula embed
+//     else if (op.insert.formulaWithCaption) {
+//       const { formula = "", caption = "" } = op.insert.formulaWithCaption;
+//       result += `
+// \\begin{equation}
+// ${formula}
+// \\end{equation}
+// \\textit{${caption}}
+// `;
+//     }
+//     // Table embed
+//     else if (op.insert.tableWithCaption) {
+//       const { tableHtml = "", caption = "Table" } = op.insert.tableWithCaption;
+//       const tabularLatex = convertHtmlTableToLatex(tableHtml);
+//       result += `
+// \\begin{table}[H]
+// \\centering
+// \\caption{${caption}}
+// ${tabularLatex}
+// \\end{table}
+// `;
+//     }
+//   });
+
+//   return result;
+// }
+
+// Convert HTML table to LaTeX tabular
+
+// Convert simple HTML table to LaTeX tabular format
 
 
-const abbreviationMap = {}; // Store abbreviation mappings
 
-function processAbbreviations(text) {
-    // Regular expression to detect abbreviations in parentheses, e.g., "artificial intelligence (AI)"
-    const regex = /\b([A-Za-z\s]+)\s\((\b[A-Z]{2,}\b)\)/g;
+// Convert simple HTML table to LaTeX tabular format
 
-    return text.replace(regex, (match, fullForm, abbr) => {
-        // If the abbreviation is new, store it
-        if (!abbreviationMap[abbr]) {
-            abbreviationMap[abbr] = fullForm; 
-            return `${fullForm} (${abbr})`; // First occurrence: Keep full form + abbreviation
-        } 
-        return abbr; // Subsequent occurrences: Replace with abbreviation only
+
+function convertHtmlTableToLatex(tableHtml) {
+  // Load the HTML into Cheerio
+  const $ = cheerio.load(tableHtml);
+
+  let rows = [];
+  // $(tr).find("td").each((j, td) => {
+  //   let cellText = $(td).text().trim();
+  //   // Optionally, escape LaTeX special characters
+  //   cellText = cellText.replace(/([_%#&{}])/g, "\\$1");
+  //   cells.push(cellText);
+  // });
+  
+  $("tr").each((i, tr) => {
+    let cells = [];
+    $(tr).find("td").each((j, td) => {
+      let cellHtml = $(td).html() || "";
+      // Fully decode HTML entities using he
+      let cellText = he.decode(cellHtml);
+      // Replace one or more occurrences of "&amp;" with a single "&"
+      cellText = cellText.replace(/(&amp;)+/g, "&");
+      // Also remove any stray "amp;" if still present
+      cellText = cellText.replace(/amp;/g, "");
+      // Escape LaTeX special characters
+      cellText = cellText.replace(/([_%#&{}])/g, "\\$1");
+      cells.push(cellText.trim());
     });
+    if (cells.length > 0) {
+      rows.push(cells);
+    }
+  });
+
+  // Determine maximum columns
+  const maxCols = Math.max(...rows.map(r => r.length), 0);
+  let latex = `\\begin{tabular}{|${"c|".repeat(maxCols)}}\n\\hline\n`;
+  rows.forEach(cells => {
+    // Ensure each row has the same number of cells
+    while (cells.length < maxCols) {
+      cells.push("");
+    }
+    latex += cells.join(" & ") + " \\\\\n\\hline\n";
+  });
+  latex += "\\end{tabular}\n";
+  return latex;
 }
 
 
 
 
+// **Extract images, tables, and formulas before sending text to AI**
+function extractNonTextElements(delta) {
+  let elements = [];
+  let cleanOps = [];
 
+  if (!delta || !delta.ops || !Array.isArray(delta.ops)) return { cleanDelta: delta, elements };
 
+  delta.ops.forEach((op, index) => {
+    if (typeof op.insert === "string") {
+      cleanOps.push(op);
+    } 
+    // Image
+    else if (op.insert.imageWithCaption) {
+      elements.push({ index, type: "image", content: op.insert.imageWithCaption });
+    } 
+    // Formula
+    else if (op.insert.formulaWithCaption) {
+      elements.push({ index, type: "formula", content: op.insert.formulaWithCaption });
+    } 
+    // Table
+    else if (op.insert.tableWithCaption) {
+      elements.push({ index, type: "table", content: op.insert.tableWithCaption });
+    }
+  });
 
+  return { cleanDelta: { ops: cleanOps }, elements };
+}
 
-// Helper: For each section/subsection, send its ENTIRE text (minus images) to the conversion API.
+// **Reinsert images, tables, and formulas after AI enhancement**
+function reinsertNonTextElements(text, elements) {
+  elements.forEach((element) => {
+    if (element.type === "image") {
+      let { src = "", caption = "Image" } = element.content;
+      let imagePath = `../uploads/${src.split("uploads/").pop()}`;
+      text += `\n\\begin{figure}[H]\n\\centering\n\\includegraphics[width=0.5\\textwidth]{${imagePath}}\n\\caption{${caption}}\n\\end{figure}\n`;
+    }
+    else if (element.type === "formula") {
+      let { formula = "", caption = "" } = element.content;
+      text += `\n\\begin{equation}\n${formula}\n\\end{equation}\n\\textit{${caption}}\n`;
+    }
+    else if (element.type === "table") {
+      let { tableHtml = "", caption = "Table" } = element.content;
+      let tabularLatex = convertHtmlTableToLatex(tableHtml);
+      text += `\n\\begin{table}[H]\n\\centering\n\\caption{${caption}}\n${tabularLatex}\n\\end{table}\n`;
+    }
+  });
+  return text;
+}
+
+// Convert AI-enhanced sections properly
+// async function convertSectionsByFullText(sections) {
+//   for (let section of sections) {
+//     if (!section.aiEnhancement) {
+//       section.content = convertDeltaToLatex(section.originalDelta || {});
+//     } else {
+//       const plainText = convertDeltaToLatex(section.originalDelta || {});
+//       if (plainText.trim()) {
+//         try {
+//           const response = await axios.post("https://your-ai-api-url.com/convert", {
+//             section: section.title, content: plainText
+//           });
+//           section.content = response.data.converted_text || plainText;
+//         } catch (apiErr) {
+//           console.error("Conversion API error:", apiErr);
+//           section.content = plainText;
+//         }
+//       } else {
+//         section.content = "";
+//       }
+//     }
+//     if (section.subsections) await convertSectionsByFullText(section.subsections);
+//   }
+// }
+
+// **AI-enhanced text processing**
 async function convertSectionsByFullText(sections) {
   for (let section of sections) {
-    const plainText = convertDeltaToPlainText(section.originalDelta || {});
-    if (plainText.trim()) {
+    let { cleanDelta, elements } = extractNonTextElements(section.originalDelta || {});
+    let cleanText = convertDeltaToPlainText(cleanDelta);
+
+    if (section.aiEnhancement && cleanText.trim()) {
       try {
-        // Send the entire section text to the conversion API
-        const response = await axios.post("https://f068-34-16-191-207.ngrok-free.app/convert", {
-          section: section.title,
-          content: plainText
+        const response = await axios.post("https://4eeb-34-125-186-198.ngrok-free.app/convert", {
+          section: section.title, content: cleanText
         });
-        // Expecting { converted_text: "..." } in the response
-        section.content = processAbbreviations(response.data.converted_text || plainText);
-        // section.content = response.data.converted_text || plainText;
-        console.log("Converted text for section:", section.title);
+        section.content = processAbbreviations(response.data.converted_text || cleanText);
       } catch (apiErr) {
         console.error("Conversion API error:", apiErr);
-        // If API fails, fall back to the original plain text
-        // section.content = plainText;
-        section.content = processAbbreviations(plainText);
+        section.content = processAbbreviations(cleanText);
       }
     } else {
-      // If there's no text, leave it as is
-      section.content = plainText;
+      section.content = processAbbreviations(cleanText);
     }
-    // Recursively handle subsections
-    if (section.subsections && section.subsections.length) {
-      await convertSectionsByFullText(section.subsections);
-    }
+
+    section.content = reinsertNonTextElements(section.content, elements);
+
+    if (section.subsections) await convertSectionsByFullText(section.subsections);
   }
 }
 
+// Render and Compile LaTeX
 router.get("/:padId", async (req, res) => {
   try {
     const pad = await Pad.findById(req.params.padId);
     if (!pad) return res.status(404).json({ msg: "Pad not found" });
 
-    // Chunk authors into rows (max 3 per row).
-    const authors = Array.isArray(pad.authors) ? pad.authors : [];
-    const authorsRows = chunkArray(authors, 3);
+    const authorsRows = chunkArray(pad.authors || [], 3);
 
-    // Build processedSections, storing both originalDelta (for conversion) and the LaTeX version (for images).
-    const processedSections = Array.isArray(pad.sections)
-      ? pad.sections.map((section) => ({
-          title: section.title || "Untitled Section",
-          // Convert the Quill Delta to LaTeX including images
-          latexWithImages: convertDeltaToLatex(section.content),
-          originalDelta: section.content, // store the raw delta for the conversion
-          subsections: Array.isArray(section.subsections)
-            ? section.subsections.map((sub) => ({
-                title: sub.title || "Untitled Subsection",
-                latexWithImages: convertDeltaToLatex(sub.content),
-                originalDelta: sub.content
-              }))
-            : []
-        }))
-      : [];
+    const processedSections = pad.sections.map((section) => ({
+      title: section.title || "Untitled Section",
+      originalDelta: section.content,
+      aiEnhancement: section.aiEnhancement || false,
+      subsections: section.subsections?.map((sub) => ({
+        title: sub.title || "Untitled Subsection",
+        originalDelta: sub.content,
+        aiEnhancement: sub.aiEnhancement || false,
+        subsections: []
+      })) || []
+    }));
 
-    // 1) Convert each section by FULL text, ignoring images, sending to the API.
     await convertSectionsByFullText(processedSections);
 
-    // 2) Merge the newly converted text with the LaTeX (which has images).
-    //    The idea is: we keep the newly formal text from the API, then append or interleave images.
-    //    For simplicity, we can just replace the text portion in latexWithImages with the newly converted text.
-    //    If you want a more robust merging, you'll need a more advanced approach.
-    function mergeConvertedText(sections) {
-      sections.forEach((section) => {
-        // The text from the API is now in section.content
-        // The LaTeX with images is in section.latexWithImages
-        // We do a simple approach: replace all non-image text in latexWithImages with the newly converted text
-        // or simply store the new text, then append the images.
-        // Quick approach: just show the converted text first, then the images after, or vice versa.
-
-        // If there are images, they're in the latexWithImages.
-        // We can do a naive approach: 
-        // - We omit all text from latexWithImages except images
-        // - Prepend the newly converted text
-        // - Then re-add images
-        // This approach is naive because we lose exact image positions in the text.
-
-        // 1) Extract only the image LaTeX blocks
-        const imagePattern = /\\begin\{figure\}[\s\S]*?\\end\{figure\}/g;
-        const imageBlocks = section.latexWithImages.match(imagePattern) || [];
-        
-        // 2) The final content = converted text + all images appended
-        section.content = section.content + "\n\n" + imageBlocks.join("\n");
-
-        // Then do the same recursively for subsections
-        if (section.subsections && section.subsections.length) {
-          mergeConvertedText(section.subsections);
-        }
-      });
-    }
-    mergeConvertedText(processedSections);
-
-    // Clean the global image_path if present
-    let cleanedImagePath = pad.image_path || "default_image_path.jpg";
-    const uploadsIndex = cleanedImagePath.indexOf("uploads");
-    if (uploadsIndex !== -1) {
-      cleanedImagePath = cleanedImagePath.substring(uploadsIndex);
-      if (cleanedImagePath[0] !== "/") {
-        cleanedImagePath = "/" + cleanedImagePath;
-      }
-    }
-    console.log("cleanedImagePath:", cleanedImagePath);
-
-    // Build the content object for EJS.
     const content = {
       title: pad.title || "Untitled Document",
       authorsRows,
       abstract: pad.abstract || "",
       keyword: pad.keyword || "",
       sections: processedSections,
-      image_path: cleanedImagePath,
+      image_path: pad.image_path || "default_image_path.jpg",
       references: pad.references || []
     };
 
-    // Render the LaTeX template using EJS.
+    // const templatePath = path.join(__dirname, "../templates/ieee_template.tex.ejs");
+    // ejs.renderFile(templatePath, content, {}, (err, latexOutput) => {
+    //   if (err) {
+    //     console.error("Error rendering LaTeX template:", err);
+    //     return res.status(500).json({ msg: "Error rendering LaTeX template", error: err });
+    //   }
+
+    //   const outputTexPath = path.join(outputDir, "output_paper.tex").replace(/\\/g, "/");
+    //   fs.writeFileSync(outputTexPath, latexOutput, "utf8");
+
+    //   const command = `pdflatex -interaction=nonstopmode -output-directory "${outputDir}" "${outputTexPath}"`;
+    //   exec(command, (error, stdout, stderr) => {
+    //     if (error) {
+    //       console.error(`Error compiling LaTeX: ${error.message}`);
+    //       return res.status(500).json({ msg: "Error compiling LaTeX", error: error.message });
+          
+    //     }
+    //     const outputPdfPath = path.join(outputDir, "output_paper.pdf");
+    //     if (fs.existsSync(outputPdfPath)) {
+    //       return res.download(outputPdfPath, "output_paper.pdf");
+    //     }
+    //     res.download(outputPdfPath, "output_paper.pdf", (err) => {
+    //       if (err) {
+    //         console.error("Error sending PDF file:", err);
+    //         return res.status(500).json({ msg: "Error sending PDF file", error: err });
+    //       }
+    //     });
+    //   });
+    // });
     const templatePath = path.join(__dirname, "../templates/ieee_template.tex.ejs");
-    ejs.renderFile(templatePath, content, {}, (err, latexOutput) => {
-      if (err) {
-        console.error("Error rendering LaTeX template:", err);
-        return res.status(500).json({ msg: "Error rendering LaTeX template", error: err });
-      }
+ejs.renderFile(templatePath, content, {}, (err, latexOutput) => {
+  if (err) {
+    console.error("Error rendering LaTeX template:", err);
+    return res.status(500).json({ msg: "Error rendering LaTeX template", error: err });
+  }
 
-      const outputTexPath = path.join(outputDir, "output_paper.tex").replace(/\\/g, "/");
-      fs.writeFileSync(outputTexPath, latexOutput, "utf8");
+  const outputTexPath = path.join(outputDir, "output_paper.tex").replace(/\\/g, "/");
+  fs.writeFileSync(outputTexPath, latexOutput, "utf8");
 
-      const normalizedOutputDir = outputDir.replace(/\\/g, "/");
-      const command = `pdflatex -interaction=nonstopmode -output-directory "${normalizedOutputDir}" "${outputTexPath}"`;
-      console.log("LaTeX command:", command);
-
-      exec(command, { shell: true, env: process.env }, (error, stdout, stderr) => {
-        console.log("STDOUT:", stdout);
-        console.log("STDERR:", stderr);
-        if (error) {
-          console.error(`Error compiling LaTeX: ${error.message}`);
-          return res.status(500).json({ msg: "Error compiling LaTeX", error: error.message });
+  const command = `pdflatex -interaction=nonstopmode -output-directory "${outputDir}" "${outputTexPath}"`;
+  exec(command, (error, stdout, stderr) => {
+    // Log stdout/stderr for debugging purposes
+    console.log("STDOUT:", stdout);
+    console.log("STDERR:", stderr);
+    
+    const outputPdfPath = path.join(outputDir, "output_paper.pdf");
+    if (fs.existsSync(outputPdfPath)) {
+      // Even if error exists, if the PDF is there, send it.
+      return res.download(outputPdfPath, "output_paper.pdf", (err) => {
+        if (err) {
+          console.error("Error sending PDF file:", err);
+          return res.status(500).json({ msg: "Error sending PDF file", error: err });
         }
-        const outputPdfPath = path.join(outputDir, "output_paper.pdf");
-        res.download(outputPdfPath, "output_paper.pdf", (err) => {
-          if (err) {
-            console.error("Error sending PDF file:", err);
-            return res.status(500).json({ msg: "Error sending PDF file", error: err });
-          }
-        });
       });
-    });
+    } else {
+      // If the file does not exist, then return an error.
+      console.error(`Error compiling LaTeX: ${error.message}`);
+      return res.status(500).json({ msg: "Error compiling LaTeX", error: error.message });
+    }
+  });
+});
+
   } catch (err) {
     console.error("Server error:", err);
     res.status(500).json({ msg: "Server Error", error: err });
   }
 });
+
+
+
+
+
+/*-------------------------------------------------------------------------------------------------*/
+const AI_CONVERSION_API = "https://4eeb-34-125-186-198.ngrok-free.app/convert";
+
+router.post("/convert-text", async (req, res) => {
+  try {
+    const { content } = req.body;
+    console.log("i received the content",content)
+    
+    if (!content || content.trim() === "") {
+      return res.status(400).json({ msg: "No text provided for conversion." });
+    }
+
+    console.log("🔄 Sending text to AI API for conversion...");
+      const section="";
+    // Send request to AI API
+    const response = await axios.post(AI_CONVERSION_API, {
+      section,
+      content,
+    });
+
+    if (response.data && response.data.converted_text) {
+      console.log("✅ AI Conversion Success:", response.data.converted_text);
+      return res.json({ converted_text: response.data.converted_text });
+    } else {
+      console.error("⚠️ AI API Response Format Unexpected:", response.data);
+      return res.status(500).json({ msg: "Unexpected response from AI API." });
+    }
+  } catch (error) {
+    console.error("❌ Error calling AI API:", error.message);
+    return res.status(500).json({ msg: "Error converting text.", error: error.message });
+  }
+});
+
 
 module.exports = router;
