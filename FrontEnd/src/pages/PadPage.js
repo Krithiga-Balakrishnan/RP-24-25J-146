@@ -308,16 +308,56 @@ const PadPage = () => {
           />
 
           {pad && pad.roles && pad.roles[userId.current] === "pad_owner" && (
-            <div>
-              <h3>Add User</h3>
-              <input
-                type="email"
-                value={userEmail}
-                onChange={(e) => setUserEmail(e.target.value)}
-                placeholder="User email"
-              />
-              <button onClick={addUserToPad}>➕ Add User as Editor</button>
-            </div>
+           <div
+           style={{
+             backgroundColor: "#f9f9f9",
+             padding: "20px",
+             borderRadius: "10px",
+             boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)",
+             textAlign: "center",
+             maxWidth: "400px",
+             margin: "20px auto",
+           }}
+         >
+           <h3 style={{ marginBottom: "15px", color: "#333", fontSize: "20px" }}>Add User</h3>
+         
+           <input
+             type="email"
+             value={userEmail}
+             onChange={(e) => setUserEmail(e.target.value)}
+             placeholder="Enter user email"
+             style={{
+               width: "100%",
+               padding: "10px",
+               borderRadius: "5px",
+               border: "1px solid #ccc",
+               marginBottom: "15px",
+               fontSize: "14px",
+               textAlign: "center",
+               outline: "none",
+             }}
+           />
+         
+           <button
+             onClick={addUserToPad}
+             style={{
+               backgroundColor: "#56008a",
+               color: "#fff",
+               padding: "10px 15px",
+               borderRadius: "5px",
+               border: "none",
+               cursor: "pointer",
+               fontSize: "14px",
+               fontWeight: "bold",
+               transition: "0.3s ease",
+             }}
+             onMouseEnter={(e) => (e.target.style.backgroundColor = "#a287b0")}
+             onMouseLeave={(e) => (e.target.style.backgroundColor = "#56008a")}
+           >
+             ➕ Add User as Editor
+           </button>
+         </div>
+         
           )}
 
           <h2>Active Users:</h2>
