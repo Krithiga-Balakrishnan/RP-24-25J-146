@@ -1,0 +1,567 @@
+/* global.css */
+
+/* Common */
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap');
+
+:root {
+  --primary-color: #56008a;
+  --secondary-color: #a287b0;
+  --tertiary-color: #fef7ff;
+  --fourth-color: #fffade;
+}
+
+/* index.css or global.css */
+body {
+    margin: 0;
+    font-family: "Open Sans", serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: "Roboto Condensed", serif;
+    font-weight: 400;
+  }
+
+/* Use Header Font */
+.header-font{
+    font-family: "Roboto Condensed", serif;
+    font-weight: 400;
+}  
+
+/* Primary button */
+.primary-button {
+  font-family: "Roboto Condensed", serif!important;
+  background-color: var(--primary-color) !important;
+  color: #fff !important;
+  position: relative!important;
+  overflow: hidden!important;
+  border: none!important;
+  z-index: 0!important;
+}
+
+/* Create a pseudo-element for the hover effect */
+.primary-button::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background-color: var(--secondary-color);
+  transition: transform 0.5s ease-in-out;
+  z-index: -1;
+}
+
+/* On hover, slide the pseudo-element from left to right */
+.primary-button:hover::before {
+  transform: translateX(100%);
+}
+
+/* Shandeep */
+
+/* Ensure this file is linked after Bootstrap in your project */
+/* Ensure this file is linked after Bootstrap in your project */
+.editor-container {
+  background: linear-gradient(135deg, #f5f5f5, var(--tertiary-color));
+  padding: 10px;
+  border-radius: 12px;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Paper Section */
+.paper-section {
+  border: 1px solid var(--primary-color);
+  border-radius: 12px;
+  padding: 15px;
+  margin-bottom: 15px;
+  background: white;
+  transition: transform 0.2s ease-in-out, box-shadow 0.3s ease-in-out;
+}
+
+/* Add a hover effect */
+.paper-section:hover {
+  transform: scale(1.01);
+  box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+/* Input fields */
+.input-field, .textarea-field {
+  width: 100%;
+  font-size: 1rem;
+  font-weight: bold;
+  padding: 10px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  transition: border-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+}
+
+/* Focus effect for input and textarea */
+.input-field:focus, .textarea-field:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0px 0px 8px rgba(86, 0, 138, 0.3);
+  outline: none;
+}
+
+/* Section Titles */
+.section-title {
+  font-size: 1.7rem;
+  font-weight: bold;
+  color: var(--primary-color);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.section-subtitle {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--secondary-color);
+  text-transform: capitalize;
+}
+
+/* Buttons */
+.custom-button {
+  font-size: 1rem;
+  font-weight: bold;
+  padding: 4px 6px;
+  margin-bottom: 10px;
+  margin-right: 5px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  background-color: var(--primary-color);
+  color: white;
+  transition: background-color 0.3s ease-in-out;
+}
+
+.custom-button:hover {
+  background-color: var(--secondary-color);
+}
+
+.sub-section {
+  border: 1px solid var(--primary-color);
+  border-radius: 12px;
+  background: white;
+  padding: 10px;
+  transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out, padding 0.3s ease-in-out, height 0.3s ease-in-out;
+   /* Default height */
+ /* Prevents content overflow */
+}
+
+/* Editor Container */
+.editor-container {
+  background-color: var(--tertiary-color);
+  padding: 20px;
+  border-radius: 10px;
+  
+  border: 1px solid #ccc;
+  transition: all 0.3s ease-in-out;
+
+}
+
+/* When editor is focused, add subtle effects */
+/* .editor-container:focus-within {
+  border-color: var(--primary-color);
+  box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.15);
+} */
+
+/* QL Editor Text Styling */
+/* Base Styling */
+.editor-container.ql-container.ql-snow {
+  min-height: 360px;  /* Default height */
+  max-height: 800px;  /* Prevent excessive height */
+  height: auto;
+  overflow-y: auto; /* Enable scrolling for long content */
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  transition: height 0.3s ease-in-out; /* Smooth height transition */
+  padding: 15px;
+  background: var(--tertiary-color);
+}
+
+/* 🔥 When the Editor is Focused */
+/* .editor-container.ql-container.ql-snow:focus-within {
+  min-height: 400px;  /* Increase height when typing */
+  /* transition: height 0.3s ease-in-out; */
+ */
+
+/* 🔥 Scrollbar Styling for Overflow */ 
+/* .editor-container.ql-container.ql-snow::-webkit-scrollbar {
+  width: 6px;
+} */
+.editor-container.ql-container.ql-snow::-webkit-scrollbar-thumb {
+  background-color: var(--primary-color);
+  border-radius: 10px;
+}
+
+.editor-container.ql-container.ql-snow::-webkit-scrollbar-track {
+  background: #f0f0f0;
+} 
+
+/* 🔥 Quill Editor Inside */
+.ql-editor {
+  min-height: 380px;
+  font-size: 1rem;
+  line-height: 1.6;
+  padding: 10px;
+}
+
+
+/* Placeholder Text */
+.ql-editor p {
+  margin-bottom: 10px;
+}
+
+/* 🔥 Formula Styling */
+.ql-formula-with-caption {
+  text-align: center;
+  margin: 20px 0;
+}
+
+.ql-formula {
+  font-size: 1.2rem;
+  color: var(--primary-color);
+}
+
+.ql-formula-with-caption figcaption {
+  font-size: 0.9rem;
+  font-style: italic;
+  color: var(--secondary-color);
+  margin-top: 5px;
+}
+
+/* 🔥 Table Styling */
+.ql-table-with-caption {
+  text-align: center;
+  margin: 20px 0;
+}
+
+.custom-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 5px;
+}
+
+.custom-table th,
+.custom-table td {
+  border: 1px solid var(--primary-color);
+  padding: 8px;
+  text-align: center;
+}
+
+.ql-table-with-caption figcaption {
+  font-size: 0.9rem;
+  font-style: italic;
+  color: var(--secondary-color);
+  margin-top: 5px;
+}
+
+/* 🔥 Image Styling */
+.ql-image-with-caption {
+  text-align: center;
+  margin: 20px 0;
+}
+
+.ql-image-with-caption img {
+  border-radius: 8px;
+  box-shadow: 0px 3px 10px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease-in-out;
+}
+
+.ql-image-with-caption img:hover {
+  transform: scale(1.05);
+}
+
+.ql-image-with-caption::after {
+  display: block;
+  content: attr(data-caption);
+  font-size: 0.9rem;
+  font-style: italic;
+  color: var(--secondary-color);
+  margin-top: 5px;
+}
+
+/* 🔥 Quill Tooltip Styling */
+.ql-tooltip {
+  background-color: var(--primary-color);
+  color: white;
+  border-radius: 5px;
+  padding: 5px;
+}
+
+.ql-tooltip a {
+  color: white;
+}
+
+/* When typing inside a subsection, expand without excessive height increase */
+.editor-container ql-container ql-snow:focus-within {
+  transform: scale(1.1); /* Slight enlargement, not too big */
+  box-shadow: 0px 6px 20px rgba(0, 0, 0, 0.2);
+  padding: 15px;
+  height: 400px; /* Expand to a controlled height */
+}
+
+.sub-section:hover{
+ 
+  transform: scale(1.01);
+  box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.15);
+
+}
+
+.ql-toolbar ql-snow{
+  border-radius: 10px;
+}
+
+/* Authors & References Sections */
+.authors-section,
+.references-section {
+  margin-top: 30px;
+  padding: 12px;
+  border: 1px solid var(--primary-color);
+  border-radius: 10px;
+  background: var(--fourth-color);
+  box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* List Styles */
+.list-item {
+  list-style-type: none;
+  padding: 8px;
+  margin-bottom: 10px;
+  border-radius: 6px;
+  background: #fafafa;
+  border: 1px solid #ddd;
+  transition: all 0.3s ease-in-out;
+}
+
+.list-item:hover {
+  background: var(--tertiary-color);
+  border-color: var(--primary-color);
+}
+
+/* Input Fields for Authors & References */
+.input-small {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 6px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  transition: border-color 0.3s ease-in-out;
+}
+
+/* Focus effect */
+.input-small:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0px 0px 6px rgba(86, 0, 138, 0.2);
+  outline: none;
+}
+
+/* Remove Button */
+.remove-button {
+  margin-left: 5px;
+  background: red;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  border-radius: 6px;
+  transition: background 0.3s ease-in-out, transform 0.2s ease-in-out;
+}
+
+/* Hover effect */
+.remove-button:hover {
+  background: darkred;
+  transform: scale(1.05);
+}
+
+/* Tables inside the editor */
+.ql-editor table,
+.ql-editor th,
+.ql-editor td {
+  border: 1px solid #ccc;
+  border-collapse: collapse;
+}
+
+.ql-editor th,
+.ql-editor td {
+  padding: 8px;
+  min-width: 40px;
+}
+
+.ql-editor table {
+  width: auto;
+  margin-bottom: 16px;
+}
+
+/* Table Picker */
+.table-picker-overlay {
+  position: absolute;
+  background: white;
+  border-radius: 6px;
+  padding: 10px;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+}
+
+/*-------------------------------------------------------------------------------------------*/
+.ql-editor table,
+.ql-editor th,
+.ql-editor td {
+  border: 1px solid #ccc;
+  border-collapse: collapse;
+}
+.ql-editor th,
+.ql-editor td {
+  padding: 6px;
+  min-width: 40px;
+}
+.ql-editor table {
+  width: auto;
+  margin-bottom: 16px;
+}
+
+/* .ql-Table-Input .ql-picker-options {
+  display: block !important;
+  position: absolute;
+  left: 0;
+  top: 100%;
+  background: #fff;
+  border: 1px solid #ccc;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  padding: 4px 0;
+  z-index: 100;
+} */
+
+.ql-Table-Input .ql-picker-options {
+  display: none;
+}
+
+/* Only show them when the parent picker is expanded */
+/* Hide table picker options by default */
+.ql-Table-Input .ql-picker-options {
+  display: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+/* When the table picker is expanded, show the options */
+.ql-Table-Input.ql-expanded .ql-picker-options {
+  display: block;
+  opacity: 1;
+  position: absolute;
+  left: 0;
+  top: 100%;
+  background: #fff;
+  border: 1px solid #ccc;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  padding: 4px 0;
+  z-index: 100;
+  width: 150px; /* adjust width as needed */
+}
+
+/* Style each dropdown item */
+.ql-Table-Input.ql-expanded .ql-picker-options .ql-picker-item {
+  display: block;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+/* Hover effect for each option */
+.ql-Table-Input.ql-expanded .ql-picker-options .ql-picker-item:hover {
+  background: #f0f0f0;
+}
+
+
+/* Krithi */
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+/* Saara */
+
+/* Sanjayan */
+
+.running-text h6{
+  line-height:unset;
+}
+
+.mindmap-textarea-intro-container{
+  background-color: var(--primary-color);
+  color: #fff;
+  padding: 0.5rem 2rem;
+}
+
+/* Wrapper around the textarea + button */
+.mindmap-textarea-container {
+  position: relative;
+  width: 100%;
+}
+
+/* Textarea styling (already in your code) */
+.mindmap-textarea {
+  width: 100%;
+  resize: vertical;
+  padding: 1rem;
+  box-sizing: border-box;
+  border: 1px solid var(--secondary-color)!important;
+}
+
+/* Absolutely position the "Generate" button inside .mindmap-textarea-container */
+.mindmap-generate-button {
+  position: absolute!important;
+  bottom: 1rem;
+  right: 1rem;
+}
+
+.form-select:focus, .form-control:focus, .mindmap-custom-focus:focus {
+  border-color: var(--secondary-color) !important;
+  box-shadow: 0 0 0 0.25rem rgba(162,135,176,0.25)!important;
+}
+
+/* A modern style with dashed border, box-shadow, and subtle hover effect */
+.drag-drop-container {
+  position: relative;
+  border: 2px dashed var(--secondary-color);
+  border-radius: 12px;
+  padding: 3rem 2rem;
+  width: 100%;
+  background-color: #fff;
+  transition: background-color 0.3s, box-shadow 0.3s;
+}
+
+.drag-drop-container {
+  background-color: var(--tertiary-color);
+}
+
+/* On hover, subtly change background or shadow for a modern effect */
+.drag-drop-container:hover {
+  box-shadow: 0 16px 16px  rgba(162,135,176,0.25)!important;
+}
+
+/* Title styling */
+.drag-drop-title {
+  font-family: "Roboto Condensed", serif;
+  font-weight: 600;
+}
+
+/* If you include an image or Lottie, you can style it here */
+.drag-drop-icon {
+  width: 80px;
+  height: auto;
+}
+
+
+/* Optional: Style adjustments for the dropdown */
+.dropdown-menu {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 0.25rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
