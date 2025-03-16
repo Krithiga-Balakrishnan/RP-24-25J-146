@@ -81,7 +81,7 @@ const ContributorForm = () => {
         {activeTab === "create" && (
           <div className="tab-pane active">
             <h2 className="mb-4 text-center">Create Contributor Profile</h2>
-            <div className="card p-4 mx-auto" style={{ border: "2px solid #6c757d", borderRadius: "8px", backgroundColor: "#f8f9fa", maxWidth: "600px" }}>
+            <div className="card p-4 mx-auto" style={{ border: "2px solid #6c757d", borderRadius: "8px", backgroundColor: "#f8f9fa", maxWidth: "600px", fontSize: "16px" }}>
               <form onSubmit={handleSubmit} encType="multipart/form-data">
                 <div className="row mb-3">
                   <label className="col-sm-4 col-form-label">Full Name</label>
@@ -188,7 +188,7 @@ const ContributorForm = () => {
         {activeTab === "view" && (
           <div className="tab-pane active">
             <h2 className="mb-4 text-center">Contributor Profile</h2>
-            <div className="card p-4 mx-auto" style={{ border: "2px solid #6c757d", borderRadius: "8px", backgroundColor: "#f8f9fa", maxWidth: "600px" }}>
+            <div className="card p-4 mx-auto" style={{ border: "2px solid #6c757d", borderRadius: "8px", backgroundColor: "#f8f9fa", maxWidth: "600px", fontSize: "16px" }}>
               <div className="row mb-3">
                 <label className="col-sm-4 col-form-label">Full Name</label>
                 <div className="col-sm-8">

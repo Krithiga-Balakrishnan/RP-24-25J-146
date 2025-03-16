@@ -111,7 +111,7 @@ const Results = () => {
       ...prevData,
       [section]: {
         ...prevData[section],
-        candidates: [...prevData[section].candidates, { full_name: "", about: "", bio: "", position: "" }]
+        candidates: [...prevData[section].candidates, { full_name: "", about: "", details: "", bio: "", position: "" }]
       }
     }));
   };
@@ -187,10 +187,10 @@ const Results = () => {
 
   return (
     <div style={styles.container}>
-      <h1 style={styles.header}>Pad Details and Contributor Selection</h1>
+      <h1 style={{ ...styles.header, fontFamily: "Roboto Condensed, sans-serif" }}>Pad Details and Contributor Selection</h1>
 
       {/* Pad ID Input (Common for all sections) */}
-      <div style={styles.padSection}>
+      <div style={{ ...styles.padSection, fontFamily: "Roboto Condensed, sans-serif" }}>
         <h2>Fetch Pad Details</h2>
         <input
           type="text"
@@ -265,6 +265,13 @@ const Results = () => {
                 />
                 <input
                   type="text"
+                  value={candidate.details}
+                  onChange={(e) => handleCandidateChange(sections[currentSectionIndex], index, "details", e.target.value)}
+                  placeholder="Details"
+                  style={styles.candidateInputField}
+                />
+                <input
+                  type="text"
                   value={candidate.bio}
                   onChange={(e) => handleCandidateChange(sections[currentSectionIndex], index, "bio", e.target.value)}
                   placeholder="Bio"
@@ -311,8 +318,7 @@ const Results = () => {
 const styles = {
   container: {
     padding: "20px",
-    fontFamily: "Arial, sans-serif",
-    backgroundColor: "#f0f0f0",
+    fontFamily: "Roboto Condensed, sans-serif", // Change font family
     borderRadius: "10px",
     boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
     maxWidth: "900px",
@@ -329,7 +335,6 @@ const styles = {
     padding: "20px",
     border: "1px solid #ccc",
     borderRadius: "5px",
-    backgroundColor: "#fff",
   },
   inputField: {
     width: "calc(100% - 20px)",
@@ -338,7 +343,6 @@ const styles = {
     borderRadius: "5px",
     border: "1px solid #ccc",
     fontSize: "14px",
-    backgroundColor: "#fff",
     color: "#333",
   },
   button: {
@@ -390,7 +394,6 @@ const styles = {
     padding: "20px",
     border: "1px solid #ccc",
     borderRadius: "5px",
-    backgroundColor: "#fff",
   },
   keywordsSection: {
     display: "flex",
@@ -409,7 +412,6 @@ const styles = {
     border: "2px solid #ccc", // Gray highlight
     borderRadius: "5px",
     padding: "10px",
-    backgroundColor: "#f9f9f9",
     boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
     transition: "background-color 0.3s ease",
   },
@@ -419,7 +421,6 @@ const styles = {
     borderRadius: "5px",
     border: "1px solid #ccc",
     fontSize: "14px",
-    backgroundColor: "#fff",
     color: "#333",
   },
   candidateContainerHover: {
@@ -448,7 +449,6 @@ const styles = {
     padding: "15px",
     border: "1px solid #28A745",
     borderRadius: "5px",
-    backgroundColor: "#f9f9f9",
     color: "#28A745",
   },
   pre: {
