@@ -5,6 +5,7 @@ const PadHeader = ({
   padId,
   onToggleSidebar,
   sidebarOpen,
+  onConvertToAcademic,
 }) => {
   const [isLaptop, setIsLaptop] = useState(window.innerWidth >= 992);
 
@@ -42,6 +43,19 @@ const PadHeader = ({
           <h3>{padName}</h3>
         </div>
       </div>
+      <button
+        onClick={onConvertToAcademic}
+        style={{
+          backgroundColor: "var(--primary-color)",
+          color: "white",
+          padding: "8px 12px",
+          border: "none",
+          borderRadius: "5px",
+          cursor: "pointer",
+        }}
+      >
+        Convert to Academic
+      </button>
     </div>
   );
 };

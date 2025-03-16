@@ -5,6 +5,7 @@ const SubsectionSchema = new mongoose.Schema({
   title: String,
   contentId: String,
   content: { type: Object, default: { ops: [] } },
+  aiEnhancement: { type: Boolean, default: false },
 });
 
 const SectionSchema = new mongoose.Schema({
@@ -13,6 +14,7 @@ const SectionSchema = new mongoose.Schema({
   contentId: String,
   content: { type: Object, default: { ops: [] } },
   subsections: [SubsectionSchema],
+  aiEnhancement: { type: Boolean, default: false },
 });
 
 
