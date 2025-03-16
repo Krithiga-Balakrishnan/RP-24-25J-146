@@ -1352,44 +1352,134 @@ function attachTableCellListeners(quill, embedIndex) {
           ➕ Add Reference
         </button>
         <ul className="reference-list">
-          {references.map((reference) => (
-            <li key={reference.id} className="list-item">
-              <input className="input-small reference-key" type="text" value={reference.key} placeholder="Reference Key" onChange={(e) => {
-                const updatedReferences = references.map((r) =>
-                  r.id === reference.id ? { ...r, key: e.target.value } : r
-                );
-                setReferences(updatedReferences);
-              }} onBlur={handleNodeTitleBlur} />
-              <input className="input-small reference-author" type="text" value={reference.author} placeholder="Author(s)" onChange={(e) => {
-                const updatedReferences = references.map((r) =>
-                  r.id === reference.id ? { ...r, author: e.target.value } : r
-                );
-                setReferences(updatedReferences);
-              }} onBlur={handleNodeTitleBlur} />
-              <input className="input-small reference-title" type="text" value={reference.title} placeholder="Title" onChange={(e) => {
-                const updatedReferences = references.map((r) =>
-                  r.id === reference.id ? { ...r, title: e.target.value } : r
-                );
-                setReferences(updatedReferences);
-              }} onBlur={handleNodeTitleBlur} />
-              <button className="remove-button" onClick={() => {
-                const updatedReferences = references.filter((r) => r.id !== reference.id);
-                setReferences(updatedReferences);
-                socket.emit("update-pad", {
-                  padId,
-                  sections,
-                  authors,
-                  references: updatedReferences,
-                  title: paperTitle,
-                  abstract,
-                  keyword: keywords,
-                });
-              }}>
-                🗑️ Remove Reference
-              </button>
-            </li>
-          ))}
-        </ul>
+  {references.map((reference) => (
+    <li key={reference.id} className="list-item">
+      <input
+        className="input-small reference-key"
+        type="text"
+        value={reference.key}
+        placeholder="Reference Key"
+        onChange={(e) => {
+          const updatedReferences = references.map((r) =>
+            r.id === reference.id ? { ...r, key: e.target.value } : r
+          );
+          setReferences(updatedReferences);
+        }}
+        onBlur={handleNodeTitleBlur}
+      />
+      <input
+        className="input-small reference-author"
+        type="text"
+        value={reference.author}
+        placeholder="Author(s)"
+        onChange={(e) => {
+          const updatedReferences = references.map((r) =>
+            r.id === reference.id ? { ...r, author: e.target.value } : r
+          );
+          setReferences(updatedReferences);
+        }}
+        onBlur={handleNodeTitleBlur}
+      />
+      <input
+        className="input-small reference-title"
+        type="text"
+        value={reference.title}
+        placeholder="Title"
+        onChange={(e) => {
+          const updatedReferences = references.map((r) =>
+            r.id === reference.id ? { ...r, title: e.target.value } : r
+          );
+          setReferences(updatedReferences);
+        }}
+        onBlur={handleNodeTitleBlur}
+      />
+      <input
+        className="input-small reference-journal"
+        type="text"
+        value={reference.journal}
+        placeholder="Journal"
+        onChange={(e) => {
+          const updatedReferences = references.map((r) =>
+            r.id === reference.id ? { ...r, journal: e.target.value } : r
+          );
+          setReferences(updatedReferences);
+        }}
+        onBlur={handleNodeTitleBlur}
+      />
+      <input
+        className="input-small reference-year"
+        type="text"
+        value={reference.year}
+        placeholder="Year"
+        onChange={(e) => {
+          const updatedReferences = references.map((r) =>
+            r.id === reference.id ? { ...r, year: e.target.value } : r
+          );
+          setReferences(updatedReferences);
+        }}
+        onBlur={handleNodeTitleBlur}
+      />
+      <input
+        className="input-small reference-volume"
+        type="text"
+        value={reference.volume}
+        placeholder="Volume"
+        onChange={(e) => {
+          const updatedReferences = references.map((r) =>
+            r.id === reference.id ? { ...r, volume: e.target.value } : r
+          );
+          setReferences(updatedReferences);
+        }}
+        onBlur={handleNodeTitleBlur}
+      />
+      <input
+        className="input-small reference-number"
+        type="text"
+        value={reference.number}
+        placeholder="Number"
+        onChange={(e) => {
+          const updatedReferences = references.map((r) =>
+            r.id === reference.id ? { ...r, number: e.target.value } : r
+          );
+          setReferences(updatedReferences);
+        }}
+        onBlur={handleNodeTitleBlur}
+      />
+      <input
+        className="input-small reference-pages"
+        type="text"
+        value={reference.pages}
+        placeholder="Pages"
+        onChange={(e) => {
+          const updatedReferences = references.map((r) =>
+            r.id === reference.id ? { ...r, pages: e.target.value } : r
+          );
+          setReferences(updatedReferences);
+        }}
+        onBlur={handleNodeTitleBlur}
+      />
+      <button
+        className="remove-button"
+        onClick={() => {
+          const updatedReferences = references.filter((r) => r.id !== reference.id);
+          setReferences(updatedReferences);
+          socket.emit("update-pad", {
+            padId,
+            sections,
+            authors,
+            references: updatedReferences,
+            title: paperTitle,
+            abstract,
+            keyword: keywords,
+          });
+        }}
+      >
+        🗑️ Remove Reference
+      </button>
+    </li>
+  ))}
+</ul>
+
       </div>
 </div>
 

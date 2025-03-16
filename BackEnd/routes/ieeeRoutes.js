@@ -297,7 +297,7 @@ router.get("/:padId", async (req, res) => {
       image_path: pad.image_path || "default_image_path.jpg",
       references: pad.references || []
     };
-
+    console.log("references to be printed",content);
     // const templatePath = path.join(__dirname, "../templates/ieee_template.tex.ejs");
     // ejs.renderFile(templatePath, content, {}, (err, latexOutput) => {
     //   if (err) {
