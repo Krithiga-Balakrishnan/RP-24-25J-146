@@ -248,7 +248,7 @@ async function convertSectionsByFullText(sections) {
 
     if (section.aiEnhancement && cleanText.trim()) {
       try {
-        const response = await axios.post("https://4eeb-34-125-186-198.ngrok-free.app/convert", {
+        const response = await axios.post("https://e95d-34-87-59-81.ngrok-free.app/convert", {
           section: section.title, content: cleanText
         });
         section.content = processAbbreviations(response.data.converted_text || cleanText);
@@ -297,7 +297,7 @@ router.get("/:padId", async (req, res) => {
       image_path: pad.image_path || "default_image_path.jpg",
       references: pad.references || []
     };
-
+    console.log("references to be printed",content);
     // const templatePath = path.join(__dirname, "../templates/ieee_template.tex.ejs");
     // ejs.renderFile(templatePath, content, {}, (err, latexOutput) => {
     //   if (err) {
@@ -371,7 +371,7 @@ ejs.renderFile(templatePath, content, {}, (err, latexOutput) => {
 
 
 /*-------------------------------------------------------------------------------------------------*/
-const AI_CONVERSION_API = "https://4eeb-34-125-186-198.ngrok-free.app/convert";
+const AI_CONVERSION_API = "https://e95d-34-87-59-81.ngrok-free.app/convert";
 
 router.post("/convert-text", async (req, res) => {
   try {
