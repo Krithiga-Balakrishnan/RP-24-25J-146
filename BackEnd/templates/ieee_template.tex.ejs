@@ -7,28 +7,56 @@
 \title{<%= title %>}
 
 \author{
-\begin{center}
-\fontsize{09}{12}\selectfont
-\begin{tabular}{>{\centering\arraybackslash}p{0.3\linewidth} >{\centering\arraybackslash}p{0.3\linewidth} >{\centering\arraybackslash}p{0.3\linewidth}}
-<% if (authorsRows && authorsRows.length) { %>
-  <% authorsRows.forEach(function(row) { %>
-    <% row.forEach(function(author, index) { %>
-      \begin{minipage}[t]{\linewidth}
-        \centering
-        {<%= author.name %>}\\
-        \emph{<%= author.affiliation || "Unknown Affiliation" %>}\\
-        <%= author.email || "No Email" %>
-      \end{minipage}
-      <% if (index < row.length - 1) { %> & <% } %>
+  \begin{center}
+  \fontsize{09}{12}\selectfont
+  \begin{tabular}{>{\centering\arraybackslash}p{0.33\linewidth} >{\centering\arraybackslash}p{0.33\linewidth} >{\centering\arraybackslash}p{0.33\linewidth}}
+  <% if (authorsRows && authorsRows.length) { %>
+    <% authorsRows.forEach(function(row) { %>
+      <% if (row.length === 1) { %>
+        \multicolumn{3}{c}{%
+          \begin{minipage}[t]{0.33\linewidth}
+            \centering
+            {<%= row[0].name %>}\\
+            \emph{<%= row[0].affiliation || "Unknown Affiliation" %>}\\
+            <%= row[0].email || "No Email" %>
+          \end{minipage}
+        } \\ 
+      <% } else if (row.length === 2) { %>
+        \multicolumn{1}{c}{%
+          \begin{minipage}[t]{0.33\linewidth}
+            \centering
+            {<%= row[0].name %>}\\
+            \emph{<%= row[0].affiliation || "Unknown Affiliation" %>}\\
+            <%= row[0].email || "No Email" %>
+          \end{minipage}
+        } &
+        \multicolumn{2}{c}{%
+          \begin{minipage}[t]{0.33\linewidth}
+            \centering
+            {<%= row[1].name %>}\\
+            \emph{<%= row[1].affiliation || "Unknown Affiliation" %>}\\
+            <%= row[1].email || "No Email" %>
+          \end{minipage}
+        } \\ 
+      <% } else { %>
+        <% row.forEach(function(author, index) { %>
+          \begin{minipage}[t]{\linewidth}
+            \centering
+            {<%= author.name %>}\\
+            \emph{<%= author.affiliation || "Unknown Affiliation" %>}\\
+            <%= author.email || "No Email" %>
+          \end{minipage}
+          <% if (index < row.length - 1) { %> & <% } %>
+        <% }); %> \\ 
+      <% } %>
     <% }); %>
-    <% if (row.length === 1) { %> & ~ & ~ <% } else if (row.length === 2) { %> & ~ <% } %> \\
-  <% }); %>
-<% } else { %>
-  \IEEEauthorblockN{Unknown Author} & ~ & ~ \\
-<% } %>
-\end{tabular}
-\end{center}
-}
+  <% } else { %>
+    \multicolumn{3}{c}{\IEEEauthorblockN{Unknown Author}} \\ 
+  <% } %>
+  \end{tabular}
+  \end{center}
+  }
+  
 
 \begin{document}
 \maketitle

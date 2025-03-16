@@ -7,6 +7,8 @@ import MindmapModal from "../components/MindmapModal";
 import PadHeader from "../components/PadHeader";
 import PadSidebar from "../components/PadSidebar";
 import CiteSidebar from "../components/CiteSideBar";
+import AcademicTextModal from "../components/AcademicTextModal";
+
 
 const socket = io(`${process.env.REACT_APP_BACKEND_API_URL}`);
 
@@ -23,6 +25,9 @@ const PadPage = () => {
   const [selectedText, setSelectedText] = useState("");
   const [lastSelectedText, setLastSelectedText] = useState("");
   const [padName, setPadName] = useState("");
+  const [showAcademicModal, setShowAcademicModal] = useState(false);
+  const [convertedText, setConvertedText] = useState("");
+
 
   const userId = useRef(localStorage.getItem("userId") || uuidv4());
   const userName = useRef(
@@ -171,35 +176,37 @@ const PadPage = () => {
   /*------------------------------------------------------------------------------------------*/
   const handleConvertToAcademic = async () => {
     const textToConvert = lastSelectedText || selectedText;
-    
+  
     if (!textToConvert.trim()) {
       alert("No text selected for conversion.");
       return;
     }
-
+  
     try {
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/api/convert/convert-text`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ content: textToConvert }),
-      });
-
+      const response = await fetch(
+        `${process.env.REACT_APP_BACKEND_API_URL}/api/convert/convert-text`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: textToConvert }),
+        }
+      );
+  
       if (!response.ok) {
         throw new Error("Failed to convert text.");
       }
-
+  
       const data = await response.json();
       console.log("Converted Academic Text:", data.converted_text);
-
-      // Replace selected text in the editor with converted text
-      setSelectedText(data.converted_text);
+  
+      // Show modal with converted text
+      setConvertedText(data.converted_text);
+      setShowAcademicModal(true);
     } catch (error) {
       console.error("Error converting text:", error);
     }
-};
-
+  };
+  
   
   // Fetch pad details from REST endpoint
   const FetchPadData = async () => {
@@ -347,6 +354,16 @@ const PadPage = () => {
           selectedText={selectedText}
         />
       )}
+      <AcademicTextModal
+      show={showAcademicModal}
+      onClose={() => setShowAcademicModal(false)}
+      convertedText={convertedText}
+      onReplaceText={() => {
+        setSelectedText(convertedText); // Replace text in editor
+        setShowAcademicModal(false);
+      }}
+    />
+
     </>
   );
 };
