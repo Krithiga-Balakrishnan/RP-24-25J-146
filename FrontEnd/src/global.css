@@ -199,6 +199,10 @@ body {
   background: #f0f0f0;
 } 
 
+.form-check-input:checked {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
 /* 🔥 Quill Editor Inside */
 .ql-editor {
   min-height: 380px;

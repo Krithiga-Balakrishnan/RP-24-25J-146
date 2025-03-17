@@ -193,7 +193,10 @@ const PadPage = () => {
       );
   
       if (!response.ok) {
+        setConvertedText("Couldn't convert the text");
+        setShowAcademicModal(true);
         throw new Error("Failed to convert text.");
+       
       }
   
       const data = await response.json();
@@ -267,6 +270,27 @@ const PadPage = () => {
   }
   };
 
+  const handleReplaceText = () => {
+    if (!convertedText.trim()) {
+      alert("No converted text to insert!");
+      return;
+    }
+  
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return;
+  
+    // Get the current cursor position
+    const range = selection.getRangeAt(0);
+    range.deleteContents(); // Remove any selected text
+    range.insertNode(document.createTextNode(convertedText)); // Insert new text
+  
+    // Move cursor to the end of the inserted text
+    range.collapse(false);
+  
+    // Close modal after insertion
+    setShowAcademicModal(false);
+  };
+  
   return (
     <>
       <PadSidebar
@@ -398,10 +422,7 @@ const PadPage = () => {
       show={showAcademicModal}
       onClose={() => setShowAcademicModal(false)}
       convertedText={convertedText}
-      onReplaceText={() => {
-        setSelectedText(convertedText); // Replace text in editor
-        setShowAcademicModal(false);
-      }}
+      onReplaceText={handleReplaceText}
     />
 
     </>

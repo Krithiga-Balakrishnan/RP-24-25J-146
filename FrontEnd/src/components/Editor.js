@@ -617,7 +617,7 @@ function attachTableCellListeners(quill, embedIndex) {
           }
         />
 
-<label style={{ marginLeft: 10 }}>
+{/* <label style={{ marginLeft: 10 }}>
 <input
   type="checkbox"
   checked={!!node.aiEnhancement}
@@ -638,7 +638,41 @@ function attachTableCellListeners(quill, embedIndex) {
 />
 
         {" AI?"}
-      </label>
+      </label> */}
+      <div
+  className="form-check form-switch"
+  style={{
+    display: "inline-block",
+    marginRight: "1rem",
+    verticalAlign: "middle",
+  }}
+>
+  <input
+    className="form-check-input"
+    type="checkbox"
+    role="switch"
+    id={`toggle-switch-${node.id}`}
+    checked={!!node.aiEnhancement}
+    onChange={(e) => {
+      const newValue = e.target.checked;
+      const updated = toggleAiEnhancementInTree(sections, node.id, newValue);
+      setSections(updated);
+      socket.emit("update-pad", {
+        padId,
+        sections: updated,
+        authors,
+        references,
+        title: paperTitle,
+        abstract,
+        keyword: keywords,
+      });
+    }}
+  />
+  <label className="form-check-label" htmlFor={`toggle-switch-${node.id}`}>
+    AI Enhance
+  </label>
+</div>
+
 
         <button onClick={() => removeNode(node.id)} style={{ marginLeft: 5 }}>
           🗑️
