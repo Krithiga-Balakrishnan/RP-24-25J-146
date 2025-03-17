@@ -1,41 +1,8 @@
-import React from "react";
+import React, { useRef } from "react";
 import { Nav } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import Logo from "../images/logo.svg"; // Expanded view logo
 import Logo1 from "../images/logo-icon.svg"; // Simplified view logo
-
-// SAMPLE MENU STRUCTURE
-const menuData = [
-  { type: "link", label: "Home", icon: "🏠", route: "/" },
-  { type: "header", label: "PAPERPAL FOR WRITING" },
-  { type: "link", label: "Chat PDF", icon: "💬", route: "/chat-pdf" },
-  {
-    type: "link",
-    label: "New Web Document",
-    icon: "📝",
-    route: "/new-web-doc",
-  },
-  { type: "link", label: "Mindmap", icon: "✍️", route: "/mindmap" },
-  { type: "link", label: "Citations", icon: "🔬", route: "/citations" },
-  { type: "link", label: "IEEE", icon: "🔄", route: "/ieee" },
-  
-  { type: "header", label: "PAPERPAL APPS" },
-  { type: "link", label: "For Microsoft Word", icon: "🪟", route: "/ms-word" },
-  { type: "link", label: "For Google Docs", icon: "📄", route: "/google-docs" },
-  { type: "link", label: "For Overleaf", icon: "🌿", route: "/overleaf" },
-
-  { type: "header", label: "PAPERPAL FOR MANUSCRIPT" },
-  { type: "link", label: "Plagiarism Check", icon: "🔎", route: "/plagiarism" },
-  { type: "link", label: "Submission Check", icon: "✅", route: "/submission" },
-  { type: "link", label: "Human Expert Services", icon: "👩‍⚖️", route: "/human-expert" },
-
-  { type: "link", label: "Plans", icon: "⭐", route: "/plans" },
-  { type: "header", label: "SANJAYAN C" },
-  { type: "link", label: "My Profile", icon: "👤", route: "/profile" },
-  { type: "link", label: "Refer and Earn", icon: "💸", route: "/refer" },
-  { type: "link", label: "Help Center", icon: "❓", route: "/help" },
-  { type: "link", label: "Logout", icon: "🚪", route: "#", action: "logout" },
-];
 
 const Sidebar = ({
   isExpanded,
@@ -44,6 +11,68 @@ const Sidebar = ({
   onSelectItem,
 }) => {
   const navigate = useNavigate();
+  const userId = useRef(localStorage.getItem("userId") || "0000");
+  const userName = useRef(
+    localStorage.getItem("userName") || `User-${userId.current.slice(0, 4)}`
+  );
+
+  // SAMPLE MENU STRUCTURE
+  const menuData = [
+    { type: "link", label: "Home", icon: "🏠", route: "/" },
+    { type: "header", label: "PAPERPAL FOR WRITING" },
+    { type: "link", label: "Chat PDF", icon: "💬", route: "/chat-pdf" },
+    {
+      type: "link",
+      label: "New Web Document",
+      icon: "📝",
+      route: "/new-web-doc",
+    },
+    { type: "link", label: "Mindmap", icon: "✍️", route: "/mindmap" },
+    { type: "link", label: "Citations", icon: "🔬", route: "/citations" },
+    { type: "link", label: "IEEE", icon: "🔄", route: "/ieee" },
+
+    { type: "header", label: "PAPERPAL APPS" },
+    {
+      type: "link",
+      label: "For Microsoft Word",
+      icon: "🪟",
+      route: "/ms-word",
+    },
+    {
+      type: "link",
+      label: "For Google Docs",
+      icon: "📄",
+      route: "/google-docs",
+    },
+    { type: "link", label: "For Overleaf", icon: "🌿", route: "/overleaf" },
+
+    { type: "header", label: "PAPERPAL FOR MANUSCRIPT" },
+    {
+      type: "link",
+      label: "Plagiarism Check",
+      icon: "🔎",
+      route: "/plagiarism",
+    },
+    {
+      type: "link",
+      label: "Submission Check",
+      icon: "✅",
+      route: "/submission",
+    },
+    {
+      type: "link",
+      label: "Human Expert Services",
+      icon: "👩‍⚖️",
+      route: "/human-expert",
+    },
+
+    { type: "link", label: "Plans", icon: "⭐", route: "/plans" },
+    { type: "header", label: `USER: ${userName.current.toUpperCase()}` },
+    { type: "link", label: "My Profile", icon: "👤", route: "/profile" },
+    { type: "link", label: "Refer and Earn", icon: "💸", route: "/refer" },
+    { type: "link", label: "Help Center", icon: "❓", route: "/help" },
+    { type: "link", label: "Logout", icon: "🚪", route: "#", action: "logout" },
+  ];
 
   // --- Container: fixed height, now with overflow visible so the arrow appears outside
   const containerStyle = {
@@ -176,7 +205,11 @@ const Sidebar = ({
       case "link": {
         const showText = item.alwaysShowText || isExpanded;
         return (
-          <Nav.Item className="header-font" key={index} style={{ width: "100%" }}>
+          <Nav.Item
+            className="header-font"
+            key={index}
+            style={{ width: "100%" }}
+          >
             <div
               style={getNavItemStyle(item)}
               onClick={() => {
@@ -191,7 +224,7 @@ const Sidebar = ({
                   onSelectItem(item.route);
                   navigate(item.route);
                 }
-              }}              
+              }}
               onMouseEnter={(e) => {
                 if (selectedItem !== item.route) {
                   Object.assign(e.currentTarget.style, navItemHoverStyle);
