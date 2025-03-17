@@ -4,10 +4,10 @@ import * as d3 from "d3";
 import Lottie from "react-lottie-player";
 import Loading from "../animation/mindmap-loading.json";
 import { Wave } from "react-animated-text";
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
-const MindmapModal = ({ show, onClose, selectedText, padId }) => {
+const MindmapModal = ({ show, onClose, selectedText }) => {
   // Create refs for key elements in the modal
   const modalRef = useRef(null);
   const graphRef = useRef(null);
@@ -20,218 +20,52 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
   const addRelationBtnRef = useRef(null);
   const colorPickerRef = useRef(null);
   const colorPickerContainerRef = useRef(null);
-  const [fullScreenImageUrl, setFullScreenImageUrl] = useState(null);
-  const deleteImageBtnRef = useRef(null);
-  const [loading, setLoading] = useState(true);
   const selectRelationFeedbackRef = useRef(null);
+  const selectedLevelRef = useRef(null);
+
+  // D3 objects stored in refs
+  const svgRef = useRef(null);
+  const zoomGroupRef = useRef(null);
+  const linkGroupRef = useRef(null);
+  const nodeGroupRef = useRef(null);
+  const simulationRef = useRef(null);
+  const zoomBehaviorRef = useRef(null); // For zoom behavior
+
+  // Data arrays stored in refs so that they persist across renders.
+  const nodesRef = useRef([]);
+  const linksRef = useRef([]);
+  // Unique node counter stored in a ref
+  const uniqueNodeCounterRef = useRef(1);
+
+  // NEW: Persisted color map stored in a ref.
+  const colorMapRef = useRef({});
+
+  // Selected objects stored in refs.
+  const selectedNodeRef = useRef(null);
+  const selectedLinkRef = useRef(null);
+  const selectedSourceForRelationRef = useRef(null);
+  const interactiveRelationModeRef = useRef(false);
+
+  // Other state and refs
+  const [fullScreenImageUrl, setFullScreenImageUrl] = useState(null);
+  const [loading, setLoading] = useState(true);
   const hasFetchedDatabaseRef = useRef(false);
   const [imageCatalog, setImageCatalog] = useState([]);
   const imageCatalogRef = useRef([]);
+  const hasGeneratedRef = useRef(false);
 
   // Global variables for the mind map (internal to this component)
-  let nodes = [];
-  let links = [];
   let width = 800;
   let height = 600;
-  let colorMap = {};
-  // const defaultColorScale = d3.scaleOrdinal(d3.schemeCategory10);
   const defaultColorScale = () => "#FFFFFF";
   let selectedLevel = null;
-  let selectedNode = null;
-  let selectedLink = null;
-  let svg, zoomGroup, linkGroup, nodeGroup, simulation;
-  let isAddNodeListenerAttached = false;
-  let isAddRelationListenerAttached = false;
-  let isDeleteListenerAttached = false;
-  let zoomBehavior;
-  let interactiveRelationMode = false;
-  let selectedSourceForRelation = null;
   const baseApiUrl = `${process.env.REACT_APP_BACKEND_API_URL_MINDMAP}`;
 
-  // 1) A catalog of images, each with a description
-  async function fetchImageCatalog() {
-    const token = localStorage.getItem("token");
-    if (!token) return;
-
-    try {
-      // Construct the URL using padId; adjust the URL to your backend
-      const endpointUrl = `${process.env.REACT_APP_BACKEND_API_URL}/api/pads/${padId}/images`;
-      const response = await fetch(endpointUrl, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`, // sending token in header
-        },
-      });
-      if (!response.ok) {
-        throw new Error(`Failed to fetch image catalog: ${response.status}`);
-      }
-      const data = await response.json();
-
-      // Extract imagePairs and map the keys to what your code expects:
-      if (data.imagePairs && Array.isArray(data.imagePairs)) {
-        const mappedCatalog = data.imagePairs.map((pair) => {
-          console.log("Mapping image pair:", pair);
-          return {
-            url: pair.image_url,
-            description: pair.image_description,
-          };
-        });
-        console.log("Mapped image catalog:", mappedCatalog);
-        imageCatalogRef.current = mappedCatalog;
-        return mappedCatalog;
-      } else {
-        throw new Error("No imagePairs found in response");
-      }
-    } catch (error) {
-      console.error("Error fetching image catalog:", error);
-      return [];
-    }
-  }
-
-  // 1) Preload images locally just as before.
-  async function preloadImages(imageCatalog) {
-    const promises = imageCatalog.map(async (item) => {
-      try {
-        const response = await fetch(item.url, { mode: "cors" });
-        if (!response.ok) {
-          console.warn(
-            `Skipping image ${item.url} due to fetch error: ${response.status}`
-          );
-          return; // Skip this image and continue
-        }
-
-        const blob = await response.blob();
-        await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            item.dataUrl = reader.result;
-            console.log(
-              "Base64 (first 100 chars):",
-              item.dataUrl.substring(0, 100)
-            );
-            resolve();
-          };
-          reader.onerror = (error) => {
-            console.error(`Error reading blob for ${item.url}:`, error);
-            resolve(); // Resolve to skip this image
-          };
-          reader.readAsDataURL(blob);
-        });
-      } catch (error) {
-        console.error(`Skipping image ${item.url} due to error:`, error);
-      }
-    });
-
-    await Promise.all(promises);
-    return imageCatalog;
-  }
-
-  // 2) Create a global (or module-level) cache
-  //    to store the API’s matched images by node text.
-  //    This can also be managed via React state, a context provider, etc.
-  let matchedImageMap = {};
-  // Example format: { "nodeText": "someBase64String", ... }
-
-  // 3) New function to fetch matches from your external API.
-  async function fetchMatchedImages(nodes, imageCatalog) {
-    // Build a request body that your API expects.
-    // (Adjust the structure to match your backend’s needs.)
-    // Only call the API if there is at least one node.
-    if (!nodes || nodes.length === 0) {
-      console.warn("No nodes provided; skipping API call.");
-      return; // or return an empty result / handle it appropriately.
-    }
-
-    const endpoint = "https://sanjayan201-my-image-matching-app.hf.space/match"; // update if needed
-    const payload = {
-      node_texts: nodes.map((n) => n.text), // now an array of strings
-      image_pairs: imageCatalogRef.current.map((item) => ({
-        image_url: item.url,
-        image_description: item.description,
-      })),
-    };
-    console.log("Payload:", payload);
-
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch matches: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log("API Response:", data); // Log the complete API response here.
-
-    // Assume the API returns something like:
-    // {
-    //   "matched_pairs": [
-    //     { "node": "IoT data", "image_url": "data:image/png;base64,..." },
-    //     { "node": "Machine Learning", "image_url": "data:image/png;base64,..." }
-    //     ...
-    //   ]
-    // }
-
-    // Clear out the previous map or merge into it as you prefer
-    matchedImageMap = {};
-
-    // Store results in the matchedImageMap for quick lookup:
-    // In this example, we key by node text.
-    if (data.matched_pairs && Array.isArray(data.matched_pairs)) {
-      data.matched_pairs.forEach((pair) => {
-        // pair.node -> text that matched
-        // pair.image_url -> base64 or original link
-        matchedImageMap[pair.node.toLowerCase()] = pair.image_url;
-      });
-    }
-    console.log("Updated matchedImageMap:", matchedImageMap);
-  }
-
-  // 4) Updated getMatchingImage function:
-  //    1) Check matchedImageMap from API first.
-  //    2) If no match, fall back to local matching logic.
-  //    3) Return a dataUrl (or null).
-  // Updated getMatchingImage: use preloaded base64 data when possible
-  function getMatchingImage(nodeText, imageList) {
-    const lowerText = nodeText.toLowerCase();
-
-    // If there's an API match, use it
-    if (matchedImageMap[lowerText]) {
-      const apiMatch = matchedImageMap[lowerText];
-      console.log("Found API match for node text:", nodeText, apiMatch);
-      // If the API match is an external URL, try to find a corresponding local preloaded image
-      if (apiMatch.startsWith("http")) {
-        const localMatch = imageList.find(
-          (item) => item.url === apiMatch && item.dataUrl
-        );
-        if (localMatch) {
-          console.log("Using local preloaded dataUrl for:", nodeText);
-          return localMatch.dataUrl;
-        }
-      }
-      // Otherwise, if it's already a data URL, return it directly
-      return apiMatch;
-    }
-
-    // Fallback: Look for an exact match in the local image list by description
-    const exactMatch = imageList.find(
-      (item) => item.description.toLowerCase() === lowerText && item.dataUrl
-    );
-    if (exactMatch) {
-      console.log("Found local exact match for node text:", nodeText);
-      return exactMatch.dataUrl;
-    }
-
-    return null;
-  }
-
   useEffect(() => {
-    if (!show) return;
+    if (!show) {
+      return;
+    }
 
-    setLoading(true);
     hasFetchedDatabaseRef.current = false;
 
     // Get elements via refs
@@ -270,74 +104,47 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
         console.error("SVG element not found.");
         return;
       }
-
-      // Clone the SVG element so that changes don’t affect the live DOM
       const clonedSvg = svgElement.cloneNode(true);
-
-      // Append clone temporarily to the DOM for accurate bounding box measurement
       const tempContainer = document.createElement("div");
       tempContainer.style.visibility = "hidden";
       document.body.appendChild(tempContainer);
       tempContainer.appendChild(clonedSvg);
-
       const bbox = clonedSvg.getBBox();
       console.log("Computed BBox:", bbox);
       tempContainer.remove();
-
-      // If parts of your SVG lie outside the (0,0) origin, calculate offsets to include them
       const offsetX = -Math.min(bbox.x, 0);
       const offsetY = -Math.min(bbox.y, 0);
       const canvasWidth = bbox.width + offsetX;
       const canvasHeight = bbox.height + offsetY;
-
-      // Set the cloned SVG dimensions and viewBox so it renders correctly
       clonedSvg.setAttribute("width", canvasWidth);
       clonedSvg.setAttribute("height", canvasHeight);
       clonedSvg.setAttribute(
         "viewBox",
         `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`
       );
-
-      // Serialize the SVG to a string and create a blob URL
       const svgData = new XMLSerializer().serializeToString(clonedSvg);
       const svgBlob = new Blob([svgData], {
         type: "image/svg+xml;charset=utf-8",
       });
       const url = URL.createObjectURL(svgBlob);
-
-      // Set your desired output resolution (increase this value for higher quality)
       const desiredOutputWidth = 24000;
-      // Compute the scale factor based solely on the desired output width
       const scale = desiredOutputWidth / canvasWidth;
-
       const image = new Image();
-      image.crossOrigin = "anonymous"; // Ensures external images are not tainted
-
+      image.crossOrigin = "anonymous";
       image.onload = () => {
-        // Calculate final canvas dimensions based on the computed scale
         const finalCanvasWidth = Math.floor(canvasWidth * scale);
         const finalCanvasHeight = Math.floor(canvasHeight * scale);
         const canvas = document.createElement("canvas");
         canvas.width = finalCanvasWidth;
         canvas.height = finalCanvasHeight;
         const ctx = canvas.getContext("2d");
-
-        // Enable high-quality image smoothing
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = "high";
-
-        // Fill the canvas background with white (optional, in case of transparency)
         ctx.fillStyle = "white";
         ctx.fillRect(0, 0, finalCanvasWidth, finalCanvasHeight);
-
-        // Apply the scaling transformation to the canvas context
         ctx.scale(scale, scale);
-        // Translate the context so that negative offsets are handled correctly
         ctx.translate(offsetX, offsetY);
-        // Draw the image; the negative translation ensures the full content appears
         ctx.drawImage(image, -offsetX, -offsetY);
-
-        // Convert the canvas to a PNG blob and trigger download
         canvas.toBlob((blob) => {
           if (blob) {
             const link = document.createElement("a");
@@ -353,11 +160,10 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
             link.href = dataUrl;
             link.download = "mindmap.png";
             link.click();
-            toast.success("Mindmap saved (fallback method)");
+            toast.success("Mindmap downloaded (fallback method)");
           }
         }, "image/png");
       };
-
       image.src = url;
     };
 
@@ -438,10 +244,11 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
           reader.onloadend = async () => {
             const base64Image = reader.result; // PNG in base64
             const userId = localStorage.getItem("userId");
+
             // Build the payload with nodes, links, image, and the current datetime
             const payload = {
-              nodes, // assuming these are your current node objects
-              links, // assuming these are your current link objects
+              nodes: nodesRef.current,
+              links: linksRef.current,
               image: base64Image,
               downloadDate: new Date().toISOString(),
               userId,
@@ -483,74 +290,58 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
       addNodeBtn.disabled = true;
       setLoading(true);
       newNodeNameRef.current.value = "";
-
-      // Find the root node – either by checking depth 0 or fallback to the first node
-      const rootNode = nodes.find((node) => node.depth === 0) || nodes[0];
-
+      const rootNode =
+        nodesRef.current.find((node) => node.depth === 0) ||
+        nodesRef.current[0];
       let x, y;
       if (rootNode) {
-        // Generate a random distance between min and max (in pixels)
         const minDistance = 100;
         const maxDistance = 400;
         const distance =
           minDistance + Math.random() * (maxDistance - minDistance);
-        // Generate a random angle (in radians)
         const angle = Math.random() * 2 * Math.PI;
         x = rootNode.x + distance * Math.cos(angle);
         y = rootNode.y + distance * Math.sin(angle);
       } else {
-        // Fallback: center of the container if no node exists yet
         const container = graphRef.current;
         x = container.clientWidth / 2;
         y = container.clientHeight / 2;
       }
-
-      // Create a new node with a unique id and pin it at the calculated position.
       const newNode = {
-        id: `node-${uniqueNodeCounter++}`,
+        id: `node-${uniqueNodeCounterRef.current++}`,
         text: newNodeName,
-        x: x,
-        y: y,
+        x,
+        y,
         depth: 0,
         fx: x,
         fy: y,
       };
-
-      nodes.push(newNode);
-
-      // Call API to refresh matched images and then update visualization again
-      fetchMatchedImages(nodes, imageCatalog)
-        .then(() => {
-          update();
-          setLoading(false);
-          addNodeBtn.disabled = false;
-        })
-        .catch((err) => {
-          console.error(
-            "Error fetching matched images after adding node:",
-            err
-          );
-          setLoading(false);
-          addNodeBtn.disabled = false;
-        });
+      nodesRef.current.push(newNode);
+      update();
+      setLoading(false);
+      addNodeBtn.disabled = false;
     };
 
     const addRelationInteractiveSpan =
       document.querySelector(".add-relation-text");
     if (addRelationInteractiveSpan) {
       addRelationInteractiveSpan.addEventListener("click", (event) => {
-        // Prevent duplicate activation
-        if (!interactiveRelationMode) {
-          if (selectedNode) {
-            interactiveRelationMode = true;
-            selectedSourceForRelation = selectedNode;
-            // Instead of an alert, update visual feedback:
+        if (!interactiveRelationModeRef.current) {
+          if (selectedNodeRef.current) {
+            interactiveRelationModeRef.current = true;
+            selectedSourceForRelationRef.current = selectedNodeRef.current;
             addRelationInteractiveSpan.style.display = "none";
             if (selectRelationFeedbackRef.current) {
               selectRelationFeedbackRef.current.style.display = "inline-block";
             }
           } else {
-            alert("Please click on a node first to set it as the source.");
+            if (!window._relationAlertShown) {
+              alert("Please click on a node first to set it as the source.");
+              window._relationAlertShown = true;
+              setTimeout(() => {
+                window._relationAlertShown = false;
+              }, 2000);
+            }
           }
         }
         event.stopPropagation();
@@ -559,15 +350,24 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
 
     const handleCloseModal = () => {
       modal.style.display = "none";
+      if (simulationRef.current) {
+        simulationRef.current.stop();
+      }
       d3.select(graphRef.current).select("svg").remove();
-      console.log("Modal closed.");
+      hasGeneratedRef.current = false;
+      svgRef.current = null;
+      zoomGroupRef.current = null;
+      linkGroupRef.current = null;
+      nodeGroupRef.current = null;
+      simulationRef.current = null;
+      zoomBehaviorRef.current = null;
       onClose && onClose();
     };
 
     const handleDocumentClick = () => {
-      if (interactiveRelationMode) {
-        interactiveRelationMode = false;
-        selectedSourceForRelation = null;
+      if (interactiveRelationModeRef.current) {
+        interactiveRelationModeRef.current = false;
+        selectedSourceForRelationRef.current = null;
         if (addRelationInteractiveSpan) {
           addRelationInteractiveSpan.style.display = "inline-block";
         }
@@ -575,16 +375,12 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
           selectRelationFeedbackRef.current.style.display = "none";
         }
       }
-
       if (colorPickerContainer) {
         colorPickerContainer.style.display = "none";
       }
-      selectedNode = null;
-      selectedLink = null;
-
-      // Only call updateBlinking if nodeGroup and linkGroup exist
-      if (!nodeGroup || !linkGroup) return;
-
+      selectedNodeRef.current = null;
+      selectedLinkRef.current = null;
+      if (!nodeGroupRef.current || !linkGroupRef.current) return;
       updateBlinking();
     };
 
@@ -593,9 +389,9 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
         let hierarchyData;
         let deletedNodeId = null;
         let affectedNodes = new Set();
-        if (selectedNode) {
-          deletedNodeId = selectedNode.id;
-          let children = links
+        if (selectedNodeRef.current) {
+          deletedNodeId = selectedNodeRef.current.id;
+          let children = linksRef.current
             .filter((l) =>
               typeof l.source === "object"
                 ? l.source.id === deletedNodeId
@@ -604,18 +400,15 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
             .map((l) =>
               typeof l.target === "object" ? l.target.id : l.target
             );
-          let parentNode = links.find((l) =>
+          let parentNode = linksRef.current.find((l) =>
             typeof l.target === "object"
               ? l.target.id === deletedNodeId
               : l.target === deletedNodeId
           );
-          let parentId = parentNode
-            ? typeof parentNode.source === "object"
-              ? parentNode.source.id
-              : parentNode.source
-            : null;
-          nodes = nodes.filter((n) => n.id !== deletedNodeId);
-          links = links.filter((l) => {
+          nodesRef.current = nodesRef.current.filter(
+            (n) => n.id !== deletedNodeId
+          );
+          linksRef.current = linksRef.current.filter((l) => {
             if (typeof l.source === "object") {
               return (
                 l.source.id !== deletedNodeId && l.target.id !== deletedNodeId
@@ -625,31 +418,33 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
             }
           });
           children.forEach((childId) => affectedNodes.add(childId));
-          selectedNode = null;
-        } else if (selectedLink) {
-          let orphanNode = selectedLink.target.id;
+          selectedNodeRef.current = null;
+        } else if (selectedLinkRef.current) {
+          let orphanNode = selectedLinkRef.current.target.id;
           affectedNodes.add(orphanNode);
-          links = links.filter((l) => {
+          linksRef.current = linksRef.current.filter((l) => {
             if (typeof l.source === "object") {
               return !(
-                l.source.id === selectedLink.source.id &&
-                l.target.id === selectedLink.target.id
+                l.source.id === selectedLinkRef.current.source.id &&
+                l.target.id === selectedLinkRef.current.target.id
               );
             } else {
               return !(
-                l.source === selectedLink.source &&
-                l.target === selectedLink.target
+                l.source === selectedLinkRef.current.source &&
+                l.target === selectedLinkRef.current.target
               );
             }
           });
-          selectedLink = null;
+          selectedLinkRef.current = null;
         }
-        hierarchyData = buildHierarchy(nodes, links);
-        const nodeMap = new Map(nodes.map((node) => [node.id, node]));
+        hierarchyData = buildHierarchy(nodesRef.current, linksRef.current);
+        const nodeMap = new Map(
+          nodesRef.current.map((node) => [node.id, node])
+        );
         affectedNodes.forEach((nodeId) => {
           let node = nodeMap.get(nodeId);
           if (node) {
-            const parentLink = links.find((l) =>
+            const parentLink = linksRef.current.find((l) =>
               typeof l.target === "object"
                 ? l.target.id === node.id
                 : l.target === node.id
@@ -664,14 +459,14 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
             } else {
               node.depth = 0;
             }
-            updateDepthsRecursively(node, nodeMap, links);
+            updateDepthsRecursively(node, nodeMap, linksRef.current);
           }
         });
-        nodes.forEach((node) => {
-          if (!colorMap[node.depth]) {
-            colorMap[node.depth] = defaultColorScale(node.depth);
+        nodesRef.current.forEach((node) => {
+          if (!colorMapRef.current[node.depth]) {
+            colorMapRef.current[node.depth] = defaultColorScale(node.depth);
           }
-          window.nodeColorMap.set(node.id, colorMap[node.depth]);
+          window.nodeColorMap.set(node.id, colorMapRef.current[node.depth]);
         });
         updateBlinking();
         update();
@@ -681,21 +476,18 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
     // ---------- Attach Color Picker Listener ----------
     const handleColorPickerInput = (event) => {
       const newColor = event.target.value;
-      if (selectedLevel !== null) {
-        // Update the color map for the selected level
-        colorMap[selectedLevel] = newColor;
-        // Update all nodes that have the same depth as the selected level
-        nodeGroup
+      if (selectedLevelRef.current !== null) {
+        colorMapRef.current[selectedLevelRef.current] = newColor;
+        nodeGroupRef.current
           .selectAll("g")
           .select("ellipse")
           .attr("fill", (d) =>
-            d.depth === selectedLevel
+            d.depth === selectedLevelRef.current
               ? newColor
-              : colorMap[d.depth] || defaultColorScale(d.depth || 0)
+              : colorMapRef.current[d.depth] || defaultColorScale(d.depth || 0)
           );
-        // Also update the persistent color map for these nodes
-        nodes.forEach((node) => {
-          if (node.depth === selectedLevel) {
+        nodesRef.current.forEach((node) => {
+          if (node.depth === selectedLevelRef.current) {
             window.nodeColorMap.set(node.id, newColor);
           }
         });
@@ -713,19 +505,18 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
     saveButton.addEventListener("click", handleSave);
     document.addEventListener("click", handleDocumentClick);
     addNodeBtn.addEventListener("click", handleAddNode);
-    // addRelationBtn.addEventListener("click", handleAddRelation);
     document.addEventListener("keydown", handleKeyDown);
-    isAddNodeListenerAttached = true;
-    isAddRelationListenerAttached = true;
-    // isDeleteListenerAttached is set via keydown listener
+    // Flags for listeners (if needed)
 
     // ---------- Generate Mindmap Function ----------
-    const generateMindmap = () => {
+    // Replace your existing generateMindmap function with this:
+    const generateMindmap = (fetchFn) => {
+      setLoading(true);
+      hasGeneratedRef.current = true;
       d3.select(graphRef.current).select("svg").remove();
       width = mindmapContainer.clientWidth || 800;
       height = mindmapContainer.clientHeight || 600;
-
-      svg = d3
+      svgRef.current = d3
         .select(graphRef.current)
         .append("svg")
         .attr("width", "100%")
@@ -733,24 +524,26 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
         .attr("viewBox", `0 0 ${width} ${height}`)
         .attr("preserveAspectRatio", "xMidYMid meet")
         .style("cursor", "pointer");
-      zoomGroup = svg.append("g");
-      linkGroup = zoomGroup.append("g").attr("class", "links");
-      nodeGroup = zoomGroup.append("g").attr("class", "nodes");
-
-      zoomBehavior = d3
+      zoomGroupRef.current = svgRef.current.append("g");
+      linkGroupRef.current = zoomGroupRef.current
+        .append("g")
+        .attr("class", "links");
+      nodeGroupRef.current = zoomGroupRef.current
+        .append("g")
+        .attr("class", "nodes");
+      zoomBehaviorRef.current = d3
         .zoom()
         .scaleExtent([0.05, 5])
         .on("zoom", (event) => {
-          zoomGroup.attr("transform", event.transform);
+          zoomGroupRef.current.attr("transform", event.transform);
         });
-      svg.call(zoomBehavior);
-
-      simulation = d3
-        .forceSimulation(nodes)
+      svgRef.current.call(zoomBehaviorRef.current);
+      simulationRef.current = d3
+        .forceSimulation(nodesRef.current)
         .force(
           "link",
           d3
-            .forceLink(links)
+            .forceLink(linksRef.current)
             .id((d) => d.id)
             .distance(150)
         )
@@ -761,13 +554,13 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
         )
         .force("center", d3.forceCenter(width / 2, height / 2))
         .on("tick", ticked);
-
       console.log("Selected Text:", selectedText);
-
-      if (!hasFetchedDatabaseRef.current) {
-        fetchFromDatabase()
+      // Instead of always calling fetchFromDatabase, use the passed fetchFn
+      if (!hasFetchedDatabaseRef.current && typeof fetchFn === "function") {
+        fetchFn()
           .then(() => {
             console.log("Mind map data loaded.");
+            setLoading(false);
           })
           .catch((err) => {
             console.error("Error fetching mind map data:", err);
@@ -775,36 +568,25 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
       }
     };
 
-    // ---------- Download Mindmap Handler is defined above as handleDownload ----------
-
-    // Zoom beaviour function
+    // ---------- Zoom Behaviour Helper ----------
     function fitToScreen() {
-      // 1) Get container size
       const container = document.getElementById("mindmapContainer");
       if (!container) return;
       const containerWidth = container.clientWidth;
       const containerHeight = container.clientHeight;
-
-      // 2) Measure bounding box of zoomGroup
-      const bbox = zoomGroup.node().getBBox();
-      if (!bbox.width || !bbox.height) return; // No content or not rendered yet?
-
-      // 3) Compute scale so the content fits
+      const bbox = zoomGroupRef.current.node().getBBox();
+      if (!bbox.width || !bbox.height) return;
       const scale = Math.min(
         containerWidth / bbox.width,
         containerHeight / bbox.height
       );
-
-      // 4) Compute translation to center
       const tx = (containerWidth - bbox.width * scale) / 2 - bbox.x * scale;
       const ty = (containerHeight - bbox.height * scale) / 2 - bbox.y * scale;
-
-      // 5) Apply transform with a transition
-      svg
+      svgRef.current
         .transition()
         .duration(750)
         .call(
-          zoomBehavior.transform,
+          zoomBehaviorRef.current.transform,
           d3.zoomIdentity.translate(tx, ty).scale(scale)
         );
     }
@@ -813,9 +595,10 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
     async function fetchFromDatabase() {
       try {
         hasFetchedDatabaseRef.current = true;
-        console.log("fetchFromDatabase");
         let data;
         const chosen = selectedText.trim();
+        console.log("fetchFromDatabase");
+
         if (chosen === "1") {
           data = {
             mindmap: [
@@ -1100,15 +883,14 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
         }
 
         console.log("Mock Data Chosen:", data);
-        nodes = [];
-        links = [];
+        nodesRef.current = [];
+        linksRef.current = [];
         if (data && data.mindmap && Array.isArray(data.mindmap)) {
           data.mindmap.forEach((mindmapNode) => {
             traverseMindmap(mindmapNode, null);
           });
         }
 
-        // Adjust URL/endpoint as needed:
         // const endpoint = "generate";
 
         // const response = await fetch(`${baseApiUrl}/${endpoint}`, {
@@ -1136,28 +918,20 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
         // const mindmapRoot = data;
 
         // // Clear previous data
-        // nodes = [];
-        // links = [];
+        // nodesRef.current = [];
+        // linksRef.current = [];
         // // Traverse the response structure
         // mindmapRoot.mindmap.forEach((mindmapNode) => {
         //   traverseMindmap(mindmapNode, null);
         // });
 
-        const hierarchyData = buildHierarchy(nodes, links);
+        const hierarchyData = buildHierarchy(
+          nodesRef.current,
+          linksRef.current
+        );
         applyTreeLayout(hierarchyData);
-        await fetchMatchedImages(nodes, imageCatalog)
-          .then(() => {
-            update();
-          })
-          .then(() => {
-            setLoading(false);
-          })
-          .catch((err) =>
-            console.error(
-              "Error fetching matched images after adding node:",
-              err
-            )
-          );
+        update();
+        setLoading(false);
       } catch (error) {
         console.error("Error fetching data from mock data:", error);
         setLoading(false);
@@ -1168,6 +942,7 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
       try {
         hasFetchedDatabaseRef.current = true;
         console.log("fetchFromExtendDatabase");
+
         // const endpoint = "extend"; // Use the 'extend' endpoint
         // const response = await fetch(`${baseApiUrl}/${endpoint}`, {
         //   method: "POST",
@@ -1232,22 +1007,21 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
         };
 
         console.log("Mock Data Chosen:", data);
-        nodes = [];
-        links = [];
+        nodesRef.current = [];
+        linksRef.current = [];
         if (data && data.mindmap && Array.isArray(data.mindmap)) {
           data.mindmap.forEach((mindmapNode) => {
             traverseMindmap(mindmapNode, null);
           });
         }
 
-        const hierarchyData = buildHierarchy(nodes, links);
+        const hierarchyData = buildHierarchy(
+          nodesRef.current,
+          linksRef.current
+        );
         applyTreeLayout(hierarchyData);
-        await fetchMatchedImages(nodes, imageCatalog)
-          .then(() => update())
-          .then(() => setLoading(false))
-          .catch((err) =>
-            console.error("Error fetching matched images after extend:", err)
-          );
+        update();
+        setLoading(false);
       } catch (error) {
         console.error("Error fetching data from extend endpoint:", error);
         setLoading(false);
@@ -1349,72 +1123,55 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
         };
 
         console.log("Mock Data Chosen:", data);
-        nodes = [];
-        links = [];
+        nodesRef.current = [];
+        linksRef.current = [];
         if (data && data.mindmap && Array.isArray(data.mindmap)) {
           data.mindmap.forEach((mindmapNode) => {
             traverseMindmap(mindmapNode, null);
           });
         }
 
-        const hierarchyData = buildHierarchy(nodes, links);
+        const hierarchyData = buildHierarchy(
+          nodesRef.current,
+          linksRef.current
+        );
         applyTreeLayout(hierarchyData);
-        await fetchMatchedImages(nodes, imageCatalog)
-          .then(() => update())
-          .then(() => setLoading(false))
-          .catch((err) =>
-            console.error("Error fetching matched images after simplify:", err)
-          );
+        update();
+        setLoading(false);
       } catch (error) {
         console.error("Error fetching data from simplify endpoint:", error);
         setLoading(false);
       }
     }
 
-    // 1) Maintain a global map from "rawName" => count
-    //    so we can produce unique IDs.
+    // ---------- Helper: Create Unique ID ----------
     const uniqueNameCount = new Map();
-
     function createUniqueId(rawName) {
-      // If we haven't seen this name, start at 1.
       if (!uniqueNameCount.has(rawName)) {
         uniqueNameCount.set(rawName, 1);
-        return rawName; // first time => ID is just the rawName
+        return rawName;
       } else {
-        // If we have seen it, increment and append a suffix
         const currentCount = uniqueNameCount.get(rawName) + 1;
         uniqueNameCount.set(rawName, currentCount);
-        // Example suffix: "GPS (2)", "GPS (3)", etc.
         return `${rawName} (${currentCount})`;
       }
     }
 
-    // 2) Modify your traverseMindmap to always create a new node
-    //    with a unique ID. Also remove the old "if (!nodes.some())" check
-    let uniqueNodeCounter = 1;
-
+    // ---------- Traverse Mindmap to Build Nodes and Links ----------
     function traverseMindmap(nodeData, parentData) {
       if (!nodeData || !nodeData.name) return;
-
-      // Generate a unique ID by appending a counter
-      const uniqueId = `${nodeData.name}-${uniqueNodeCounter++}`;
-
-      // Create the node with a unique id and separate text
-      nodes.push({
-        id: uniqueId, // unique identifier that never changes
-        text: nodeData.name, // display text which may be changed later
+      const uniqueId = `${nodeData.name}-${uniqueNodeCounterRef.current++}`;
+      nodesRef.current.push({
+        id: uniqueId,
+        text: nodeData.name,
       });
-
-      // If there's a parent, create a link using parent's unique id
       if (parentData && parentData.id) {
-        links.push({
+        linksRef.current.push({
           source: parentData.id,
           target: uniqueId,
           type: "HAS_SUBNODE",
         });
       }
-
-      // Recurse on subnodes
       if (Array.isArray(nodeData.subnodes)) {
         nodeData.subnodes.forEach((subnode) => {
           traverseMindmap(subnode, { id: uniqueId });
@@ -1479,11 +1236,10 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
         .separation((a, b) => (a.parent === b.parent ? 2 : 2));
       const treeData = treeLayout(hierarchyData);
       treeData.descendants().forEach((d) => {
-        const node = nodes.find((n) => n.id === d.data.id);
+        const node = nodesRef.current.find((n) => n.id === d.data.id);
         if (node) {
           node.x = d.x;
           node.y = d.y;
-          // Freeze the position so the simulation doesn't move the nodes
           node.fx = d.x;
           node.fy = d.y;
         }
@@ -1491,198 +1247,91 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
     }
 
     function reRenderNode(d, group) {
-      // Clear any existing content
       group.selectAll("*").remove();
-      const matchedUrl = d.imageDeleted
-        ? null
-        : getMatchingImage(d.text, imageCatalogRef.current);
-
-      if (matchedUrl) {
-        // Set image dimensions and spacing.
-        const imageWidth = 100;
-        const imageHeight = 100;
-        const spacing = 10; // space between image and text
-        const estimatedTextHeight = 20; // estimated text height
-        // Total composite height = image + spacing + text.
-        const compositeHeight = imageHeight + spacing + estimatedTextHeight; // 130
-        // Center the composite vertically:
-        const compositeTop = -compositeHeight / 2; // -65
-        // Position text below image.
-        const textY = compositeTop + imageHeight + spacing; // 45
-
-        // Set ellipse dimensions to enclose the composite.
-        const ellipseRx = Math.max(50, d.text.length * 6) + 40;
-        const ellipseRy = compositeHeight / 2 + 20; // about 85 (adjust as needed)
-
-        // Append ellipse (as background)
-        group
-          .append("ellipse")
-          .attr("rx", ellipseRx)
-          .attr("ry", ellipseRy)
-          .attr("fill", window.nodeColorMap.get(d.id))
-          .attr("stroke", "#333")
-          .attr("stroke-width", 2);
-
-        // Append the image, centered horizontally.
-        group
-          .append("image")
-          .attr("xlink:href", matchedUrl)
-          .attr("width", imageWidth)
-          .attr("height", imageHeight)
-          .attr("x", -imageWidth / 2)
-          .attr("y", compositeTop)
-          .on("click", (event, d) => {
-            // Stop the click from propagating further
+      const ellipseRx = Math.max(40, d.text.length * 5);
+      const ellipseRy = 40;
+      group
+        .append("ellipse")
+        .attr("rx", ellipseRx)
+        .attr("ry", ellipseRy)
+        .attr("fill", window.nodeColorMap.get(d.id))
+        .attr("stroke", "#333")
+        .attr("stroke-width", 2);
+      group
+        .append("text")
+        .attr("text-anchor", "middle")
+        .attr("alignment-baseline", "middle")
+        .text(d.text)
+        .on("click", (event, d) => {
+          if (interactiveRelationModeRef.current) {
             event.stopPropagation();
-
-            // Show the clicked image in full-screen
-            setFullScreenImageUrl(matchedUrl);
-            handleDocumentClick();
-          });
-
-        // Append text below the image.
-        group
-          .append("text")
-          .attr("text-anchor", "middle")
-          .attr("alignment-baseline", "hanging")
-          .attr("y", textY)
-          .text(d.text)
-          .on("click", (event, d) => {
-            const input = document.createElement("input");
-            input.type = "text";
-            input.value = d.text;
-            input.style.position = "absolute";
-            input.style.left = `${event.pageX}px`;
-            input.style.top = `${event.pageY}px`;
-            input.style.zIndex = 1000;
-            document.body.appendChild(input);
-            input.focus();
-            input.addEventListener("blur", () => {
-              const updatedText = input.value.trim();
-              if (updatedText && updatedText !== d.text) {
-                // Only update the text, not the id
-                d.text = updatedText;
-                setLoading(true);
-                // Also update the corresponding node in the nodes array
-                const nodeObj = nodes.find((n) => n.id === d.id);
-                if (nodeObj) {
-                  nodeObj.text = updatedText;
-                }
-
-                // Call API to refresh matched images and then update visualization again
-                fetchMatchedImages(nodes, imageCatalog)
-                  .then(() => {
-                    update();
-                    console.log("Node updated successfully:", updatedText);
-                    setLoading(false);
-                  })
-                  .catch((err) => {
-                    console.error(
-                      "Error fetching matched images after editing node:",
-                      err
-                    );
-                    setLoading(false);
-                  });
+            return;
+          }
+          const input = document.createElement("input");
+          input.type = "text";
+          input.value = d.text;
+          input.style.position = "absolute";
+          input.style.left = `${event.pageX}px`;
+          input.style.top = `${event.pageY}px`;
+          input.style.zIndex = 1000;
+          document.body.appendChild(input);
+          input.focus();
+          input.addEventListener("blur", () => {
+            const updatedText = input.value.trim();
+            if (updatedText && updatedText !== d.text) {
+              d.text = updatedText;
+              setLoading(true);
+              const nodeObj = nodesRef.current.find((n) => n.id === d.id);
+              if (nodeObj) {
+                nodeObj.text = updatedText;
               }
-              document.body.removeChild(input);
-            });
-            event.stopPropagation();
-            handleDocumentClick();
-            d.imageDeleted = false;
+              update();
+              console.log("Node updated successfully:", updatedText);
+              setLoading(false);
+            }
+            document.body.removeChild(input);
           });
-      } else {
-        // No matching image: simply create an ellipse and center text.
-        const ellipseRx = Math.max(40, d.text.length * 5);
-        const ellipseRy = 40;
-        group
-          .append("ellipse")
-          .attr("rx", ellipseRx)
-          .attr("ry", ellipseRy)
-          .attr("fill", window.nodeColorMap.get(d.id))
-          .attr("stroke", "#333")
-          .attr("stroke-width", 2);
-        group
-          .append("text")
-          .attr("text-anchor", "middle")
-          .attr("alignment-baseline", "middle")
-          .text(d.text)
-          .on("click", (event, d) => {
-            const input = document.createElement("input");
-            input.type = "text";
-            input.value = d.text;
-            input.style.position = "absolute";
-            input.style.left = `${event.pageX}px`;
-            input.style.top = `${event.pageY}px`;
-            input.style.zIndex = 1000;
-            document.body.appendChild(input);
-            input.focus();
-            input.addEventListener("blur", () => {
-              const updatedText = input.value.trim();
-              if (updatedText && updatedText !== d.text) {
-                // Only update the text, not the id
-                d.text = updatedText;
-                setLoading(true);
-                // Also update the corresponding node in the nodes array
-                const nodeObj = nodes.find((n) => n.id === d.id);
-                if (nodeObj) {
-                  nodeObj.text = updatedText;
-                }
-
-                // Call API to refresh matched images and then update visualization again
-                fetchMatchedImages(nodes, imageCatalog)
-                  .then(() => {
-                    update();
-                    console.log("Node updated successfully:", updatedText);
-                    setLoading(false);
-                  })
-                  .catch((err) => {
-                    console.error(
-                      "Error fetching matched images after editing node:",
-                      err
-                    );
-                    setLoading(false);
-                  });
-              }
-              document.body.removeChild(input);
-            });
-            event.stopPropagation();
-            handleDocumentClick();
-            d.imageDeleted = false;
-          });
-      }
+          event.stopPropagation();
+          handleDocumentClick();
+          d.imageDeleted = false;
+        });
     }
 
     function update() {
+      if (!nodeGroupRef.current || !linkGroupRef.current) {
+        console.error("SVG groups not initialized.");
+        return;
+      }
       console.log("Updating visualization...");
       if (!window.nodeColorMap) window.nodeColorMap = new Map();
       const nodePositionMap = new Map(
-        nodes.map((node) => [node.id, { x: node.x, y: node.y }])
+        nodesRef.current.map((node) => [node.id, { x: node.x, y: node.y }])
       );
-      const hierarchyData = buildHierarchy(nodes, links);
+      const hierarchyData = buildHierarchy(nodesRef.current, linksRef.current);
       hierarchyData.each((node) => {
-        const dataNode = nodes.find((n) => n.id === node.data.id);
+        const dataNode = nodesRef.current.find((n) => n.id === node.data.id);
         if (dataNode && dataNode.depth == null) {
           dataNode.depth = node.depth;
-          if (!colorMap[node.depth]) {
-            colorMap[node.depth] = defaultColorScale(node.depth);
+          if (!colorMapRef.current[node.depth]) {
+            colorMapRef.current[node.depth] = defaultColorScale(node.depth);
           }
         }
       });
-      const rootColor = colorMap[0] || defaultColorScale(0);
-      nodes.forEach((node) => {
-        const isStandalone = !links.some(
+      const rootColor = colorMapRef.current[0] || defaultColorScale(0);
+      nodesRef.current.forEach((node) => {
+        const isStandalone = !linksRef.current.some(
           (link) => link.source === node.id || link.target === node.id
         );
         if (isStandalone && node.depth === undefined) node.depth = 0;
         if (!window.nodeColorMap.has(node.id)) {
           const color = isStandalone
             ? rootColor
-            : colorMap[node.depth] || defaultColorScale(node.depth);
+            : colorMapRef.current[node.depth] || defaultColorScale(node.depth);
           window.nodeColorMap.set(node.id, color);
         }
       });
-      nodes.forEach((node) => {
-        const hasLinks = links.some(
+      nodesRef.current.forEach((node) => {
+        const hasLinks = linksRef.current.some(
           (link) => link.source === node.id || link.target === node.id
         );
         if (hasLinks) {
@@ -1691,25 +1340,26 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
             node.depth = found ? found.depth : 0;
           }
         }
-        const newColor = colorMap[node.depth] || defaultColorScale(node.depth);
+        const newColor =
+          colorMapRef.current[node.depth] || defaultColorScale(node.depth);
         window.nodeColorMap.set(node.id, newColor);
-        const isStandalone = !links.some(
+        const isStandalone = !linksRef.current.some(
           (link) => link.source === node.id || link.target === node.id
         );
         if (isStandalone && node.depth == null) {
           node.depth = 0;
-          const color = colorMap[0] || defaultColorScale(0);
+          const color = colorMapRef.current[0] || defaultColorScale(0);
           window.nodeColorMap.set(node.id, color);
         }
       });
       console.log(
         "Updated Node Depths:",
-        nodes.map((n) => ({ id: n.id, depth: n.depth }))
+        nodesRef.current.map((n) => ({ id: n.id, depth: n.depth }))
       );
-      console.log("Updated Color Map:", colorMap);
-      const linkSel = linkGroup
+      console.log("Updated Color Map:", colorMapRef.current);
+      const linkSel = linkGroupRef.current
         .selectAll("line")
-        .data(links, (d) => `${d.source}-${d.target}`)
+        .data(linksRef.current, (d) => `${d.source}-${d.target}`)
         .join(
           (enter) =>
             enter
@@ -1717,17 +1367,17 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
               .attr("stroke", "#999")
               .attr("stroke-width", 2)
               .on("click", (event, d) => {
-                selectedLink = d;
-                selectedNode = null;
+                selectedLinkRef.current = d;
+                selectedNodeRef.current = null;
                 updateBlinking();
                 event.stopPropagation();
               }),
           (update) => update,
           (exit) => exit.remove()
         );
-      const nodeSel = nodeGroup
+      const nodeSel = nodeGroupRef.current
         .selectAll("g")
-        .data(nodes, (d) => d.id)
+        .data(nodesRef.current, (d) => d.id)
         .join(
           (enter) => {
             const nodeEnter = enter
@@ -1740,35 +1390,37 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
                   .on("end", dragended)
               )
               .on("click", (event, d) => {
-                if (interactiveRelationMode) {
+                if (interactiveRelationModeRef.current) {
                   if (
-                    selectedSourceForRelation &&
-                    selectedSourceForRelation.id === d.id
+                    selectedSourceForRelationRef.current &&
+                    selectedSourceForRelationRef.current.id === d.id
                   ) {
-                    alert(
-                      "Source and target nodes cannot be the same. Please select a different target node."
-                    );
                     event.stopPropagation();
                     return;
                   }
-                  // Create the relation (link) as before.
-                  links.push({
-                    source: selectedSourceForRelation.id,
+                  linksRef.current.push({
+                    source: selectedSourceForRelationRef.current.id,
                     target: d.id,
                     type: "HAS_SUBNODE",
                   });
-                  const nodeMap = new Map(nodes.map((node) => [node.id, node]));
-                  d.depth = selectedSourceForRelation.depth + 1;
-                  updateDepthsRecursively(d, nodeMap, links);
-                  nodes.forEach((node) => {
-                    if (!colorMap[node.depth]) {
-                      colorMap[node.depth] = defaultColorScale(node.depth);
+                  const nodeMap = new Map(
+                    nodesRef.current.map((node) => [node.id, node])
+                  );
+                  d.depth = selectedSourceForRelationRef.current.depth + 1;
+                  updateDepthsRecursively(d, nodeMap, linksRef.current);
+                  nodesRef.current.forEach((node) => {
+                    if (!colorMapRef.current[node.depth]) {
+                      colorMapRef.current[node.depth] = defaultColorScale(
+                        node.depth
+                      );
                     }
-                    window.nodeColorMap.set(node.id, colorMap[node.depth]);
+                    window.nodeColorMap.set(
+                      node.id,
+                      colorMapRef.current[node.depth]
+                    );
                   });
-                  // Reset interactive mode and update visual feedback.
-                  interactiveRelationMode = false;
-                  selectedSourceForRelation = null;
+                  interactiveRelationModeRef.current = false;
+                  selectedSourceForRelationRef.current = null;
                   if (addRelationInteractiveSpan) {
                     addRelationInteractiveSpan.style.display = "inline-block";
                   }
@@ -1779,35 +1431,22 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
                   event.stopPropagation();
                   return;
                 }
-
-                selectedLevel = d.depth;
-                const colorPickerContainer = colorPickerContainerRef.current;
-                const colorPicker = colorPickerRef.current;
-                if (colorPickerContainer)
-                  colorPickerContainer.style.display = "block";
-                colorPicker.value =
-                  colorMap[selectedLevel] || defaultColorScale(d.depth || 0);
-                selectedNode = d;
-                selectedLink = null;
+                selectedLevelRef.current = d.depth;
+                if (colorPickerContainerRef.current)
+                  colorPickerContainerRef.current.style.display = "block";
+                // Set the color picker’s value based on the selected level
+                colorPickerRef.current.value =
+                  colorMapRef.current[selectedLevelRef.current] ||
+                  defaultColorScale(d.depth || 0);
+                selectedNodeRef.current = d;
+                selectedLinkRef.current = null;
                 updateBlinking();
                 event.stopPropagation();
-
-                const matchedUrl = d.imageDeleted
-                  ? null
-                  : getMatchingImage(d.text, imageCatalog);
-                if (deleteImageBtnRef.current) {
-                  deleteImageBtnRef.current.style.display = matchedUrl
-                    ? "inline-block"
-                    : "none";
-                }
               })
               .on("dblclick", (event, d) => {});
-
-            // In your update() function (within the update selection):
-            nodeGroup.selectAll("g").each(function (d) {
+            nodeGroupRef.current.selectAll("g").each(function (d) {
               reRenderNode(d, d3.select(this));
             });
-
             return nodeEnter;
           },
           (update) =>
@@ -1825,22 +1464,23 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
               .attr("fill", (d) => window.nodeColorMap.get(d.id)),
           (exit) => exit.remove()
         );
-      simulation.nodes(nodes);
-      simulation.force("link").links(links);
-      simulation.alpha(1).restart();
-      console.log("Nodes:", nodes);
-      console.log("Links:", links);
+      simulationRef.current.nodes(nodesRef.current);
+      simulationRef.current.force("link").links(linksRef.current);
+      simulationRef.current.alpha(1).restart();
+      console.log("Nodes:", nodesRef.current);
+      console.log("Links:", linksRef.current);
       window.requestAnimationFrame(() => fitToScreen());
     }
 
     function ticked() {
-      linkGroup
+      if (!nodeGroupRef.current || !linkGroupRef.current) return;
+      linkGroupRef.current
         .selectAll("line")
         .attr("x1", (d) => calculateEdgePosition(d.source, d.target).x1)
         .attr("y1", (d) => calculateEdgePosition(d.source, d.target).y1)
         .attr("x2", (d) => calculateEdgePosition(d.source, d.target).x2)
         .attr("y2", (d) => calculateEdgePosition(d.source, d.target).y2);
-      nodeGroup
+      nodeGroupRef.current
         .selectAll("g")
         .attr("transform", (d) => `translate(${d.x},${d.y})`);
     }
@@ -1858,7 +1498,7 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
     }
 
     function dragstarted(event, d) {
-      simulation.alpha(0).stop();
+      simulationRef.current.alpha(0).stop();
       d.fx = d.x;
       d.fy = d.y;
     }
@@ -1866,17 +1506,17 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
     function dragged(event, d) {
       d.fx = event.x;
       d.fy = event.y;
-      nodes.forEach((node) => {
+      nodesRef.current.forEach((node) => {
         if (node.id === d.id) {
           node.x = d.fx;
           node.y = d.fy;
         }
       });
-      nodeGroup
+      nodeGroupRef.current
         .selectAll("g")
         .filter((node) => node.id === d.id)
         .attr("transform", `translate(${d.fx},${d.fy})`);
-      linkGroup
+      linkGroupRef.current
         .selectAll("line")
         .filter((line) => line.source.id === d.id || line.target.id === d.id)
         .attr("x1", (line) => (line.source.id === d.id ? d.fx : line.source.x))
@@ -1891,23 +1531,23 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
     }
 
     function updateBlinking() {
-      if (!nodeGroup || !linkGroup) return;
-      nodeGroup.selectAll("ellipse").classed("blinking", false);
-      linkGroup.selectAll("line").classed("blinking", false);
-      if (selectedNode) {
-        nodeGroup
+      if (!nodeGroupRef.current || !linkGroupRef.current) return;
+      nodeGroupRef.current.selectAll("ellipse").classed("blinking", false);
+      linkGroupRef.current.selectAll("line").classed("blinking", false);
+      if (selectedNodeRef.current) {
+        nodeGroupRef.current
           .selectAll("g")
-          .filter((node) => node.id === selectedNode.id)
+          .filter((node) => node.id === selectedNodeRef.current.id)
           .select("ellipse")
           .classed("blinking", true);
       }
-      if (selectedLink) {
-        linkGroup
+      if (selectedLinkRef.current) {
+        linkGroupRef.current
           .selectAll("line")
           .filter(
             (link) =>
-              link.source.id === selectedLink.source.id &&
-              link.target.id === selectedLink.target.id
+              link.source.id === selectedLinkRef.current.source.id &&
+              link.target.id === selectedLinkRef.current.target.id
           )
           .classed("blinking", true);
       }
@@ -1933,33 +1573,9 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
       }
     }
 
-    // Instead of using the static imageCatalog, fetch it first,
-    // then preload images and finally generate the mind map.
-    fetchImageCatalog()
-      .then((fetchedCatalog) => {
-        setImageCatalog(fetchedCatalog);
-        return preloadImages(fetchedCatalog);
-      })
-      .then(() => {
-        generateMindmap();
-      })
-      .catch((err) => console.error("Error preloading images:", err));
-
-    deleteImageBtnRef.current &&
-      deleteImageBtnRef.current.addEventListener("click", () => {
-        if (selectedNode) {
-          // Only delete if there is a matching image.
-          const currentMatched = getMatchingImage(
-            selectedNode.text,
-            imageCatalog
-          );
-          if (currentMatched && !selectedNode.imageDeleted) {
-            // Mark this node as having its image deleted.
-            selectedNode.imageDeleted = true;
-            update();
-          }
-        }
-      });
+    if (!hasGeneratedRef.current) {
+      generateMindmap(fetchFromDatabase);
+    }
 
     // Attach event listeners for extend and simplify buttons
     const extendButton = document.getElementById("extend-button");
@@ -1968,27 +1584,31 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
     function handleExtend() {
       // Clear the current mind map
       d3.select(graphRef.current).select("svg").remove();
-      nodes = [];
-      links = [];
+      nodesRef.current = [];
+      linksRef.current = [];
       setLoading(true);
-      // Re-create the SVG and simulation
-      generateMindmap();
       hasFetchedDatabaseRef.current = false;
-      // Call the extend endpoint
-      fetchFromExtendDatabase();
+      hasGeneratedRef.current = false;
+      // Re-create the SVG and simulation
+      if (!hasGeneratedRef.current) {
+        generateMindmap(fetchFromExtendDatabase);
+        console.log("Mind map data loaded from fetchFromExtendDatabase.");
+      }
     }
 
     function handleSimplify() {
       // Clear the current mind map
       d3.select(graphRef.current).select("svg").remove();
-      nodes = [];
-      links = [];
+      nodesRef.current = [];
+      linksRef.current = [];
       setLoading(true);
-      // Re-create the SVG and simulation
-      generateMindmap();
+      hasGeneratedRef.current = false;
       hasFetchedDatabaseRef.current = false;
-      // Call the simplify endpoint
-      fetchFromSimplifyDatabase();
+      // Re-create the SVG and simulation
+      if (!hasGeneratedRef.current) {
+        generateMindmap(fetchFromSimplifyDatabase);
+        console.log("Mind map data loaded from fetchFromSimplifyDatabase.");
+      }
     }
 
     if (extendButton) {
@@ -1998,7 +1618,6 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
       simplifyButton.addEventListener("click", handleSimplify);
     }
 
-    // Cleanup: Remove event listeners on unmount
     return () => {
       closeModalBtn.removeEventListener("click", handleCloseModal);
       if (closeModalBottomBtn) {
@@ -2009,10 +1628,9 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
       }
       downloadBtnRef.current &&
         downloadBtnRef.current.removeEventListener("click", handleDownload);
-        handleSaveBtnRef.current &&
+      handleSaveBtnRef.current &&
         handleSaveBtnRef.current.removeEventListener("click", handleSave);
       addNodeBtn.removeEventListener("click", handleAddNode);
-      // addRelationBtn.removeEventListener("click", handleAddRelation);
       document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("click", handleDocumentClick);
       if (extendButton) {
@@ -2022,7 +1640,7 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
         simplifyButton.removeEventListener("click", handleSimplify);
       }
     };
-  }, [show, onClose, selectedText, padId]);
+  }, [show, onClose, selectedText]);
 
   // The modal is now shown if the "show" prop is true.
   return (
@@ -2279,10 +1897,6 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
             <span className="add-relation-text" style={{ cursor: "pointer" }}>
               + Add Relation
             </span>
-            {/* The delete image control */}
-            <span className="delete-image-text" ref={deleteImageBtnRef}>
-              − Delete Image
-            </span>
             {/* Visual Feedback for Interactive Relation Mode */}
             <span
               className="select-relation-feedback"
@@ -2397,7 +2011,7 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
           />
         </div>
       )}
-       <ToastContainer />
+      <ToastContainer />
     </div>
   );
 };

@@ -72,11 +72,11 @@
 
 <% sections.forEach(function(section) { %>
   \section{<%= section.title %>}
-  <%= section.content %>
+  <%- section.content %>
   <% if (section.subsections && section.subsections.length) { %>
     <% section.subsections.forEach(function(sub) { %>
       \subsection{<%= sub.title %>}
-      <%= sub.content %>
+      <%- sub.content %>
     <% }); %>
   <% } %>
 <% }); %>
