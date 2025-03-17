@@ -66,7 +66,7 @@ function App() {
             <Route path="/citations" element={<Citations />} />
             <Route path="/ieee" element={<Ieee />} />
             <Route path="/profile" element={<Profile />} />
-            <Route path="/mindmap/:mindmap" element={<DocumentMindmap />} />
+            <Route path="/mindmap/pad/:mindmap" element={<DocumentMindmap />} />
           </Route>
 
           {/* Catch-all → login */}

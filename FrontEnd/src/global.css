@@ -508,7 +508,8 @@ body {
 .mindmap-textarea {
   width: 100%;
   resize: vertical;
-  padding: 1rem;
+  padding: 1rem!important;
+  padding-bottom: 3rem!important; 
   box-sizing: border-box;
   border: 1px solid var(--secondary-color)!important;
 }
@@ -532,12 +533,8 @@ body {
   border-radius: 12px;
   padding: 3rem 2rem;
   width: 100%;
-  background-color: #fff;
-  transition: background-color 0.3s, box-shadow 0.3s;
-}
-
-.drag-drop-container {
   background-color: var(--tertiary-color);
+  transition: background-color 0.3s, box-shadow 0.3s;
 }
 
 /* On hover, subtly change background or shadow for a modern effect */
@@ -545,23 +542,56 @@ body {
   box-shadow: 0 16px 16px  rgba(162,135,176,0.25)!important;
 }
 
-/* Title styling */
-.drag-drop-title {
-  font-family: "Roboto Condensed", serif;
-  font-weight: 600;
-}
-
-/* If you include an image or Lottie, you can style it here */
-.drag-drop-icon {
-  width: 80px;
-  height: auto;
-}
-
-
 /* Optional: Style adjustments for the dropdown */
 .dropdown-menu {
   background: #fff;
   border: 1px solid #ddd;
   border-radius: 0.25rem;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.mindmap-small-text{
+  font-size: 0.8rem; 
+}
+
+.mindmap-loading-container {
+  display: inline-block;
+  margin-bottom: 1em;
+  padding: 0 1em;
+  width: 80%;
+  font-size: 1.5rem;
+  text-align: center;
+  color: var(--primary-color);
+}
+
+.txt-rotate > .wrap {
+  border-right: 0.08em solid var(--secondary-color);
+  color: var(--primary-color);
+}
+
+.mindmap-fade-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.5);
+  pointer-events: none; /* allow interactions to pass through */
+}
+
+.lottie-container {
+  transform: scale(0.5);
+  transform-origin: left; /* Default for laptops */
+}
+
+@media (max-width: 768px) {
+  .lottie-container {
+    transform: scale(1);
+    transform-origin: center; /* For mobile devices */
+  }
+}
+
+.form-control, .form-select{
+  font-family: "Open Sans", serif;
+  font-size: 0.9rem!important;
 }
