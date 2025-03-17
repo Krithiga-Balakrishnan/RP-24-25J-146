@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import IconX from '../Icons/IconX';
 
-const CiteSidebar = ({ isOpen, onClose, selectedText, onCitationData }) => {
+const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData,references = [], }) => {
   const [papers, setPapers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingCitation, setLoadingCitation] = useState(false);
@@ -65,7 +65,7 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, onCitationData }) => {
       setError(null);
 
       try {
-        const response = await fetch("https://ecad-34-123-39-240.ngrok-free.app/search/", {
+        const response = await fetch("https://b602-34-72-223-246.ngrok-free.app/search/", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -112,7 +112,7 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, onCitationData }) => {
       selected_paper_ids: [paper.paper_id],
     };
 
-    fetch("https://591f-34-106-47-17.ngrok-free.app/generate_citations/", {
+    fetch("https://4cb6-34-82-163-74.ngrok-free.app/generate_citations/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestBody),
@@ -159,37 +159,209 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, onCitationData }) => {
   }
 
 
+
   function handleInsertCitation() {
-    // if (!selectedPaper) return;
-    console.log("🚀 Insert Citation button clicked!");  // Add this
+    console.log("🚀 Insert Citation button clicked!");
     if (!selectedPaper) {
       console.error("❌ No paper selected!");
       return;
     }
-
+  
+    console.log("Selected Paper Inside Citation ", selectedPaper);
+  
+    // 1) Compute next key by looking at existing references
+    //    references is passed in as a prop.
+    const lastKey = references.reduce((maxSoFar, ref) => {
+      // parseInt in case ref.key is stored as a string
+      const numericKey = parseInt(ref.key, 10) || 0;
+      return numericKey > maxSoFar ? numericKey : maxSoFar;
+    }, 0);
+    const nextKey = lastKey + 1; // the new integer key
+  
+    const paperId = selectedPaper.paper_id;
+    const authorList = selectedPaper.authors?.join(" and ") || "Unknown Author";
+    const title = selectedPaper.title || "Unknown Title";
+    const journal = selectedPaper.journal || "Unknown Journal";
+    const year = selectedPaper.year || "Unknown Year";
+    const volume = selectedPaper.volume || "N/A";
+    const number = selectedPaper.number || "N/A";
+    const pages = selectedPaper.pages || "N/A";
+  
+    // Log your local (optional) BibTeX if you like
     const bibTexCitation = `
-    @article{${selectedPaper.paper_id},
-      author    = {${selectedPaper.authors?.join(" and ") || "Unknown Author"}},
-      title     = {${selectedPaper.title}},
-      journal   = {${selectedPaper.journal || "Unknown Journal"}},
-      year      = {${selectedPaper.year || "Unknown Year"}},
-      volume    = {${selectedPaper.volume || "N/A"}},
-      number    = {${selectedPaper.number || "N/A"}},
-      pages     = {${selectedPaper.pages || "N/A"}}
-    }`.trim();
-
-    console.log("🔹 Selected Paper Data:", selectedPaper);
-    console.log("📜 Generated BibTeX Citation:\n", bibTexCitation);
-    // console.log("BibTeX Citation:", bibTexCitation);
-
-    // Store citation in localStorage (or pass it via state)
-    localStorage.setItem("bibTexCitation", bibTexCitation);
-
-    // Redirect to another page where citations are displayed
-    // window.location.href = "/citations";  // Change this to your route
+      @article{${paperId},
+        author    = {${authorList}},
+        title     = {${title}},
+        journal   = {${journal}},
+        year      = {${year}},
+        volume    = {${volume}},
+        number    = {${number}},
+        pages     = {${pages}}
+      }`.trim();
+  
+    console.log("🔹 Next numeric key will be:", nextKey);
+  
+    if (!padId) {
+      console.error("❌ padId is missing!");
+      return;
+    }
+  
+    // 2) Save citation to the DB with nextKey 
+    const saveCitationToDB = async () => {
+      try {
+        const response = await fetch(
+          `${process.env.REACT_APP_BACKEND_API_URL}/api/pads/${padId}/save-citation`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              padId,
+              key: String(nextKey),   // store the key as a string, or keep it numeric if your schema allows
+              citation: citationData, // the string from your /generate_citations/ API
+              author: authorList,
+              title,
+              journal,
+              year,
+              volume,
+              number,
+              pages,
+            }),
+          }
+        );
+  
+        console.log("🔄 Awaiting response from server...");
+        if (!response.ok) {
+          console.error("❌ Failed to save citation. Response status:", response.status);
+          const errorText = await response.text();
+          console.error("❌ Server Response:", errorText);
+          throw new Error("Failed to save citation");
+        }
+  
+        const data = await response.json();
+        console.log("✅ Citation saved successfully!", data);
+  
+        // 3) Call the parent’s callback so it can update references
+        if (onCitationData) {
+          onCitationData({
+            // match your ReferenceSchema fields:
+            id: `ref-${Date.now()}`, // or any unique ID for local state
+            key: String(nextKey),    // e.g. "1", "2", "3"
+            author: authorList,
+            title,
+            journal,
+            year,
+            volume,
+            number,
+            pages,
+            citation: citationData,
+          });
+        }
+  
+      } catch (error) {
+        console.error("❌ Error saving citation:", error);
+      }
+    };
+  
+    saveCitationToDB();
   }
-
-
+  
+  // function handleInsertCitation() {
+  //   console.log("🚀 Insert Citation button clicked!");
+  //   if (!selectedPaper) {
+  //     console.error("❌ No paper selected!");
+  //     return;
+  //   }
+  //   console.log("Selected Paper Inside Citation ", selectedPaper);
+  //   // Extract data from selectedPaper
+  //   const paperId = selectedPaper.paper_id;
+  //   const authorList = selectedPaper.authors?.join(" and ") || "Unknown Author";
+  //   const title = selectedPaper.title || "Unknown Title";
+  //   const journal = selectedPaper.journal || "Unknown Journal";
+  //   const year = selectedPaper.year || "Unknown Year";
+  //   const volume = selectedPaper.volume || "N/A";
+  //   const number = selectedPaper.number || "N/A";
+  //   const pages = selectedPaper.pages || "N/A";
+  //   let nextKey;
+    
+  //   // Construct a BibTeX citation format
+  //   const bibTexCitation = `
+  // @article{${paperId},
+  //   author    = {${authorList}},
+  //   title     = {${title}},
+  //   journal   = {${journal}},
+  //   year      = {${year}},
+  //   volume    = {${volume}},
+  //   number    = {${number}},
+  //   pages     = {${pages}}
+  // }`.trim();
+  
+  //   console.log("🔹 Selected Paper Data:", selectedPaper);
+  //   console.log("📜 Generated BibTeX Citation:\n", bibTexCitation);
+  
+  //   // Ensure padId is valid
+  //   if (!padId) {
+  //     console.error("❌ padId is missing!");
+  //     return;
+  //   }
+  
+  //   // Define API request to save the citation
+  //   const saveCitationToDB = async () => {
+  //     try {
+  //       const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/api/pads/${padId}/save-citation`, {
+  //         method: "POST",
+  //         headers: { "Content-Type": "application/json" },
+  //         body: JSON.stringify({
+  //           padId,
+  //           // citation: bibTexCitation,
+  //           citation: citationData,
+  //           author: authorList,
+  //           title,
+  //           journal,
+  //           year,
+  //           volume,
+  //           number,
+  //           pages,
+  //         }),
+  //       });
+  
+  //       console.log("🔄 Awaiting response from server...");
+  
+  //       if (!response.ok) {
+  //         console.error("❌ Failed to save citation. Response status:", response.status);
+  //         const errorText = await response.text();
+  //         console.error("❌ Server Response:", errorText);
+  //         throw new Error("Failed to save citation");
+  //       }
+  
+  //       const data = await response.json();
+  //       console.log("✅ Citation saved successfully!");
+  //       console.log("📜 Server Response Data:", data);
+  //       if (onCitationData) {
+  //         onCitationData({
+  //           // These match your ReferenceSchema:
+  //           key: paperId,          // or id: paperId
+  //           author: authorList,
+  //           title,
+  //           journal,
+  //           year,
+  //           volume,
+  //           number,
+  //           pages,
+  //           citation: citationData  // The string from /generate_citations/
+  //         });
+  //       }
+  
+  //       // OPTIONAL: Close modal, refresh references, etc.
+  //       // setShowCitationModal(false);
+  //       // Optionally update your frontend state with new references (data.references)
+  //     } catch (error) {
+  //       console.error("❌ Error saving citation:", error);
+  //     }
+  //   };
+  
+  //   saveCitationToDB();
+  // }
+  
   if (!isOpen) return null;
   return (
     <>
@@ -221,9 +393,6 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, onCitationData }) => {
           overflowY: "auto",
         }}
       >
-        {/* <button onClick={onClose} style={{ float: "right", border: "none", background: "none" }}>
-          ✖
-        </button> */}
         <button onClick={onClose} style={{ float: "right", border: "none", background: "none" }}>
 
           <IconX />

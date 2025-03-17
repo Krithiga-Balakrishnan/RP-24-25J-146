@@ -139,7 +139,7 @@ const PadPage = () => {
     setCiteSidebarOpen(true);
     console.log("Final text used for citation sidebar:", textToUse);
   };
-
+  
 
   // Add user to pad (only if current user is pad_owner)
   const addUserToPad = async () => {
@@ -176,12 +176,12 @@ const PadPage = () => {
   /*------------------------------------------------------------------------------------------*/
   const handleConvertToAcademic = async () => {
     const textToConvert = lastSelectedText || selectedText;
-  
+
     if (!textToConvert.trim()) {
       alert("No text selected for conversion.");
       return;
     }
-  
+
     try {
       const response = await fetch(
         `${process.env.REACT_APP_BACKEND_API_URL}/api/convert/convert-text`,
@@ -191,14 +191,14 @@ const PadPage = () => {
           body: JSON.stringify({ content: textToConvert }),
         }
       );
-  
+
       if (!response.ok) {
         throw new Error("Failed to convert text.");
       }
-  
+
       const data = await response.json();
       console.log("Converted Academic Text:", data.converted_text);
-  
+
       // Show modal with converted text
       setConvertedText(data.converted_text);
       setShowAcademicModal(true);
@@ -206,8 +206,8 @@ const PadPage = () => {
       console.error("Error converting text:", error);
     }
   };
-  
-  
+
+
   // Fetch pad details from REST endpoint
   const FetchPadData = async () => {
     // const token = localStorage.getItem("token");
@@ -232,39 +232,39 @@ const PadPage = () => {
     //   console.error("❌ Error fetching pad:", error);
     // }
     const token = localStorage.getItem("token");
-  if (!token) {
-    console.error("No token found");
-    return;
-  }
-
-  try {
-    const response = await fetch(
-      `${process.env.REACT_APP_BACKEND_API_URL}/api/convert/${padId}`,
-      {
-        headers: { Authorization: token },
-      }
-    );
-    if (!response.ok) {
-      console.error("❌ Failed to fetch pad:", response.status);
+    if (!token) {
+      console.error("No token found");
       return;
     }
 
-    // Get the file as a blob
-    const blob = await response.blob();
-    // Create a URL for the blob
-    const url = window.URL.createObjectURL(blob);
-    // Create a temporary anchor element
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "output_paper.pdf"; // Desired file name
-    document.body.appendChild(a);
-    a.click();
-    // Clean up: remove the anchor and revoke the URL object
-    a.remove();
-    window.URL.revokeObjectURL(url);
-  } catch (error) {
-    console.error("❌ Error fetching pad:", error);
-  }
+    try {
+      const response = await fetch(
+        `${process.env.REACT_APP_BACKEND_API_URL}/api/convert/${padId}`,
+        {
+          headers: { Authorization: token },
+        }
+      );
+      if (!response.ok) {
+        console.error("❌ Failed to fetch pad:", response.status);
+        return;
+      }
+
+      // Get the file as a blob
+      const blob = await response.blob();
+      // Create a URL for the blob
+      const url = window.URL.createObjectURL(blob);
+      // Create a temporary anchor element
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "output_paper.pdf"; // Desired file name
+      document.body.appendChild(a);
+      a.click();
+      // Clean up: remove the anchor and revoke the URL object
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("❌ Error fetching pad:", error);
+    }
   };
 
   return (
@@ -350,19 +350,24 @@ const PadPage = () => {
       {isCiteSidebarOpen && (
         <CiteSidebar
           isOpen={isCiteSidebarOpen}
+          references={references}
           onClose={() => setCiteSidebarOpen(false)}
           selectedText={selectedText}
+          padId={padId}
+          onCitationData={(newRef) => {
+            setReferences((prev) => [...prev, newRef]);
+          }}
         />
       )}
       <AcademicTextModal
-      show={showAcademicModal}
-      onClose={() => setShowAcademicModal(false)}
-      convertedText={convertedText}
-      onReplaceText={() => {
-        setSelectedText(convertedText); // Replace text in editor
-        setShowAcademicModal(false);
-      }}
-    />
+        show={showAcademicModal}
+        onClose={() => setShowAcademicModal(false)}
+        convertedText={convertedText}
+        onReplaceText={() => {
+          setSelectedText(convertedText); // Replace text in editor
+          setShowAcademicModal(false);
+        }}
+      />
 
     </>
   );

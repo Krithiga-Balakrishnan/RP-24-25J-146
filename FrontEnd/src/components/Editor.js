@@ -141,7 +141,7 @@ function createNode(title) {
     subsections: [],
     aiEnhancement: false,
   };
-  
+
 }
 
 function toggleAiEnhancementInTree(list, nodeId, newValue) {
@@ -317,8 +317,8 @@ function Editor({
             },
           },
         });
-      
-                
+
+
         quillRefs.current[node.contentId] = quill;
         if (node.content && node.content.ops) {
           quill.setContents(node.content);
@@ -381,46 +381,46 @@ function Editor({
 
 
   // [ADDED] Helper to attach blur listeners to all <td> in the newly inserted table
-function attachTableCellListeners(quill, embedIndex) {
-  // Wait a tick so Quill updates the DOM
-  setTimeout(() => {
-    // The editor DOM we just inserted the table into
-    const editorEl = quill.root.parentNode; 
-    // Grab the figure for the newly inserted table
-    // embedIndex is where we inserted the table in the Delta
-    const tableFigure = editorEl.querySelector(
-      `figure.ql-table-with-caption:nth-of-type(${embedIndex + 1})`
-    );
-    if (!tableFigure) return;
+  function attachTableCellListeners(quill, embedIndex) {
+    // Wait a tick so Quill updates the DOM
+    setTimeout(() => {
+      // The editor DOM we just inserted the table into
+      const editorEl = quill.root.parentNode;
+      // Grab the figure for the newly inserted table
+      // embedIndex is where we inserted the table in the Delta
+      const tableFigure = editorEl.querySelector(
+        `figure.ql-table-with-caption:nth-of-type(${embedIndex + 1})`
+      );
+      if (!tableFigure) return;
 
-    // For every <td>, on blur => re-insert the table
-    const cells = tableFigure.querySelectorAll("td");
-    cells.forEach((cell) => {
-      cell.addEventListener("blur", () => {
-        // Read the updated HTML from the figure
-        const wrapper = tableFigure.querySelector(".table-wrapper");
-        const newTableHtml = wrapper ? wrapper.innerHTML : "";
-        const captionEl = tableFigure.querySelector("figcaption");
-        const newCaption = captionEl ? captionEl.innerText : "";
+      // For every <td>, on blur => re-insert the table
+      const cells = tableFigure.querySelectorAll("td");
+      cells.forEach((cell) => {
+        cell.addEventListener("blur", () => {
+          // Read the updated HTML from the figure
+          const wrapper = tableFigure.querySelector(".table-wrapper");
+          const newTableHtml = wrapper ? wrapper.innerHTML : "";
+          const captionEl = tableFigure.querySelector("figcaption");
+          const newCaption = captionEl ? captionEl.innerText : "";
 
-        // Remove the old embed
-        const blot = Quill.find(tableFigure);
-        if (!blot) return;
-        const oldIndex = quill.getIndex(blot);
+          // Remove the old embed
+          const blot = Quill.find(tableFigure);
+          if (!blot) return;
+          const oldIndex = quill.getIndex(blot);
 
-        quill.deleteText(oldIndex, 1);
-        // Insert updated embed with new HTML
-        quill.insertEmbed(oldIndex, "tableWithCaption", {
-          tableHtml: newTableHtml,
-          caption: newCaption,
+          quill.deleteText(oldIndex, 1);
+          // Insert updated embed with new HTML
+          quill.insertEmbed(oldIndex, "tableWithCaption", {
+            tableHtml: newTableHtml,
+            caption: newCaption,
+          });
+          // Insert a newline to keep spacing
+          quill.insertText(oldIndex + 1, "\n");
+          quill.setSelection(oldIndex + 2, 0);
         });
-        // Insert a newline to keep spacing
-        quill.insertText(oldIndex + 1, "\n");
-        quill.setSelection(oldIndex + 2, 0);
       });
-    });
-  }, 0);
-}
+    }, 0);
+  }
 
   // Socket listeners for remote changes and loading the pad remain unchanged
   useEffect(() => {
@@ -584,7 +584,7 @@ function attachTableCellListeners(quill, embedIndex) {
   };
 
   const renderNode = (node, indent = 0) => (
-    
+
     <div
       key={node.id}
       style={{
@@ -617,28 +617,28 @@ function attachTableCellListeners(quill, embedIndex) {
           }
         />
 
-<label style={{ marginLeft: 10 }}>
-<input
-  type="checkbox"
-  checked={!!node.aiEnhancement}
-  onChange={(e) => {
-    const newValue = e.target.checked;
-    const updated = toggleAiEnhancementInTree(sections, node.id, newValue);
-    setSections(updated);
-    socket.emit("update-pad", {
-      padId,
-      sections: updated,
-      authors,
-      references,
-      title: paperTitle,
-      abstract,
-      keyword: keywords,
-    });
-  }}
-/>
+        <label style={{ marginLeft: 10 }}>
+          <input
+            type="checkbox"
+            checked={!!node.aiEnhancement}
+            onChange={(e) => {
+              const newValue = e.target.checked;
+              const updated = toggleAiEnhancementInTree(sections, node.id, newValue);
+              setSections(updated);
+              socket.emit("update-pad", {
+                padId,
+                sections: updated,
+                authors,
+                references,
+                title: paperTitle,
+                abstract,
+                keyword: keywords,
+              });
+            }}
+          />
 
-        {" AI?"}
-      </label>
+          {" AI?"}
+        </label>
 
         <button onClick={() => removeNode(node.id)} style={{ marginLeft: 5 }}>
           🗑️
@@ -655,7 +655,7 @@ function attachTableCellListeners(quill, embedIndex) {
       {node.subsections &&
         node.subsections.map((child) => renderNode(child, indent + 1))}
     </div>
-  
+
   );
 
   return (
@@ -1133,23 +1133,23 @@ function attachTableCellListeners(quill, embedIndex) {
     //   </div>
     // </div>
     <div className="editor-container">
-          
-       {showTablePicker && (
+
+      {showTablePicker && (
         <div
-           style={{
+          style={{
             position: "absolute",
             top: tablePickerPosition.top,
             left: tablePickerPosition.left,
             zIndex: 1000,
-           }}
-         >
-           <TableSizePicker
-             onSelect={(rows, cols) => handleTableSelect(rows, cols)}
-             onClose={() => setShowTablePicker(false)}
-           />
-         </div>
-       )} 
-      
+          }}
+        >
+          <TableSizePicker
+            onSelect={(rows, cols) => handleTableSelect(rows, cols)}
+            onClose={() => setShowTablePicker(false)}
+          />
+        </div>
+      )}
+
       {/* Plain text fields */}
       <div className="paper-section">
         <h1 className="section-title">Paper Title</h1>
@@ -1351,7 +1351,7 @@ function attachTableCellListeners(quill, embedIndex) {
         }}>
           ➕ Add Reference
         </button>
-        <ul className="reference-list">
+        {/* <ul className="reference-list">
   {references.map((reference) => (
     <li key={reference.id} className="list-item">
       <input
@@ -1478,10 +1478,53 @@ function attachTableCellListeners(quill, embedIndex) {
       </button>
     </li>
   ))}
-</ul>
+</ul> */}
+<ul className="reference-list">
+          {references.map((reference) => (
+            <li key={reference.id} className="list-item" style={{ marginBottom: "1rem" }}>
+              {/* Display the "key" field as plain text (non-editable) */}
+              <div>
+                <strong>Key:</strong> {reference.key}
+              </div>
+              {/* Display the citationData field as plain text (non-editable) */}
+              <div>
+                <strong>Citation:</strong> {reference.citation}
+              </div>
+              <button
+                className="remove-button"
+                onClick={() => {
+                  // Remove this particular reference by filtering it out
+                  const updatedReferences = references.filter((r) => r.id !== reference.id);
+                  const renumbered = updatedReferences.map((ref, i) => {
+                    return {
+                      ...ref,
+                      key: String(i + 1), // i is 0-based, so i+1 => 1..n
+                    };
+                  });
+                
+                  setReferences(renumbered);
+                  
 
+                  // Emit updated references to the server
+                  socket.emit("update-pad", {
+                    padId,
+                    sections,
+                    authors,
+                    references: renumbered,
+                    title: paperTitle,
+                    abstract,
+                    keyword: keywords,
+                  });
+                }}
+              >
+                🗑️ Remove Reference
+              </button>
+            </li>
+          ))}
+
+        </ul>
       </div>
-</div>
+    </div>
 
   );
 }
