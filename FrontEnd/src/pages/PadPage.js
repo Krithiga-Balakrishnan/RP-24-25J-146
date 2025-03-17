@@ -8,6 +8,7 @@ import PadHeader from "../components/PadHeader";
 import PadSidebar from "../components/PadSidebar";
 import CiteSidebar from "../components/CiteSideBar";
 import AcademicTextModal from "../components/AcademicTextModal";
+import LoadingScreen from "../animation/documentLoading"
 
 
 const socket = io(`${process.env.REACT_APP_BACKEND_API_URL}`);
@@ -27,6 +28,8 @@ const PadPage = () => {
   const [padName, setPadName] = useState("");
   const [showAcademicModal, setShowAcademicModal] = useState(false);
   const [convertedText, setConvertedText] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
 
 
   const userId = useRef(localStorage.getItem("userId") || uuidv4());
@@ -209,11 +212,7 @@ const PadPage = () => {
       console.error("Error converting text:", error);
     }
   };
-  
-  
-  // Fetch pad details from REST endpoint
-  const FetchPadData = async () => {
-    // const token = localStorage.getItem("token");
+  // const token = localStorage.getItem("token");
     // if (!token) return;
 
     // try {
@@ -234,11 +233,15 @@ const PadPage = () => {
     // } catch (error) {
     //   console.error("❌ Error fetching pad:", error);
     // }
+  
+  // Fetch pad details from REST endpoint
+  const FetchPadData = async () => {  
     const token = localStorage.getItem("token");
   if (!token) {
     console.error("No token found");
     return;
   }
+  setIsLoading(true);
 
   try {
     const response = await fetch(
@@ -268,6 +271,7 @@ const PadPage = () => {
   } catch (error) {
     console.error("❌ Error fetching pad:", error);
   }
+  setIsLoading(false);
   };
 
   const handleReplaceText = () => {
@@ -302,6 +306,9 @@ const PadPage = () => {
         onGenerateReference={handleGenerateCiteSidebar}
         onGenerateIEEE={FetchPadData}
       />
+      {isLoading ? (
+      <LoadingScreen />
+    ) : (
       <div style={mainContentStyle}>
         <div
           className="container sticky-top bg-white py-3"
@@ -411,6 +418,8 @@ const PadPage = () => {
           )}
         </div>
       </div>
+      )}
+
       {isCiteSidebarOpen && (
         <CiteSidebar
           isOpen={isCiteSidebarOpen}

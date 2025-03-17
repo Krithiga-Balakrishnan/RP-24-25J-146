@@ -365,7 +365,7 @@ body {
 /* Remove Button */
 .remove-button {
   margin-left: 5px;
-  background: red;
+  background: rgb(186, 90, 224);
   color: white;
   border: none;
   padding: 6px 12px;
