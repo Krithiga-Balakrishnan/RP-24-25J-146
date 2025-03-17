@@ -193,7 +193,10 @@ const PadPage = () => {
       );
   
       if (!response.ok) {
+        setConvertedText("Couldn't convert the text");
+        setShowAcademicModal(true);
         throw new Error("Failed to convert text.");
+       
       }
   
       const data = await response.json();
@@ -267,6 +270,27 @@ const PadPage = () => {
   }
   };
 
+  const handleReplaceText = () => {
+    if (!convertedText.trim()) {
+      alert("No converted text to insert!");
+      return;
+    }
+  
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return;
+  
+    // Get the current cursor position
+    const range = selection.getRangeAt(0);
+    range.deleteContents(); // Remove any selected text
+    range.insertNode(document.createTextNode(convertedText)); // Insert new text
+  
+    // Move cursor to the end of the inserted text
+    range.collapse(false);
+  
+    // Close modal after insertion
+    setShowAcademicModal(false);
+  };
+  
   return (
     <>
       <PadSidebar
@@ -308,16 +332,56 @@ const PadPage = () => {
           />
 
           {pad && pad.roles && pad.roles[userId.current] === "pad_owner" && (
-            <div>
-              <h3>Add User</h3>
-              <input
-                type="email"
-                value={userEmail}
-                onChange={(e) => setUserEmail(e.target.value)}
-                placeholder="User email"
-              />
-              <button onClick={addUserToPad}>➕ Add User as Editor</button>
-            </div>
+           <div
+           style={{
+             backgroundColor: "#f9f9f9",
+             padding: "20px",
+             borderRadius: "10px",
+             boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)",
+             textAlign: "center",
+             maxWidth: "400px",
+             margin: "20px auto",
+           }}
+         >
+           <h3 style={{ marginBottom: "15px", color: "#333", fontSize: "20px" }}>Add User</h3>
+         
+           <input
+             type="email"
+             value={userEmail}
+             onChange={(e) => setUserEmail(e.target.value)}
+             placeholder="Enter user email"
+             style={{
+               width: "100%",
+               padding: "10px",
+               borderRadius: "5px",
+               border: "1px solid #ccc",
+               marginBottom: "15px",
+               fontSize: "14px",
+               textAlign: "center",
+               outline: "none",
+             }}
+           />
+         
+           <button
+             onClick={addUserToPad}
+             style={{
+               backgroundColor: "#56008a",
+               color: "#fff",
+               padding: "10px 15px",
+               borderRadius: "5px",
+               border: "none",
+               cursor: "pointer",
+               fontSize: "14px",
+               fontWeight: "bold",
+               transition: "0.3s ease",
+             }}
+             onMouseEnter={(e) => (e.target.style.backgroundColor = "#a287b0")}
+             onMouseLeave={(e) => (e.target.style.backgroundColor = "#56008a")}
+           >
+             ➕ Add User as Editor
+           </button>
+         </div>
+         
           )}
 
           <h2>Active Users:</h2>
@@ -358,10 +422,7 @@ const PadPage = () => {
       show={showAcademicModal}
       onClose={() => setShowAcademicModal(false)}
       convertedText={convertedText}
-      onReplaceText={() => {
-        setSelectedText(convertedText); // Replace text in editor
-        setShowAcademicModal(false);
-      }}
+      onReplaceText={handleReplaceText}
     />
 
     </>

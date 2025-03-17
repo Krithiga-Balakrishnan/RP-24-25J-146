@@ -117,51 +117,55 @@ function decodeFully(str) {
 
 // Convert simple HTML table to LaTeX tabular format
 
-
 function convertHtmlTableToLatex(tableHtml) {
-  // Load the HTML into Cheerio
   const $ = cheerio.load(tableHtml);
 
   let rows = [];
-  // $(tr).find("td").each((j, td) => {
-  //   let cellText = $(td).text().trim();
-  //   // Optionally, escape LaTeX special characters
-  //   cellText = cellText.replace(/([_%#&{}])/g, "\\$1");
-  //   cells.push(cellText);
-  // });
-  
+
   $("tr").each((i, tr) => {
     let cells = [];
     $(tr).find("td").each((j, td) => {
       let cellHtml = $(td).html() || "";
-      // Fully decode HTML entities using he
-      let cellText = he.decode(cellHtml);
-      // Replace one or more occurrences of "&amp;" with a single "&"
-      cellText = cellText.replace(/(&amp;)+/g, "&");
-      // Also remove any stray "amp;" if still present
-      cellText = cellText.replace(/amp;/g, "");
+      console.log("Raw HTML in cell:", cellHtml);
+      
+      // Decode HTML entities twice for safety
+      let cellText = he.decode(he.decode(cellHtml));
+
+      // Replace &amp; manually in case decoding fails
+      cellText = cellText.replace(/&amp;/g, "&");
+
+      // Replace & with LaTeX-compatible \&
+      cellText = cellText.replace(/&/g, "\\&");
+
       // Escape LaTeX special characters
-      cellText = cellText.replace(/([_%#&{}])/g, "\\$1");
-      cells.push(cellText.trim());
+      cellText = cellText.replace(/([_%#{}])/g, "\\$1");
+
+      // Trim and store
+      cellText = cellText.trim();
+      cells.push(cellText);
+
+      console.log("🔍 Processed Cell Text:", cellText);  // Debugging
     });
     if (cells.length > 0) {
       rows.push(cells);
     }
   });
 
-  // Determine maximum columns
+  // Determine max columns
   const maxCols = Math.max(...rows.map(r => r.length), 0);
   let latex = `\\begin{tabular}{|${"c|".repeat(maxCols)}}\n\\hline\n`;
+
   rows.forEach(cells => {
-    // Ensure each row has the same number of cells
     while (cells.length < maxCols) {
       cells.push("");
     }
-    latex += cells.join(" & ") + " \\\\\n\\hline\n";
+    latex += cells.map(c => `\\textnormal{${c}}`).join(" & ") + " \\\\\n\\hline\n";
   });
+
   latex += "\\end{tabular}\n";
   return latex;
 }
+
 
 
 
