@@ -4,6 +4,8 @@ import * as d3 from "d3";
 import Lottie from "react-lottie-player";
 import Loading from "../animation/mindmap-loading.json";
 import { Wave } from "react-animated-text";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const MindmapModal = ({ show, onClose, selectedText }) => {
   // Create refs for key elements in the modal
@@ -12,6 +14,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
   const closeModalBtnRef = useRef(null);
   const closeModalBottomBtnRef = useRef(null);
   const downloadBtnRef = useRef(null);
+  const handleSaveBtnRef = useRef(null);
   const newNodeNameRef = useRef(null);
   const addNodeBtnRef = useRef(null);
   const addRelationBtnRef = useRef(null);
@@ -71,6 +74,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
     const closeModalBtn = closeModalBtnRef.current;
     const closeModalBottomBtn = closeModalBottomBtnRef.current; // May be null
     const downloadButton = downloadBtnRef.current;
+    const saveButton = handleSaveBtnRef.current;
     const addNodeBtn = addNodeBtnRef.current;
     const addRelationBtn = addRelationBtnRef.current;
     const colorPicker = colorPickerRef.current;
@@ -88,7 +92,10 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
       console.error("Required download button element not found.");
       return;
     }
-
+    if (!saveButton) {
+      console.error("Required save button element not found.");
+      return;
+    }
     // ---------- Define Handler Functions ----------
 
     const handleDownload = () => {
@@ -111,9 +118,14 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
       const canvasHeight = bbox.height + offsetY;
       clonedSvg.setAttribute("width", canvasWidth);
       clonedSvg.setAttribute("height", canvasHeight);
-      clonedSvg.setAttribute("viewBox", `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`);
+      clonedSvg.setAttribute(
+        "viewBox",
+        `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`
+      );
       const svgData = new XMLSerializer().serializeToString(clonedSvg);
-      const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+      const svgBlob = new Blob([svgData], {
+        type: "image/svg+xml;charset=utf-8",
+      });
       const url = URL.createObjectURL(svgBlob);
       const desiredOutputWidth = 24000;
       const scale = desiredOutputWidth / canvasWidth;
@@ -140,6 +152,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
             link.download = "mindmap.png";
             link.click();
             URL.revokeObjectURL(link.href);
+            toast.success("Mindmap downloaded");
           } else {
             console.warn("toBlob returned null, falling back to toDataURL");
             const dataUrl = canvas.toDataURL("image/png");
@@ -147,7 +160,122 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
             link.href = dataUrl;
             link.download = "mindmap.png";
             link.click();
+            toast.success("Mindmap downloaded (fallback method)");
           }
+        }, "image/png");
+      };
+      image.src = url;
+    };
+
+    const handleSave = async () => {
+      console.log("Mindmap saved clicked!");
+
+      // Get the SVG element from the graph container
+      const svgElement = d3.select(graphRef.current).select("svg").node();
+      if (!svgElement) {
+        console.error("SVG element not found.");
+        return;
+      }
+
+      // Clone the SVG to avoid affecting the live DOM
+      const clonedSvg = svgElement.cloneNode(true);
+      // Create a temporary container to measure the bounding box
+      const tempContainer = document.createElement("div");
+      tempContainer.style.visibility = "hidden";
+      document.body.appendChild(tempContainer);
+      tempContainer.appendChild(clonedSvg);
+
+      const bbox = clonedSvg.getBBox();
+      document.body.removeChild(tempContainer);
+
+      // Adjust the SVG dimensions based on the bounding box
+      const offsetX = -Math.min(bbox.x, 0);
+      const offsetY = -Math.min(bbox.y, 0);
+      const canvasWidth = bbox.width + offsetX;
+      const canvasHeight = bbox.height + offsetY;
+
+      clonedSvg.setAttribute("width", canvasWidth);
+      clonedSvg.setAttribute("height", canvasHeight);
+      clonedSvg.setAttribute(
+        "viewBox",
+        `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`
+      );
+
+      // Serialize the SVG and create a blob URL
+      const svgData = new XMLSerializer().serializeToString(clonedSvg);
+      const svgBlob = new Blob([svgData], {
+        type: "image/svg+xml;charset=utf-8",
+      });
+      const url = URL.createObjectURL(svgBlob);
+
+      // Create an image element and load the blob URL
+      const image = new Image();
+      image.crossOrigin = "anonymous";
+      image.onload = () => {
+        // Set a desired output width (adjust for quality)
+        const desiredOutputWidth = 6000;
+        const scale = desiredOutputWidth / canvasWidth;
+        const finalCanvasWidth = Math.floor(canvasWidth * scale);
+        const finalCanvasHeight = Math.floor(canvasHeight * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = finalCanvasWidth;
+        canvas.height = finalCanvasHeight;
+        const ctx = canvas.getContext("2d");
+
+        // High-quality image smoothing and white background
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, finalCanvasWidth, finalCanvasHeight);
+
+        // Scale and translate context before drawing the image
+        ctx.scale(scale, scale);
+        ctx.translate(offsetX, offsetY);
+        ctx.drawImage(image, -offsetX, -offsetY);
+
+        // Convert the canvas to a PNG blob
+        canvas.toBlob(async (blob) => {
+          if (!blob) {
+            console.error("Failed to generate image blob.");
+            return;
+          }
+          // Read the blob as a data URL (base64)
+          const reader = new FileReader();
+          reader.onloadend = async () => {
+            const base64Image = reader.result; // PNG in base64
+            const userId = localStorage.getItem("userId");
+
+            // Build the payload with nodes, links, image, and the current datetime
+            const payload = {
+              nodes: nodesRef.current,
+              links: linksRef.current,
+              image: base64Image,
+              downloadDate: new Date().toISOString(),
+              userId,
+            };
+
+            try {
+              const response = await fetch(
+                `${process.env.REACT_APP_BACKEND_API_URL}/api/mindmaps`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(payload),
+                }
+              );
+              if (response.ok) {
+                console.log("Mindmap saved successfully!");
+                toast.success("Mindmap saved");
+              } else {
+                console.error("Error saving mindmap:", response.status);
+                toast.error("Error saving mindmap");
+              }
+            } catch (error) {
+              console.error("Error saving mindmap:", error);
+              toast.error("Error saving mindmap");
+            }
+          };
+          reader.readAsDataURL(blob);
         }, "image/png");
       };
       image.src = url;
@@ -169,7 +297,8 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
       if (rootNode) {
         const minDistance = 100;
         const maxDistance = 400;
-        const distance = minDistance + Math.random() * (maxDistance - minDistance);
+        const distance =
+          minDistance + Math.random() * (maxDistance - minDistance);
         const angle = Math.random() * 2 * Math.PI;
         x = rootNode.x + distance * Math.cos(angle);
         y = rootNode.y + distance * Math.sin(angle);
@@ -193,7 +322,8 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
       addNodeBtn.disabled = false;
     };
 
-    const addRelationInteractiveSpan = document.querySelector(".add-relation-text");
+    const addRelationInteractiveSpan =
+      document.querySelector(".add-relation-text");
     if (addRelationInteractiveSpan) {
       addRelationInteractiveSpan.addEventListener("click", (event) => {
         if (!interactiveRelationModeRef.current) {
@@ -208,7 +338,9 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
             if (!window._relationAlertShown) {
               alert("Please click on a node first to set it as the source.");
               window._relationAlertShown = true;
-              setTimeout(() => { window._relationAlertShown = false; }, 2000);
+              setTimeout(() => {
+                window._relationAlertShown = false;
+              }, 2000);
             }
           }
         }
@@ -273,7 +405,9 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
               ? l.target.id === deletedNodeId
               : l.target === deletedNodeId
           );
-          nodesRef.current = nodesRef.current.filter((n) => n.id !== deletedNodeId);
+          nodesRef.current = nodesRef.current.filter(
+            (n) => n.id !== deletedNodeId
+          );
           linksRef.current = linksRef.current.filter((l) => {
             if (typeof l.source === "object") {
               return (
@@ -304,7 +438,9 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
           selectedLinkRef.current = null;
         }
         hierarchyData = buildHierarchy(nodesRef.current, linksRef.current);
-        const nodeMap = new Map(nodesRef.current.map((node) => [node.id, node]));
+        const nodeMap = new Map(
+          nodesRef.current.map((node) => [node.id, node])
+        );
         affectedNodes.forEach((nodeId) => {
           let node = nodeMap.get(nodeId);
           if (node) {
@@ -357,7 +493,6 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
         });
       }
     };
-    
 
     colorPicker.addEventListener("input", handleColorPickerInput);
 
@@ -367,13 +502,15 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
       closeModalBottomBtn.addEventListener("click", handleCloseModal);
     }
     downloadButton.addEventListener("click", handleDownload);
+    saveButton.addEventListener("click", handleSave);
     document.addEventListener("click", handleDocumentClick);
     addNodeBtn.addEventListener("click", handleAddNode);
     document.addEventListener("keydown", handleKeyDown);
     // Flags for listeners (if needed)
-    
+
     // ---------- Generate Mindmap Function ----------
-    const generateMindmap = () => {
+    // Replace your existing generateMindmap function with this:
+    const generateMindmap = (fetchFn) => {
       setLoading(true);
       hasGeneratedRef.current = true;
       d3.select(graphRef.current).select("svg").remove();
@@ -388,8 +525,12 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
         .attr("preserveAspectRatio", "xMidYMid meet")
         .style("cursor", "pointer");
       zoomGroupRef.current = svgRef.current.append("g");
-      linkGroupRef.current = zoomGroupRef.current.append("g").attr("class", "links");
-      nodeGroupRef.current = zoomGroupRef.current.append("g").attr("class", "nodes");
+      linkGroupRef.current = zoomGroupRef.current
+        .append("g")
+        .attr("class", "links");
+      nodeGroupRef.current = zoomGroupRef.current
+        .append("g")
+        .attr("class", "nodes");
       zoomBehaviorRef.current = d3
         .zoom()
         .scaleExtent([0.05, 5])
@@ -414,8 +555,9 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
         .force("center", d3.forceCenter(width / 2, height / 2))
         .on("tick", ticked);
       console.log("Selected Text:", selectedText);
-      if (!hasFetchedDatabaseRef.current) {
-        fetchFromDatabase()
+      // Instead of always calling fetchFromDatabase, use the passed fetchFn
+      if (!hasFetchedDatabaseRef.current && typeof fetchFn === "function") {
+        fetchFn()
           .then(() => {
             console.log("Mind map data loaded.");
             setLoading(false);
@@ -455,6 +597,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
         hasFetchedDatabaseRef.current = true;
         let data;
         const chosen = selectedText.trim();
+        console.log("fetchFromDatabase");
 
         if (chosen === "1") {
           data = {
@@ -747,12 +890,256 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
             traverseMindmap(mindmapNode, null);
           });
         }
-        const hierarchyData = buildHierarchy(nodesRef.current, linksRef.current);
+
+        // const endpoint = "generate";
+
+        // const response = await fetch(`${baseApiUrl}/${endpoint}`, {
+        //   method: "POST",
+        //   headers: { "Content-Type": "application/json" },
+        //   body: JSON.stringify({ content: selectedText }),
+        // });
+
+        // if (!response.ok) {
+        //   throw new Error(`Server error: ${response.status}`);
+        // }
+
+        // const data = await response.json();
+
+        // // Check if the API returned an error
+        // if (data.error) {
+        //   console.error("API returned error: " + data.error);
+        //   return;
+        // }
+
+        // // Instead of checking data.response, check the data.mindmap4 structure
+        // if (!data || !Array.isArray(data.mindmap)) {
+        //   throw new Error("Invalid data structure: " + JSON.stringify(data));
+        // }
+        // const mindmapRoot = data;
+
+        // // Clear previous data
+        // nodesRef.current = [];
+        // linksRef.current = [];
+        // // Traverse the response structure
+        // mindmapRoot.mindmap.forEach((mindmapNode) => {
+        //   traverseMindmap(mindmapNode, null);
+        // });
+
+        const hierarchyData = buildHierarchy(
+          nodesRef.current,
+          linksRef.current
+        );
         applyTreeLayout(hierarchyData);
         update();
         setLoading(false);
       } catch (error) {
         console.error("Error fetching data from mock data:", error);
+        setLoading(false);
+      }
+    }
+
+    async function fetchFromExtendDatabase() {
+      try {
+        hasFetchedDatabaseRef.current = true;
+        console.log("fetchFromExtendDatabase");
+
+        // const endpoint = "extend"; // Use the 'extend' endpoint
+        // const response = await fetch(`${baseApiUrl}/${endpoint}`, {
+        //   method: "POST",
+        //   headers: { "Content-Type": "application/json" },
+        //   body: JSON.stringify({ content: selectedText }),
+        // });
+        // if (!response.ok) {
+        //   throw new Error(`Server error: ${response.status}`);
+        // }
+        // const data = await response.json();
+        // if (data.error) {
+        //   console.error("API returned error: " + data.error);
+        //   return;
+        // }
+        // if (!data || !Array.isArray(data.mindmap)) {
+        //   throw new Error("Invalid data structure: " + JSON.stringify(data));
+        // }
+        // const mindmapRoot = data;
+        // // Clear previous data
+        // nodes = [];
+        // links = [];
+        // mindmapRoot.mindmap.forEach((mindmapNode) => {
+        //   traverseMindmap(mindmapNode, null);
+        // });
+
+        let data;
+        const chosen = selectedText.trim();
+        data = {
+          mindmap: [
+            {
+              name: "Artificial Neural Networks (ANN)",
+              subnodes: [
+                {
+                  name: "Developed based on Biological Neurons",
+                  subnodes: [],
+                },
+                {
+                  name: "Perceptron",
+                  subnodes: [
+                    { name: "Trained to Predict", subnodes: [] },
+                    { name: "Fixed Threshold", subnodes: [] },
+                  ],
+                },
+                {
+                  name: "Architecture",
+                  subnodes: [
+                    { name: "Many Inputs", subnodes: [] },
+                    { name: "Multiple Processing Layers", subnodes: [] },
+                    { name: "Many Outputs", subnodes: [] },
+                  ],
+                },
+                {
+                  name: "Complex Data",
+                  subnodes: [
+                    { name: "Classification Tasks", subnodes: [] },
+                    { name: "Regression Tasks", subnodes: [] },
+                  ],
+                },
+              ],
+            },
+          ],
+        };
+
+        console.log("Mock Data Chosen:", data);
+        nodesRef.current = [];
+        linksRef.current = [];
+        if (data && data.mindmap && Array.isArray(data.mindmap)) {
+          data.mindmap.forEach((mindmapNode) => {
+            traverseMindmap(mindmapNode, null);
+          });
+        }
+
+        const hierarchyData = buildHierarchy(
+          nodesRef.current,
+          linksRef.current
+        );
+        applyTreeLayout(hierarchyData);
+        update();
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching data from extend endpoint:", error);
+        setLoading(false);
+      }
+    }
+
+    async function fetchFromSimplifyDatabase() {
+      try {
+        hasFetchedDatabaseRef.current = true;
+        console.log("fetchFromSimplifyDatabase");
+
+        // const endpoint = "simplify"; // Use the 'simplify' endpoint
+        // const response = await fetch(`${baseApiUrl}/${endpoint}`, {
+        //   method: "POST",
+        //   headers: { "Content-Type": "application/json" },
+        //   body: JSON.stringify({ content: selectedText }),
+        // });
+        // if (!response.ok) {
+        //   throw new Error(`Server error: ${response.status}`);
+        // }
+        // const data = await response.json();
+        // if (data.error) {
+        //   console.error("API returned error: " + data.error);
+        //   return;
+        // }
+        // if (!data || !Array.isArray(data.mindmap)) {
+        //   throw new Error("Invalid data structure: " + JSON.stringify(data));
+        // }
+        // const mindmapRoot = data;
+        // // Clear previous data
+        // nodes = [];
+        // links = [];
+        // mindmapRoot.mindmap.forEach((mindmapNode) => {
+        //   traverseMindmap(mindmapNode, null);
+        // });
+
+        let data;
+        const chosen = selectedText.trim();
+        data = {
+          mindmap: [
+            {
+              name: "Machine Learning in Healthcare",
+              subnodes: [
+                {
+                  name: "Overview",
+                  subnodes: [
+                    {
+                      name: "Widely used in applications and research",
+                      subnodes: [],
+                    },
+                    { name: "Crucial role in numerous fields", subnodes: [] },
+                    {
+                      name: "Applications",
+                      subnodes: [
+                        {
+                          name: "Diagnose sizeable medical data patterns",
+                          subnodes: [],
+                        },
+                        { name: "Predict diseases", subnodes: [] },
+                      ],
+                    },
+                  ],
+                },
+                {
+                  name: "Survey",
+                  subnodes: [
+                    {
+                      name: "Purpose",
+                      subnodes: [
+                        { name: "Highlight previous work", subnodes: [] },
+                        {
+                          name: "Provide information to researchers",
+                          subnodes: [],
+                        },
+                      ],
+                    },
+                    {
+                      name: "Machine Learning Algorithms",
+                      subnodes: [
+                        { name: "Overview", subnodes: [] },
+                        { name: "Applications in healthcare", subnodes: [] },
+                      ],
+                    },
+                  ],
+                },
+                {
+                  name: "Advantages",
+                  subnodes: [
+                    {
+                      name: "Efficient support infrastructure for medical fields",
+                      subnodes: [],
+                    },
+                    { name: "Improve healthcare services", subnodes: [] },
+                  ],
+                },
+              ],
+            },
+          ],
+        };
+
+        console.log("Mock Data Chosen:", data);
+        nodesRef.current = [];
+        linksRef.current = [];
+        if (data && data.mindmap && Array.isArray(data.mindmap)) {
+          data.mindmap.forEach((mindmapNode) => {
+            traverseMindmap(mindmapNode, null);
+          });
+        }
+
+        const hierarchyData = buildHierarchy(
+          nodesRef.current,
+          linksRef.current
+        );
+        applyTreeLayout(hierarchyData);
+        update();
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching data from simplify endpoint:", error);
         setLoading(false);
       }
     }
@@ -805,13 +1192,21 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
       const allTargets = new Set(links.map((link) => link.target));
       const rootNodes = nodes.filter((node) => !allTargets.has(node.id));
       if (rootNodes.length === 0) {
-        console.warn("No explicit root node found. Using the first node as the root.");
+        console.warn(
+          "No explicit root node found. Using the first node as the root."
+        );
         return d3.hierarchy(nodeMap.get(nodes[0].id));
       }
       if (rootNodes.length > 1) {
-        const virtualRoot = { id: "virtualRoot", text: "Root", children: rootNodes };
+        const virtualRoot = {
+          id: "virtualRoot",
+          text: "Root",
+          children: rootNodes,
+        };
         const h = d3.hierarchy(virtualRoot);
-        h.each((n) => { n.depth = Math.max(0, n.depth - 1); });
+        h.each((n) => {
+          n.depth = Math.max(0, n.depth - 1);
+        });
         return h;
       }
       const hierarchy = d3.hierarchy(nodeMap.get(rootNodes[0].id));
@@ -819,8 +1214,12 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
         const dataNode = nodeMap.get(node.data.id);
         if (dataNode && dataNode.depth == null) dataNode.depth = node.depth;
       });
-      const connectedNodes = new Set(links.flatMap((link) => [link.source, link.target]));
-      const standaloneNodes = nodes.filter((node) => !connectedNodes.has(node.id));
+      const connectedNodes = new Set(
+        links.flatMap((link) => [link.source, link.target])
+      );
+      const standaloneNodes = nodes.filter(
+        (node) => !connectedNodes.has(node.id)
+      );
       standaloneNodes.forEach((node) => {
         if (node.depth == null) {
           node.depth = 0;
@@ -831,7 +1230,10 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
     }
 
     function applyTreeLayout(hierarchyData) {
-      const treeLayout = d3.tree().nodeSize([200, 200]).separation((a, b) => (a.parent === b.parent ? 2 : 2));
+      const treeLayout = d3
+        .tree()
+        .nodeSize([200, 200])
+        .separation((a, b) => (a.parent === b.parent ? 2 : 2));
       const treeData = treeLayout(hierarchyData);
       treeData.descendants().forEach((d) => {
         const node = nodesRef.current.find((n) => n.id === d.data.id);
@@ -938,7 +1340,8 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
             node.depth = found ? found.depth : 0;
           }
         }
-        const newColor = colorMapRef.current[node.depth] || defaultColorScale(node.depth);
+        const newColor =
+          colorMapRef.current[node.depth] || defaultColorScale(node.depth);
         window.nodeColorMap.set(node.id, newColor);
         const isStandalone = !linksRef.current.some(
           (link) => link.source === node.id || link.target === node.id
@@ -949,7 +1352,10 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
           window.nodeColorMap.set(node.id, color);
         }
       });
-      console.log("Updated Node Depths:", nodesRef.current.map((n) => ({ id: n.id, depth: n.depth })));
+      console.log(
+        "Updated Node Depths:",
+        nodesRef.current.map((n) => ({ id: n.id, depth: n.depth }))
+      );
       console.log("Updated Color Map:", colorMapRef.current);
       const linkSel = linkGroupRef.current
         .selectAll("line")
@@ -977,7 +1383,8 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
             const nodeEnter = enter
               .append("g")
               .call(
-                d3.drag()
+                d3
+                  .drag()
                   .on("start", dragstarted)
                   .on("drag", dragged)
                   .on("end", dragended)
@@ -996,14 +1403,21 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
                     target: d.id,
                     type: "HAS_SUBNODE",
                   });
-                  const nodeMap = new Map(nodesRef.current.map((node) => [node.id, node]));
+                  const nodeMap = new Map(
+                    nodesRef.current.map((node) => [node.id, node])
+                  );
                   d.depth = selectedSourceForRelationRef.current.depth + 1;
                   updateDepthsRecursively(d, nodeMap, linksRef.current);
                   nodesRef.current.forEach((node) => {
                     if (!colorMapRef.current[node.depth]) {
-                      colorMapRef.current[node.depth] = defaultColorScale(node.depth);
+                      colorMapRef.current[node.depth] = defaultColorScale(
+                        node.depth
+                      );
                     }
-                    window.nodeColorMap.set(node.id, colorMapRef.current[node.depth]);
+                    window.nodeColorMap.set(
+                      node.id,
+                      colorMapRef.current[node.depth]
+                    );
                   });
                   interactiveRelationModeRef.current = false;
                   selectedSourceForRelationRef.current = null;
@@ -1160,7 +1574,48 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
     }
 
     if (!hasGeneratedRef.current) {
-      generateMindmap();
+      generateMindmap(fetchFromDatabase);
+    }
+
+    // Attach event listeners for extend and simplify buttons
+    const extendButton = document.getElementById("extend-button");
+    const simplifyButton = document.getElementById("simplify-button");
+
+    function handleExtend() {
+      // Clear the current mind map
+      d3.select(graphRef.current).select("svg").remove();
+      nodesRef.current = [];
+      linksRef.current = [];
+      setLoading(true);
+      hasFetchedDatabaseRef.current = false;
+      hasGeneratedRef.current = false;
+      // Re-create the SVG and simulation
+      if (!hasGeneratedRef.current) {
+        generateMindmap(fetchFromExtendDatabase);
+        console.log("Mind map data loaded from fetchFromExtendDatabase.");
+      }
+    }
+
+    function handleSimplify() {
+      // Clear the current mind map
+      d3.select(graphRef.current).select("svg").remove();
+      nodesRef.current = [];
+      linksRef.current = [];
+      setLoading(true);
+      hasGeneratedRef.current = false;
+      hasFetchedDatabaseRef.current = false;
+      // Re-create the SVG and simulation
+      if (!hasGeneratedRef.current) {
+        generateMindmap(fetchFromSimplifyDatabase);
+        console.log("Mind map data loaded from fetchFromSimplifyDatabase.");
+      }
+    }
+
+    if (extendButton) {
+      extendButton.addEventListener("click", handleExtend);
+    }
+    if (simplifyButton) {
+      simplifyButton.addEventListener("click", handleSimplify);
     }
 
     return () => {
@@ -1173,9 +1628,17 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
       }
       downloadBtnRef.current &&
         downloadBtnRef.current.removeEventListener("click", handleDownload);
+      handleSaveBtnRef.current &&
+        handleSaveBtnRef.current.removeEventListener("click", handleSave);
       addNodeBtn.removeEventListener("click", handleAddNode);
       document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("click", handleDocumentClick);
+      if (extendButton) {
+        extendButton.removeEventListener("click", handleExtend);
+      }
+      if (simplifyButton) {
+        simplifyButton.removeEventListener("click", handleSimplify);
+      }
     };
   }, [show, onClose, selectedText]);
 
@@ -1216,7 +1679,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
         }
         .input-group-custom .btn {
           border-radius: 0 5px 5px 0;
-          padding: 9px 10px;
+          padding: 9px 30px;
           border: none;
           cursor: pointer;
         }
@@ -1379,15 +1842,32 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
             </div>
             {/* Other Buttons Column */}
             <div className="col-12 col-md-6 d-flex flex-wrap align-items-center">
-              <div className="p-1 col-6">
+              <div className="p-1 col-4">
+                <button
+                  id="extend-button"
+                  className="btn btn-primary primary-button extend-button btn-custom w-100"
+                >
+                  Extend
+                </button>
+              </div>
+              <div className="p-1 col-4">
+                <button
+                  id="simplify-button"
+                  className="btn btn-primary primary-button simplify-button btn-custom w-100"
+                >
+                  Simplify
+                </button>
+              </div>
+              <div className="p-1 col-2">
                 <button
                   id="save-map"
                   className="btn btn-primary primary-button save-button btn-custom w-100"
+                  ref={handleSaveBtnRef}
                 >
                   <i className="bi bi-save"></i>
                 </button>
               </div>
-              <div className="p-1 col-6">
+              <div className="p-1 col-2">
                 <button
                   id="download-map"
                   ref={downloadBtnRef}
@@ -1531,6 +2011,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
           />
         </div>
       )}
+      <ToastContainer />
     </div>
   );
 };

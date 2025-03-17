@@ -4,6 +4,8 @@ import * as d3 from "d3";
 import Lottie from "react-lottie-player";
 import Loading from "../animation/mindmap-loading.json";
 import { Wave } from "react-animated-text";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const DocumentMindmap = () => {
   const location = useLocation();
@@ -17,6 +19,7 @@ const DocumentMindmap = () => {
   const closeModalBtnRef = useRef(null);
   const closeModalBottomBtnRef = useRef(null);
   const downloadBtnRef = useRef(null);
+  const handleSaveBtnRef = useRef(null);
   const newNodeNameRef = useRef(null);
   const addNodeBtnRef = useRef(null);
   const addRelationBtnRef = useRef(null);
@@ -100,7 +103,9 @@ const DocumentMindmap = () => {
       try {
         const response = await fetch(item.url, { mode: "cors" });
         if (!response.ok) {
-          console.warn(`Skipping image ${item.url} due to fetch error: ${response.status}`);
+          console.warn(
+            `Skipping image ${item.url} due to fetch error: ${response.status}`
+          );
           return; // Skip this item
         }
         const blob = await response.blob();
@@ -119,7 +124,7 @@ const DocumentMindmap = () => {
     });
     await Promise.all(promises);
     return imageCatalog;
-  }  
+  }
 
   // 3) Global cache for matched images
   let matchedImageMap = {};
@@ -276,6 +281,7 @@ const DocumentMindmap = () => {
     const closeModalBtn = closeModalBtnRef.current;
     const closeModalBottomBtn = closeModalBottomBtnRef.current;
     const downloadButton = downloadBtnRef.current;
+    const saveButton = handleSaveBtnRef.current;
     const addNodeBtn = addNodeBtnRef.current;
     const addRelationBtn = addRelationBtnRef.current;
     const colorPicker = colorPickerRef.current;
@@ -293,6 +299,10 @@ const DocumentMindmap = () => {
       console.error("Required download button element not found.");
       return;
     }
+    if (!saveButton) {
+      console.error("Required save button element not found.");
+      return;
+    }
 
     const handleDownload = () => {
       const svgElement = d3.select(graphRef.current).select("svg").node();
@@ -300,44 +310,49 @@ const DocumentMindmap = () => {
         console.error("SVG element not found.");
         return;
       }
-    
+
       // Clone the SVG element so that changes don’t affect the live DOM
       const clonedSvg = svgElement.cloneNode(true);
-    
+
       // Append clone temporarily to the DOM for accurate bounding box measurement
       const tempContainer = document.createElement("div");
       tempContainer.style.visibility = "hidden";
       document.body.appendChild(tempContainer);
       tempContainer.appendChild(clonedSvg);
-    
+
       const bbox = clonedSvg.getBBox();
       console.log("Computed BBox:", bbox);
       tempContainer.remove();
-    
+
       // If parts of your SVG lie outside the (0,0) origin, calculate offsets to include them
       const offsetX = -Math.min(bbox.x, 0);
       const offsetY = -Math.min(bbox.y, 0);
       const canvasWidth = bbox.width + offsetX;
       const canvasHeight = bbox.height + offsetY;
-    
+
       // Set the cloned SVG dimensions and viewBox so it renders correctly
       clonedSvg.setAttribute("width", canvasWidth);
       clonedSvg.setAttribute("height", canvasHeight);
-      clonedSvg.setAttribute("viewBox", `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`);
-    
+      clonedSvg.setAttribute(
+        "viewBox",
+        `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`
+      );
+
       // Serialize the SVG to a string and create a blob URL
       const svgData = new XMLSerializer().serializeToString(clonedSvg);
-      const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+      const svgBlob = new Blob([svgData], {
+        type: "image/svg+xml;charset=utf-8",
+      });
       const url = URL.createObjectURL(svgBlob);
-    
+
       // Set your desired output resolution (increase this value for higher quality)
-      const desiredOutputWidth = 24000; 
+      const desiredOutputWidth = 24000;
       // Compute the scale factor based solely on the desired output width
       const scale = desiredOutputWidth / canvasWidth;
-    
+
       const image = new Image();
       image.crossOrigin = "anonymous"; // Ensures external images are not tainted
-    
+
       image.onload = () => {
         // Calculate final canvas dimensions based on the computed scale
         const finalCanvasWidth = Math.floor(canvasWidth * scale);
@@ -346,22 +361,22 @@ const DocumentMindmap = () => {
         canvas.width = finalCanvasWidth;
         canvas.height = finalCanvasHeight;
         const ctx = canvas.getContext("2d");
-    
+
         // Enable high-quality image smoothing
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = "high";
-    
+
         // Fill the canvas background with white (optional, in case of transparency)
         ctx.fillStyle = "white";
         ctx.fillRect(0, 0, finalCanvasWidth, finalCanvasHeight);
-    
+
         // Apply the scaling transformation to the canvas context
         ctx.scale(scale, scale);
         // Translate the context so that negative offsets are handled correctly
         ctx.translate(offsetX, offsetY);
         // Draw the image; the negative translation ensures the full content appears
         ctx.drawImage(image, -offsetX, -offsetY);
-    
+
         // Convert the canvas to a PNG blob and trigger download
         canvas.toBlob((blob) => {
           if (blob) {
@@ -370,6 +385,7 @@ const DocumentMindmap = () => {
             link.download = "mindmap.png";
             link.click();
             URL.revokeObjectURL(link.href);
+            toast.success("Mindmap downloaded");
           } else {
             console.warn("toBlob returned null, falling back to toDataURL");
             const dataUrl = canvas.toDataURL("image/png");
@@ -377,13 +393,127 @@ const DocumentMindmap = () => {
             link.href = dataUrl;
             link.download = "mindmap.png";
             link.click();
+            toast.success("Mindmap downloaded (fallback method)");
           }
         }, "image/png");
       };
-    
+
       image.src = url;
     };
-       
+
+    const handleSave = async () => {
+      console.log("Mindmap saved clicked!");
+
+      // Get the SVG element from the graph container
+      const svgElement = d3.select(graphRef.current).select("svg").node();
+      if (!svgElement) {
+        console.error("SVG element not found.");
+        return;
+      }
+
+      // Clone the SVG to avoid affecting the live DOM
+      const clonedSvg = svgElement.cloneNode(true);
+      // Create a temporary container to measure the bounding box
+      const tempContainer = document.createElement("div");
+      tempContainer.style.visibility = "hidden";
+      document.body.appendChild(tempContainer);
+      tempContainer.appendChild(clonedSvg);
+
+      const bbox = clonedSvg.getBBox();
+      document.body.removeChild(tempContainer);
+
+      // Adjust the SVG dimensions based on the bounding box
+      const offsetX = -Math.min(bbox.x, 0);
+      const offsetY = -Math.min(bbox.y, 0);
+      const canvasWidth = bbox.width + offsetX;
+      const canvasHeight = bbox.height + offsetY;
+
+      clonedSvg.setAttribute("width", canvasWidth);
+      clonedSvg.setAttribute("height", canvasHeight);
+      clonedSvg.setAttribute(
+        "viewBox",
+        `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`
+      );
+
+      // Serialize the SVG and create a blob URL
+      const svgData = new XMLSerializer().serializeToString(clonedSvg);
+      const svgBlob = new Blob([svgData], {
+        type: "image/svg+xml;charset=utf-8",
+      });
+      const url = URL.createObjectURL(svgBlob);
+
+      // Create an image element and load the blob URL
+      const image = new Image();
+      image.crossOrigin = "anonymous";
+      image.onload = () => {
+        // Set a desired output width (adjust for quality)
+        const desiredOutputWidth = 6000;
+        const scale = desiredOutputWidth / canvasWidth;
+        const finalCanvasWidth = Math.floor(canvasWidth * scale);
+        const finalCanvasHeight = Math.floor(canvasHeight * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = finalCanvasWidth;
+        canvas.height = finalCanvasHeight;
+        const ctx = canvas.getContext("2d");
+
+        // High-quality image smoothing and white background
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, finalCanvasWidth, finalCanvasHeight);
+
+        // Scale and translate context before drawing the image
+        ctx.scale(scale, scale);
+        ctx.translate(offsetX, offsetY);
+        ctx.drawImage(image, -offsetX, -offsetY);
+
+        // Convert the canvas to a PNG blob
+        canvas.toBlob(async (blob) => {
+          if (!blob) {
+            console.error("Failed to generate image blob.");
+            return;
+          }
+          // Read the blob as a data URL (base64)
+          const reader = new FileReader();
+          reader.onloadend = async () => {
+            const base64Image = reader.result; // PNG in base64
+            const userId = localStorage.getItem("userId");
+
+            // Build the payload with nodes, links, image, and the current datetime
+            const payload = {
+              nodes, // assuming these are your current node objects
+              links, // assuming these are your current link objects
+              image: base64Image,
+              downloadDate: new Date().toISOString(),
+              userId,
+            };
+
+            try {
+              const response = await fetch(
+                `${process.env.REACT_APP_BACKEND_API_URL}/api/mindmaps`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(payload),
+                }
+              );
+              if (response.ok) {
+                console.log("Mindmap saved successfully!");
+                toast.success("Mindmap saved");
+              } else {
+                console.error("Error saving mindmap:", response.status);
+                toast.error("Error saving mindmap");
+              }
+            } catch (error) {
+              console.error("Error saving mindmap:", error);
+              toast.error("Error saving mindmap");
+            }
+          };
+          reader.readAsDataURL(blob);
+        }, "image/png");
+      };
+      image.src = url;
+    };
 
     // 6) Traverse mind map recursively to create nodes and links
     let uniqueNodeCounter = 1;
@@ -898,7 +1028,7 @@ const DocumentMindmap = () => {
           },
         ],
       };
-      
+
       // console.log("Called fetch database with text: ",text.slice(0, 50));
       // const endpoint = "generate";
 
@@ -1234,6 +1364,8 @@ const DocumentMindmap = () => {
 
     downloadBtnRef.current &&
       downloadBtnRef.current.addEventListener("click", handleDownload);
+    handleSaveBtnRef.current &&
+      handleSaveBtnRef.current.addEventListener("click", handleSave);
     document.addEventListener("click", handleDocumentClick);
     addNodeBtn.addEventListener("click", handleAddNode);
     document.addEventListener("keydown", handleKeyDown);
@@ -1406,24 +1538,24 @@ const DocumentMindmap = () => {
     //   })
     //   .catch((err) => console.error("Error preloading images:", err));
 
-      (async () => {
-        try {
-          const fetchedCatalog = await fetchImageCatalog();
-          setImageCatalog(fetchedCatalog);
-          await preloadImages(fetchedCatalog);
-          // Await the pad data before generating the mindmap
-          const padData = await fetchPad();
-    
-          // Optionally, check if padData (or refs) are populated
-          if (!padData || !padData.sections || padData.sections.length === 0) {
-            console.warn("Pad data not fully loaded");
-            return;
-          }
-          generateMindmap();
-        } catch (error) {
-          console.error("Error preloading images:", error);
+    (async () => {
+      try {
+        const fetchedCatalog = await fetchImageCatalog();
+        setImageCatalog(fetchedCatalog);
+        await preloadImages(fetchedCatalog);
+        // Await the pad data before generating the mindmap
+        const padData = await fetchPad();
+
+        // Optionally, check if padData (or refs) are populated
+        if (!padData || !padData.sections || padData.sections.length === 0) {
+          console.warn("Pad data not fully loaded");
+          return;
         }
-      })();
+        generateMindmap();
+      } catch (error) {
+        console.error("Error preloading images:", error);
+      }
+    })();
 
     deleteImageBtnRef.current &&
       deleteImageBtnRef.current.addEventListener("click", () => {
@@ -1445,6 +1577,8 @@ const DocumentMindmap = () => {
       }
       downloadBtnRef.current &&
         downloadBtnRef.current.removeEventListener("click", handleDownload);
+      handleSaveBtnRef.current &&
+        handleSaveBtnRef.current.removeEventListener("click", handleSave);
       addNodeBtn.removeEventListener("click", handleAddNode);
       document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("click", handleDocumentClick);
@@ -1484,33 +1618,32 @@ const DocumentMindmap = () => {
           gap: 10px;
           margin-bottom: 10px;
         }
-        /* Each row with inputs and buttons */
-        .input-group {
-          display: flex;
-          width: 100%;
-          gap: 10px;
-        }
-        /* Input fields only: keep existing padding and border radius */
-        .input-group input {
-          flex-grow: 3;
-          padding: 10px;
+        /* Input Group adjustments */
+        .input-group-custom .form-control {
+          border-radius: 5px 0 0 5px;
+          padding: 9px;
           border: 1px solid #ccc;
-          border-radius: 5px;
         }
-        /* Remove background or color from local .input-group button,
-           so your .primary-button global styles can shine through */
-        .input-group button {
-          flex-grow: 1;
+        .input-group-custom .btn {
+          border-radius: 0 5px 5px 0;
+          padding: 9px 30px;
+          border: none;
+          cursor: pointer;
+        }
+        /* Other button adjustments */
+        .btn-custom {
           padding: 10px;
           border-radius: 5px;
           border: none;
           cursor: pointer;
         }
-
-        .input-group, .simplify-button, .extend-button {
-          flex-grow: 2!important;
+        /* Other button adjustments */
+        .btn-custom {
+          padding: 10px;
+          border-radius: 5px;
+          border: none;
+          cursor: pointer;
         }
-
         /* Mind Map Container */
         #mindmap-container {
           width: 100%;
@@ -1634,28 +1767,47 @@ const DocumentMindmap = () => {
             >
               {/* Customization Buttons & Inputs */}
               <div className="button-container">
-                <div className="input-group">
-                  <input
-                    type="text"
-                    id="new-node-name"
-                    ref={newNodeNameRef}
-                    placeholder="Enter new node name"
-                    className="add-node-input"
-                  />
-                  <button
-                    id="add-node"
-                    className="primary-button add-node-button"
-                    ref={addNodeBtnRef}
-                  >
-                    <i className="bi bi-plus-circle"></i>
-                  </button>
-                  <button
-                    id="download-map"
-                    ref={downloadBtnRef}
-                    className="primary-button download-button"
-                  >
-                    <i className="bi bi-download"></i>
-                  </button>
+                <div className="row g-2 align-items-center">
+                  {/* Add Node Input & Button in one column using Input Group */}
+                  <div className="col-12 col-md-6 d-flex flex-wrap align-items-center">
+                    <div className="p-1 input-group input-group-custom">
+                      <input
+                        type="text"
+                        id="new-node-name"
+                        ref={newNodeNameRef}
+                        placeholder="Enter new node name"
+                        className="form-control add-node-input"
+                      />
+                      <button
+                        id="add-node"
+                        className="btn btn-primary primary-button add-node-button"
+                        ref={addNodeBtnRef}
+                      >
+                        <i className="bi bi-plus-circle"></i>
+                      </button>
+                    </div>
+                  </div>
+                  {/* Other Buttons Column */}
+                  <div className="col-12 col-md-6 d-flex flex-wrap align-items-center">
+                    <div className="p-1 col-6">
+                      <button
+                        id="save-map"
+                        className="btn btn-primary primary-button save-button btn-custom w-100"
+                        ref={handleSaveBtnRef}
+                      >
+                        <i className="bi bi-save"></i>
+                      </button>
+                    </div>
+                    <div className="p-1 col-6">
+                      <button
+                        id="download-map"
+                        ref={downloadBtnRef}
+                        className="btn btn-primary primary-button download-button btn-custom w-100"
+                      >
+                        <i className="bi bi-download"></i>
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 <div
@@ -1801,6 +1953,7 @@ const DocumentMindmap = () => {
           </div>
         </div>
       </div>
+      <ToastContainer />
     </>
   );
 };

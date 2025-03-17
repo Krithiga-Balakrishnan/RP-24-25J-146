@@ -6,6 +6,8 @@ import MindmapDocument from "../animation/mindmap-document.json";
 import { Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import MindmapModal from "../components/TextToMindmapModal";
+import Loading from "../animation/mindmap-loading.json";
+import { Wave } from "react-animated-text";
 
 const Mindmap = () => {
   const [uploadDropdownOpen, setUploadDropdownOpen] = useState(false);
@@ -20,6 +22,8 @@ const Mindmap = () => {
   const [sortOrder, setSortOrder] = useState("desc");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
+
+  const [loading, setLoading] = useState(false);
 
   const [loopNum, setLoopNum] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -39,6 +43,8 @@ const Mindmap = () => {
   const [showMindmap, setShowMindmap] = useState(false);
   const [selectedText, setSelectedText] = useState("");
   const [textValue, setTextValue] = useState("");
+
+  const didFetchRef = useRef(false);
 
   const toggleDropdown = () => {
     setUploadDropdownOpen(!uploadDropdownOpen);
@@ -73,6 +79,10 @@ const Mindmap = () => {
 
   // 1) Fetch files for this user (similar to fetchPads in Home.js)
   useEffect(() => {
+    if (didFetchRef.current) return; // Skip if already fetched
+    didFetchRef.current = true;
+    setLoading(true);
+
     const fetchFiles = async () => {
       const token = localStorage.getItem("token");
       if (!token) {
@@ -106,7 +116,37 @@ const Mindmap = () => {
       }
     };
 
-    fetchFiles();
+    const fetchMindmaps = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const userId = localStorage.getItem("userId");
+        if (!token || !userId) {
+          navigate("/login");
+          return;
+        }
+        const response = await fetch(
+          `${process.env.REACT_APP_BACKEND_API_URL}/api/mindmaps/user/${userId}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        if (!response.ok) {
+          console.error("Error fetching mindmaps:", response.status);
+          return;
+        }
+        const data = await response.json();
+        setMindmaps(data);
+        console.log("Fetched Mindmaps");
+      } catch (error) {
+        console.error("Error fetching mindmaps:", error);
+      }
+    };
+
+    // Fetch both in parallel, then set loading to false
+    Promise.all([fetchFiles(), fetchMindmaps()]).finally(() => {
+      // Once both fetches are done (success or error),
+      setLoading(false);
+    });
   }, [navigate]);
 
   useEffect(() => {
@@ -131,32 +171,22 @@ const Mindmap = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Simulate fetching 20 mind maps with mock data
-  useEffect(() => {
-    const data = Array.from({ length: 20 }).map((_, i) => ({
-      id: i + 1,
-      title: `Mind Map ${i + 1}`,
-      // Create descending dates (one day apart)
-      date: new Date(Date.now() - i * 86400000).toISOString(),
-      image: "https://4kwallpapers.com/images/walls/thumbs_3t/7023.jpg", // Replace with your image URL if needed
-    }));
-    setMindmaps(data);
-  }, []);
-
   // Filtering and sorting
   const filteredMindmaps = mindmaps.filter((item) =>
-    item.title.toLowerCase().includes(searchTerm.toLowerCase())
+    (item.nodes?.[0]?.text || "")
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase())
   );
 
   const sortedMindmaps = filteredMindmaps.sort((a, b) => {
     if (sortOrder.startsWith("date")) {
       return sortOrder === "date-asc"
-        ? new Date(a.date) - new Date(b.date)
-        : new Date(b.date) - new Date(a.date);
+        ? new Date(a.downloadDate) - new Date(b.downloadDate)
+        : new Date(b.downloadDate) - new Date(a.downloadDate);
     } else if (sortOrder.startsWith("alpha")) {
       return sortOrder === "alpha-asc"
-        ? a.title.localeCompare(b.title)
-        : b.title.localeCompare(a.title);
+        ? (a.nodes?.[0]?.text || "").localeCompare(b.nodes?.[0]?.text || "")
+        : (b.nodes?.[0]?.text || "").localeCompare(a.nodes?.[0]?.text || "");
     }
     return 0;
   });
@@ -395,85 +425,111 @@ const Mindmap = () => {
       </div>
       <div className="row mb-5">
         <div className="col">
-          {/* Mind maps list as a grid: 1 column on mobile, 2 columns on medium screens */}
-          <div className="row row-cols-1 row-cols-md-2 g-3">
-            {paginatedMindmaps.map((item) => (
-              <div
-                key={item.id}
-                className="col"
-                style={{ cursor: "pointer" }}
-                onMouseEnter={(e) => {
-                  // Apply a subtle shadow on hover
-                  e.currentTarget.querySelector(".card").style.boxShadow =
-                    "0 2px 6px rgba(0,0,0,0.1)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.querySelector(".card").style.boxShadow =
-                    "none";
-                }}
-              >
-                <div
-                  className="card h-100"
-                  onClick={() => {
-                    // For example, navigate(`/mindmap/${item.id}`)
-                  }}
-                  style={{
-                    transition: "box-shadow 0.2s",
-                    borderRadius: "8px",
-                    border: "1px solid #e5e5e5",
-                  }}
-                >
-                  <div className="card-body d-flex align-items-center">
-                    {/* Image on left */}
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      className="me-3"
+          {/* Display loading animation if mindmaps are still loading */}
+          {loading ? (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                height: "300px", // Adjust as needed
+              }}
+            >
+              <Lottie
+                loop
+                animationData={Loading} // Ensure you have this animation imported
+                play
+                style={{ width: 150, height: 150 }}
+              />
+              <div className="mindmap-loading-container">
+                <Wave
+                  text="Loading Your Mind Maps..."
+                  effect="fadeOut"
+                  effectChange={3.0}
+                />
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Mind maps list as a grid: 1 column on mobile, 2 columns on medium screens */}
+              <div className="row row-cols-1 row-cols-md-2 g-3">
+                {paginatedMindmaps.map((item) => (
+                  <div
+                    key={item._id || item.id}
+                    className="col"
+                    style={{ cursor: "pointer" }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.querySelector(".card").style.boxShadow =
+                        "0 2px 6px rgba(0,0,0,0.1)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.querySelector(".card").style.boxShadow =
+                        "none";
+                    }}
+                  >
+                    <div
+                      className="card h-100"
                       style={{
-                        width: "120px",
-                        height: "60px",
-                        objectFit: "cover",
+                        transition: "box-shadow 0.2s",
+                        borderRadius: "8px",
+                        border: "1px solid #e5e5e5",
                       }}
-                    />
-                    {/* Container for title and date */}
-                    <div className="d-flex flex-column flex-md-row justify-content-md-between align-items-start align-items-md-center w-100">
-                      <p className="mb-1">{item.title}</p>
-                      <p className="mindmap-small-text text-muted mt-2 mt-md-0">
-                        {new Date(item.date).toLocaleDateString()}
-                      </p>
+                    >
+                      <div className="card-body d-flex align-items-center">
+                        {/* Image on left */}
+                        <img
+                          src={item.image}
+                          alt={item.nodes[0]?.text || "Mindmap"}
+                          className="me-3"
+                          style={{
+                            width: "120px",
+                            height: "60px",
+                            objectFit: "cover",
+                          }}
+                        />
+                        {/* Container for title and date */}
+                        <div className="d-flex flex-column flex-md-row justify-content-md-between align-items-start align-items-md-center w-100">
+                          <p className="mb-1">{item.nodes[0]?.text}</p>
+                          <p className="mindmap-small-text text-muted mt-2 mt-md-0">
+                            {new Date(item.downloadDate).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          {/* Pagination dots */}
-          <div className="d-flex justify-content-center align-items-center mt-5">
-            {Array.from({ length: totalPages }).map((_, index) => {
-              const pageNumber = index + 1;
-              return (
-                <span
-                  key={pageNumber}
-                  onClick={() => goToPage(pageNumber)}
-                  style={{
-                    width: "12px",
-                    height: "12px",
-                    borderRadius: "50%",
-                    margin: "0 5px",
-                    backgroundColor:
-                      currentPage === pageNumber
-                        ? "var(--primary-color)"
-                        : "var(--secondary-color)",
-                    cursor: "pointer",
-                    display: "inline-block",
-                  }}
-                />
-              );
-            })}
-          </div>
+              {/* Pagination dots */}
+              <div className="d-flex justify-content-center align-items-center mt-5">
+                {Array.from({ length: totalPages }).map((_, index) => {
+                  const pageNumber = index + 1;
+                  return (
+                    <span
+                      key={pageNumber}
+                      onClick={() => goToPage(pageNumber)}
+                      style={{
+                        width: "12px",
+                        height: "12px",
+                        borderRadius: "50%",
+                        margin: "0 5px",
+                        backgroundColor:
+                          currentPage === pageNumber
+                            ? "var(--primary-color)"
+                            : "var(--secondary-color)",
+                        cursor: "pointer",
+                        display: "inline-block",
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
       </div>
+
       {/* Render Mindmap Modal */}
       {showMindmap && (
         <MindmapModal

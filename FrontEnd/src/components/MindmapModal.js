@@ -4,6 +4,8 @@ import * as d3 from "d3";
 import Lottie from "react-lottie-player";
 import Loading from "../animation/mindmap-loading.json";
 import { Wave } from "react-animated-text";
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const MindmapModal = ({ show, onClose, selectedText, padId }) => {
   // Create refs for key elements in the modal
@@ -12,6 +14,7 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
   const closeModalBtnRef = useRef(null);
   const closeModalBottomBtnRef = useRef(null);
   const downloadBtnRef = useRef(null);
+  const handleSaveBtnRef = useRef(null);
   const newNodeNameRef = useRef(null);
   const addNodeBtnRef = useRef(null);
   const addRelationBtnRef = useRef(null);
@@ -237,6 +240,7 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
     const closeModalBtn = closeModalBtnRef.current;
     const closeModalBottomBtn = closeModalBottomBtnRef.current; // May be null
     const downloadButton = downloadBtnRef.current;
+    const saveButton = handleSaveBtnRef.current;
     const addNodeBtn = addNodeBtnRef.current;
     const addRelationBtn = addRelationBtnRef.current;
     const colorPicker = colorPickerRef.current;
@@ -254,7 +258,10 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
       console.error("Required download button element not found.");
       return;
     }
-
+    if (!saveButton) {
+      console.error("Required save button element not found.");
+      return;
+    }
     // ---------- Define Handler Functions ----------
 
     const handleDownload = () => {
@@ -338,6 +345,7 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
             link.download = "mindmap.png";
             link.click();
             URL.revokeObjectURL(link.href);
+            toast.success("Mindmap downloaded");
           } else {
             console.warn("toBlob returned null, falling back to toDataURL");
             const dataUrl = canvas.toDataURL("image/png");
@@ -345,10 +353,124 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
             link.href = dataUrl;
             link.download = "mindmap.png";
             link.click();
+            toast.success("Mindmap saved (fallback method)");
           }
         }, "image/png");
       };
 
+      image.src = url;
+    };
+
+    const handleSave = async () => {
+      console.log("Mindmap saved clicked!");
+
+      // Get the SVG element from the graph container
+      const svgElement = d3.select(graphRef.current).select("svg").node();
+      if (!svgElement) {
+        console.error("SVG element not found.");
+        return;
+      }
+
+      // Clone the SVG to avoid affecting the live DOM
+      const clonedSvg = svgElement.cloneNode(true);
+      // Create a temporary container to measure the bounding box
+      const tempContainer = document.createElement("div");
+      tempContainer.style.visibility = "hidden";
+      document.body.appendChild(tempContainer);
+      tempContainer.appendChild(clonedSvg);
+
+      const bbox = clonedSvg.getBBox();
+      document.body.removeChild(tempContainer);
+
+      // Adjust the SVG dimensions based on the bounding box
+      const offsetX = -Math.min(bbox.x, 0);
+      const offsetY = -Math.min(bbox.y, 0);
+      const canvasWidth = bbox.width + offsetX;
+      const canvasHeight = bbox.height + offsetY;
+
+      clonedSvg.setAttribute("width", canvasWidth);
+      clonedSvg.setAttribute("height", canvasHeight);
+      clonedSvg.setAttribute(
+        "viewBox",
+        `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`
+      );
+
+      // Serialize the SVG and create a blob URL
+      const svgData = new XMLSerializer().serializeToString(clonedSvg);
+      const svgBlob = new Blob([svgData], {
+        type: "image/svg+xml;charset=utf-8",
+      });
+      const url = URL.createObjectURL(svgBlob);
+
+      // Create an image element and load the blob URL
+      const image = new Image();
+      image.crossOrigin = "anonymous";
+      image.onload = () => {
+        // Set a desired output width (adjust for quality)
+        const desiredOutputWidth = 6000;
+        const scale = desiredOutputWidth / canvasWidth;
+        const finalCanvasWidth = Math.floor(canvasWidth * scale);
+        const finalCanvasHeight = Math.floor(canvasHeight * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = finalCanvasWidth;
+        canvas.height = finalCanvasHeight;
+        const ctx = canvas.getContext("2d");
+
+        // High-quality image smoothing and white background
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, finalCanvasWidth, finalCanvasHeight);
+
+        // Scale and translate context before drawing the image
+        ctx.scale(scale, scale);
+        ctx.translate(offsetX, offsetY);
+        ctx.drawImage(image, -offsetX, -offsetY);
+
+        // Convert the canvas to a PNG blob
+        canvas.toBlob(async (blob) => {
+          if (!blob) {
+            console.error("Failed to generate image blob.");
+            return;
+          }
+          // Read the blob as a data URL (base64)
+          const reader = new FileReader();
+          reader.onloadend = async () => {
+            const base64Image = reader.result; // PNG in base64
+            const userId = localStorage.getItem("userId");
+            // Build the payload with nodes, links, image, and the current datetime
+            const payload = {
+              nodes, // assuming these are your current node objects
+              links, // assuming these are your current link objects
+              image: base64Image,
+              downloadDate: new Date().toISOString(),
+              userId,
+            };
+
+            try {
+              const response = await fetch(
+                `${process.env.REACT_APP_BACKEND_API_URL}/api/mindmaps`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(payload),
+                }
+              );
+              if (response.ok) {
+                console.log("Mindmap saved successfully!");
+                toast.success("Mindmap saved");
+              } else {
+                console.error("Error saving mindmap:", response.status);
+                toast.error("Error saving mindmap");
+              }
+            } catch (error) {
+              console.error("Error saving mindmap:", error);
+              toast.error("Error saving mindmap");
+            }
+          };
+          reader.readAsDataURL(blob);
+        }, "image/png");
+      };
       image.src = url;
     };
 
@@ -588,6 +710,7 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
       closeModalBottomBtn.addEventListener("click", handleCloseModal);
     }
     downloadButton.addEventListener("click", handleDownload);
+    saveButton.addEventListener("click", handleSave);
     document.addEventListener("click", handleDocumentClick);
     addNodeBtn.addEventListener("click", handleAddNode);
     // addRelationBtn.addEventListener("click", handleAddRelation);
@@ -690,7 +813,7 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
     async function fetchFromDatabase() {
       try {
         hasFetchedDatabaseRef.current = true;
-
+        console.log("fetchFromDatabase");
         let data;
         const chosen = selectedText.trim();
         if (chosen === "1") {
@@ -1044,78 +1167,78 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
     async function fetchFromExtendDatabase() {
       try {
         hasFetchedDatabaseRef.current = true;
-
-        const endpoint = "extend"; // Use the 'extend' endpoint
-        const response = await fetch(`${baseApiUrl}/${endpoint}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: selectedText }),
-        });
-        if (!response.ok) {
-          throw new Error(`Server error: ${response.status}`);
-        }
-        const data = await response.json();
-        if (data.error) {
-          console.error("API returned error: " + data.error);
-          return;
-        }
-        if (!data || !Array.isArray(data.mindmap)) {
-          throw new Error("Invalid data structure: " + JSON.stringify(data));
-        }
-        const mindmapRoot = data;
-        // Clear previous data
-        nodes = [];
-        links = [];
-        mindmapRoot.mindmap.forEach((mindmapNode) => {
-          traverseMindmap(mindmapNode, null);
-        });
-
-        // let data;
-        // const chosen = selectedText.trim();
-        // data = {
-        //   mindmap: [
-        //     {
-        //       name: "Artificial Neural Networks (ANN)",
-        //       subnodes: [
-        //         {
-        //           name: "Developed based on Biological Neurons",
-        //           subnodes: [],
-        //         },
-        //         {
-        //           name: "Perceptron",
-        //           subnodes: [
-        //             { name: "Trained to Predict", subnodes: [] },
-        //             { name: "Fixed Threshold", subnodes: [] },
-        //           ],
-        //         },
-        //         {
-        //           name: "Architecture",
-        //           subnodes: [
-        //             { name: "Many Inputs", subnodes: [] },
-        //             { name: "Multiple Processing Layers", subnodes: [] },
-        //             { name: "Many Outputs", subnodes: [] },
-        //           ],
-        //         },
-        //         {
-        //           name: "Complex Data",
-        //           subnodes: [
-        //             { name: "Classification Tasks", subnodes: [] },
-        //             { name: "Regression Tasks", subnodes: [] },
-        //           ],
-        //         },
-        //       ],
-        //     },
-        //   ],
-        // };
-
-        // console.log("Mock Data Chosen:", data);
+        console.log("fetchFromExtendDatabase");
+        // const endpoint = "extend"; // Use the 'extend' endpoint
+        // const response = await fetch(`${baseApiUrl}/${endpoint}`, {
+        //   method: "POST",
+        //   headers: { "Content-Type": "application/json" },
+        //   body: JSON.stringify({ content: selectedText }),
+        // });
+        // if (!response.ok) {
+        //   throw new Error(`Server error: ${response.status}`);
+        // }
+        // const data = await response.json();
+        // if (data.error) {
+        //   console.error("API returned error: " + data.error);
+        //   return;
+        // }
+        // if (!data || !Array.isArray(data.mindmap)) {
+        //   throw new Error("Invalid data structure: " + JSON.stringify(data));
+        // }
+        // const mindmapRoot = data;
+        // // Clear previous data
         // nodes = [];
         // links = [];
-        // if (data && data.mindmap && Array.isArray(data.mindmap)) {
-        //   data.mindmap.forEach((mindmapNode) => {
-        //     traverseMindmap(mindmapNode, null);
-        //   });
-        // }
+        // mindmapRoot.mindmap.forEach((mindmapNode) => {
+        //   traverseMindmap(mindmapNode, null);
+        // });
+
+        let data;
+        const chosen = selectedText.trim();
+        data = {
+          mindmap: [
+            {
+              name: "Artificial Neural Networks (ANN)",
+              subnodes: [
+                {
+                  name: "Developed based on Biological Neurons",
+                  subnodes: [],
+                },
+                {
+                  name: "Perceptron",
+                  subnodes: [
+                    { name: "Trained to Predict", subnodes: [] },
+                    { name: "Fixed Threshold", subnodes: [] },
+                  ],
+                },
+                {
+                  name: "Architecture",
+                  subnodes: [
+                    { name: "Many Inputs", subnodes: [] },
+                    { name: "Multiple Processing Layers", subnodes: [] },
+                    { name: "Many Outputs", subnodes: [] },
+                  ],
+                },
+                {
+                  name: "Complex Data",
+                  subnodes: [
+                    { name: "Classification Tasks", subnodes: [] },
+                    { name: "Regression Tasks", subnodes: [] },
+                  ],
+                },
+              ],
+            },
+          ],
+        };
+
+        console.log("Mock Data Chosen:", data);
+        nodes = [];
+        links = [];
+        if (data && data.mindmap && Array.isArray(data.mindmap)) {
+          data.mindmap.forEach((mindmapNode) => {
+            traverseMindmap(mindmapNode, null);
+          });
+        }
 
         const hierarchyData = buildHierarchy(nodes, links);
         applyTreeLayout(hierarchyData);
@@ -1134,104 +1257,105 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
     async function fetchFromSimplifyDatabase() {
       try {
         hasFetchedDatabaseRef.current = true;
+        console.log("fetchFromSimplifyDatabase");
 
-        const endpoint = "simplify"; // Use the 'simplify' endpoint
-        const response = await fetch(`${baseApiUrl}/${endpoint}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: selectedText }),
-        });
-        if (!response.ok) {
-          throw new Error(`Server error: ${response.status}`);
-        }
-        const data = await response.json();
-        if (data.error) {
-          console.error("API returned error: " + data.error);
-          return;
-        }
-        if (!data || !Array.isArray(data.mindmap)) {
-          throw new Error("Invalid data structure: " + JSON.stringify(data));
-        }
-        const mindmapRoot = data;
-        // Clear previous data
-        nodes = [];
-        links = [];
-        mindmapRoot.mindmap.forEach((mindmapNode) => {
-          traverseMindmap(mindmapNode, null);
-        });
-
-        // let data;
-        // const chosen = selectedText.trim();
-        // data = {
-        //   mindmap: [
-        //     {
-        //       name: "Machine Learning in Healthcare",
-        //       subnodes: [
-        //         {
-        //           name: "Overview",
-        //           subnodes: [
-        //             {
-        //               name: "Widely used in applications and research",
-        //               subnodes: [],
-        //             },
-        //             { name: "Crucial role in numerous fields", subnodes: [] },
-        //             {
-        //               name: "Applications",
-        //               subnodes: [
-        //                 {
-        //                   name: "Diagnose sizeable medical data patterns",
-        //                   subnodes: [],
-        //                 },
-        //                 { name: "Predict diseases", subnodes: [] },
-        //               ],
-        //             },
-        //           ],
-        //         },
-        //         {
-        //           name: "Survey",
-        //           subnodes: [
-        //             {
-        //               name: "Purpose",
-        //               subnodes: [
-        //                 { name: "Highlight previous work", subnodes: [] },
-        //                 {
-        //                   name: "Provide information to researchers",
-        //                   subnodes: [],
-        //                 },
-        //               ],
-        //             },
-        //             {
-        //               name: "Machine Learning Algorithms",
-        //               subnodes: [
-        //                 { name: "Overview", subnodes: [] },
-        //                 { name: "Applications in healthcare", subnodes: [] },
-        //               ],
-        //             },
-        //           ],
-        //         },
-        //         {
-        //           name: "Advantages",
-        //           subnodes: [
-        //             {
-        //               name: "Efficient support infrastructure for medical fields",
-        //               subnodes: [],
-        //             },
-        //             { name: "Improve healthcare services", subnodes: [] },
-        //           ],
-        //         },
-        //       ],
-        //     },
-        //   ],
-        // };
-
-        // console.log("Mock Data Chosen:", data);
+        // const endpoint = "simplify"; // Use the 'simplify' endpoint
+        // const response = await fetch(`${baseApiUrl}/${endpoint}`, {
+        //   method: "POST",
+        //   headers: { "Content-Type": "application/json" },
+        //   body: JSON.stringify({ content: selectedText }),
+        // });
+        // if (!response.ok) {
+        //   throw new Error(`Server error: ${response.status}`);
+        // }
+        // const data = await response.json();
+        // if (data.error) {
+        //   console.error("API returned error: " + data.error);
+        //   return;
+        // }
+        // if (!data || !Array.isArray(data.mindmap)) {
+        //   throw new Error("Invalid data structure: " + JSON.stringify(data));
+        // }
+        // const mindmapRoot = data;
+        // // Clear previous data
         // nodes = [];
         // links = [];
-        // if (data && data.mindmap && Array.isArray(data.mindmap)) {
-        //   data.mindmap.forEach((mindmapNode) => {
-        //     traverseMindmap(mindmapNode, null);
-        //   });
-        // }
+        // mindmapRoot.mindmap.forEach((mindmapNode) => {
+        //   traverseMindmap(mindmapNode, null);
+        // });
+
+        let data;
+        const chosen = selectedText.trim();
+        data = {
+          mindmap: [
+            {
+              name: "Machine Learning in Healthcare",
+              subnodes: [
+                {
+                  name: "Overview",
+                  subnodes: [
+                    {
+                      name: "Widely used in applications and research",
+                      subnodes: [],
+                    },
+                    { name: "Crucial role in numerous fields", subnodes: [] },
+                    {
+                      name: "Applications",
+                      subnodes: [
+                        {
+                          name: "Diagnose sizeable medical data patterns",
+                          subnodes: [],
+                        },
+                        { name: "Predict diseases", subnodes: [] },
+                      ],
+                    },
+                  ],
+                },
+                {
+                  name: "Survey",
+                  subnodes: [
+                    {
+                      name: "Purpose",
+                      subnodes: [
+                        { name: "Highlight previous work", subnodes: [] },
+                        {
+                          name: "Provide information to researchers",
+                          subnodes: [],
+                        },
+                      ],
+                    },
+                    {
+                      name: "Machine Learning Algorithms",
+                      subnodes: [
+                        { name: "Overview", subnodes: [] },
+                        { name: "Applications in healthcare", subnodes: [] },
+                      ],
+                    },
+                  ],
+                },
+                {
+                  name: "Advantages",
+                  subnodes: [
+                    {
+                      name: "Efficient support infrastructure for medical fields",
+                      subnodes: [],
+                    },
+                    { name: "Improve healthcare services", subnodes: [] },
+                  ],
+                },
+              ],
+            },
+          ],
+        };
+
+        console.log("Mock Data Chosen:", data);
+        nodes = [];
+        links = [];
+        if (data && data.mindmap && Array.isArray(data.mindmap)) {
+          data.mindmap.forEach((mindmapNode) => {
+            traverseMindmap(mindmapNode, null);
+          });
+        }
 
         const hierarchyData = buildHierarchy(nodes, links);
         applyTreeLayout(hierarchyData);
@@ -1847,9 +1971,9 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
       nodes = [];
       links = [];
       setLoading(true);
-      hasFetchedDatabaseRef.current = false;
       // Re-create the SVG and simulation
       generateMindmap();
+      hasFetchedDatabaseRef.current = false;
       // Call the extend endpoint
       fetchFromExtendDatabase();
     }
@@ -1860,9 +1984,9 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
       nodes = [];
       links = [];
       setLoading(true);
-      hasFetchedDatabaseRef.current = false;
       // Re-create the SVG and simulation
       generateMindmap();
+      hasFetchedDatabaseRef.current = false;
       // Call the simplify endpoint
       fetchFromSimplifyDatabase();
     }
@@ -1885,6 +2009,8 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
       }
       downloadBtnRef.current &&
         downloadBtnRef.current.removeEventListener("click", handleDownload);
+        handleSaveBtnRef.current &&
+        handleSaveBtnRef.current.removeEventListener("click", handleSave);
       addNodeBtn.removeEventListener("click", handleAddNode);
       // addRelationBtn.removeEventListener("click", handleAddRelation);
       document.removeEventListener("keydown", handleKeyDown);
@@ -1935,7 +2061,7 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
         }
         .input-group-custom .btn {
           border-radius: 0 5px 5px 0;
-          padding: 9px 10px;
+          padding: 9px 30px;
           border: none;
           cursor: pointer;
         }
@@ -2118,6 +2244,7 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
                 <button
                   id="save-map"
                   className="btn btn-primary primary-button save-button btn-custom w-100"
+                  ref={handleSaveBtnRef}
                 >
                   <i className="bi bi-save"></i>
                 </button>
@@ -2270,6 +2397,7 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
           />
         </div>
       )}
+       <ToastContainer />
     </div>
   );
 };
