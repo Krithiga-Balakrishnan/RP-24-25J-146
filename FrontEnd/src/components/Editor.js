@@ -1,5 +1,5 @@
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState,useImperativeHandle,forwardRef, } from "react";
 import Quill from "quill";
 import "quill/dist/quill.snow.css";
 import ImageWithCaptionBlot from "../blots/ImageWithCaptionBlot.js";
@@ -170,7 +170,8 @@ function useDebouncedValue(initialValue, delay = 500) {
 }
 
 /* ========= Editor Component ========= */
-function Editor({
+const Editor = forwardRef(function Editor(
+  {
   padId,
   socket,
   userId,
@@ -182,7 +183,9 @@ function Editor({
   setReferences,
   setCurrentSelectionText,
   setLastHighlightText,
-}) {
+},
+ref
+) {
   // Plain text fields
   const quillRefs = useRef({});
   const [paperTitle, setPaperTitle] = useState("");
@@ -192,6 +195,69 @@ function Editor({
   const [debouncedTitle, setDebouncedTitle] = useDebouncedValue(paperTitle, 500);
   const [debouncedAbstract, setDebouncedAbstract] = useDebouncedValue(abstract, 500);
   const [debouncedKeywords, setDebouncedKeywords] = useDebouncedValue(keywords, 500);
+// The last known Quill selection: which node + index/length
+const [selectedRange, setSelectedRange] = useState(null);
+const [lastActiveNodeId, setLastActiveNodeId] = useState(null);
+
+// CHANGED: A complete insertCitationBracket function with fallback logic
+const insertCitationBracket = (keyString) => {
+  console.log("DEBUG: insertCitationBracket called with keyString =", keyString);
+
+  // If there's a real selection, do the old logic:
+  if (selectedRange) {
+    // ... your existing logic ...
+    return;
+  }
+
+  // Otherwise, fallback to lastActiveNodeId:
+  console.log("DEBUG: No selectedRange; fallback to lastActiveNodeId =", lastActiveNodeId);
+  if (!lastActiveNodeId) {
+    console.log("DEBUG: We have no lastActiveNodeId. So we can’t insert bracket.");
+    return;
+  }
+
+  const contentId = getNodeContentId(sections, lastActiveNodeId);
+  if (!contentId || !quillRefs.current[contentId]) {
+    console.log("DEBUG: lastActiveNodeId has no quill or invalid contentId. No bracket inserted.");
+    return;
+  }
+
+  const quill = quillRefs.current[contentId];
+  quill.focus();
+
+  const cursorRange = quill.getSelection();
+  // if (!cursorRange) {
+  //   // Insert at end of doc if there's no cursor
+  //   const endIndex = quill.getLength();
+  //   quill.insertText(endIndex, ` [${keyString}]`);
+  //   quill.setSelection(endIndex + ` [${keyString}]`.length, 0);
+  //   console.log("DEBUG: Inserted bracket at doc end in nodeId =", lastActiveNodeId);
+  // } else {
+  //   quill.insertText(cursorRange.index, ` [${keyString}]`);
+  //   quill.setSelection(cursorRange.index + ` [${keyString}]`.length, 0);
+  //   console.log("DEBUG: Inserted bracket in nodeId =", lastActiveNodeId, " at cursorRange =", cursorRange);
+  // }
+  if (!cursorRange) {
+    // If truly no cursor/selection, fallback to the end of the doc
+    const endIndex = quill.getLength();
+    quill.insertText(endIndex, ` [${keyString}]`);
+    quill.setSelection(endIndex + ` [${keyString}]`.length, 0);
+  } else {
+    // Insert at the end of the selection
+    const insertPos = cursorRange.index + cursorRange.length;
+    quill.insertText(insertPos, ` [${keyString}]`);
+    quill.setSelection(insertPos + ` [${keyString}]`.length, 0);
+  }
+};
+
+// CHANGED: useImperativeHandle so parent can do editorRef.current.insertCitationBracket(...)
+useImperativeHandle(ref, () => ({
+  insertCitationBracket: (key) => {
+    console.log("DEBUG: Parent is calling insertCitationBracket with key =", key);
+    insertCitationBracket(key);
+  },
+}));
+
 
   // For our custom embed handlers (table/formula)
   const activeQuillRef = useRef(null);
@@ -338,12 +404,18 @@ function Editor({
         });
         quill.on("selection-change", (range, oldRange, source) => {
           if (source === "user") {
+            setLastActiveNodeId(node.id);
             if (range && range.length > 0) {
               const text = quill.getText(range.index, range.length);
+              console.log("DEBUG: selection-change => selected text:", text, "in nodeId =", node.id); // DEBUG
               setCurrentSelectionText(text);
               setLastHighlightText(text);
+              // NEW: Also remember which node and the exact range
+              setSelectedRange({ nodeId: node.id, range });
             } else {
+              console.log("DEBUG: selection-change => no text selected in nodeId =", node.id); // DEBUG
               setCurrentSelectionText("");
+              setSelectedRange(null);
             }
             socket.emit("cursor-selection", { padId, userId, cursor: range, nodeId: node.id });
           }
@@ -1561,6 +1633,6 @@ function Editor({
     </div>
 
   );
-}
+});
 
 export default Editor;

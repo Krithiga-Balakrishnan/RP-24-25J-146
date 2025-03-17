@@ -65,7 +65,7 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData,refe
       setError(null);
 
       try {
-        const response = await fetch("https://b602-34-72-223-246.ngrok-free.app/search/", {
+        const response = await fetch("https://aa3f-34-91-204-50.ngrok-free.app/search/", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -112,7 +112,7 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData,refe
       selected_paper_ids: [paper.paper_id],
     };
 
-    fetch("https://4cb6-34-82-163-74.ngrok-free.app/generate_citations/", {
+    fetch("https://0ba8-34-82-163-74.ngrok-free.app/generate_citations/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestBody),
@@ -264,103 +264,7 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData,refe
   
     saveCitationToDB();
   }
-  
-  // function handleInsertCitation() {
-  //   console.log("🚀 Insert Citation button clicked!");
-  //   if (!selectedPaper) {
-  //     console.error("❌ No paper selected!");
-  //     return;
-  //   }
-  //   console.log("Selected Paper Inside Citation ", selectedPaper);
-  //   // Extract data from selectedPaper
-  //   const paperId = selectedPaper.paper_id;
-  //   const authorList = selectedPaper.authors?.join(" and ") || "Unknown Author";
-  //   const title = selectedPaper.title || "Unknown Title";
-  //   const journal = selectedPaper.journal || "Unknown Journal";
-  //   const year = selectedPaper.year || "Unknown Year";
-  //   const volume = selectedPaper.volume || "N/A";
-  //   const number = selectedPaper.number || "N/A";
-  //   const pages = selectedPaper.pages || "N/A";
-  //   let nextKey;
-    
-  //   // Construct a BibTeX citation format
-  //   const bibTexCitation = `
-  // @article{${paperId},
-  //   author    = {${authorList}},
-  //   title     = {${title}},
-  //   journal   = {${journal}},
-  //   year      = {${year}},
-  //   volume    = {${volume}},
-  //   number    = {${number}},
-  //   pages     = {${pages}}
-  // }`.trim();
-  
-  //   console.log("🔹 Selected Paper Data:", selectedPaper);
-  //   console.log("📜 Generated BibTeX Citation:\n", bibTexCitation);
-  
-  //   // Ensure padId is valid
-  //   if (!padId) {
-  //     console.error("❌ padId is missing!");
-  //     return;
-  //   }
-  
-  //   // Define API request to save the citation
-  //   const saveCitationToDB = async () => {
-  //     try {
-  //       const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/api/pads/${padId}/save-citation`, {
-  //         method: "POST",
-  //         headers: { "Content-Type": "application/json" },
-  //         body: JSON.stringify({
-  //           padId,
-  //           // citation: bibTexCitation,
-  //           citation: citationData,
-  //           author: authorList,
-  //           title,
-  //           journal,
-  //           year,
-  //           volume,
-  //           number,
-  //           pages,
-  //         }),
-  //       });
-  
-  //       console.log("🔄 Awaiting response from server...");
-  
-  //       if (!response.ok) {
-  //         console.error("❌ Failed to save citation. Response status:", response.status);
-  //         const errorText = await response.text();
-  //         console.error("❌ Server Response:", errorText);
-  //         throw new Error("Failed to save citation");
-  //       }
-  
-  //       const data = await response.json();
-  //       console.log("✅ Citation saved successfully!");
-  //       console.log("📜 Server Response Data:", data);
-  //       if (onCitationData) {
-  //         onCitationData({
-  //           // These match your ReferenceSchema:
-  //           key: paperId,          // or id: paperId
-  //           author: authorList,
-  //           title,
-  //           journal,
-  //           year,
-  //           volume,
-  //           number,
-  //           pages,
-  //           citation: citationData  // The string from /generate_citations/
-  //         });
-  //       }
-  
-  //       // OPTIONAL: Close modal, refresh references, etc.
-  //       // setShowCitationModal(false);
-  //       // Optionally update your frontend state with new references (data.references)
-  //     } catch (error) {
-  //       console.error("❌ Error saving citation:", error);
-  //     }
-  //   };
-  
-  //   saveCitationToDB();
-  // }
+
   
   if (!isOpen) return null;
   return (
