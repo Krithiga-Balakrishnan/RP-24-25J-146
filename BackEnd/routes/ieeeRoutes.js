@@ -244,12 +244,66 @@ function reinsertNonTextElements(text, elements) {
 //   }
 // }
 
+
+function convertDeltaToLatexParagraphWise(delta) {
+  if (!delta || !delta.ops || !Array.isArray(delta.ops)) return "";
+  let latexContent = "";
+  
+  delta.ops.forEach((op) => {
+    if (typeof op.insert === "string") {
+      // Escape LaTeX special characters in text
+      let text = op.insert.replace(/([_%#&{}])/g, "\\$1");
+      // Split text into paragraphs at newlines.
+      // (Assuming a single newline indicates a line break and two newlines indicate a paragraph break.)
+      let paragraphs = text.split(/\n/);
+      paragraphs.forEach((p, i) => {
+        if (p.trim() !== "") {
+          latexContent += p;
+        }
+        // Add a line break after every line. Adjust the logic if you need a full paragraph break.
+        latexContent += " \\\\ \n"; // LaTeX line break
+      });
+    } 
+    // For image embed
+    else if (op.insert.imageWithCaption) {
+      const { src = "", caption = "Image" } = op.insert.imageWithCaption;
+      let imagePath = `../uploads/${src.split("uploads/").pop()}`;
+      latexContent += `\n\\begin{figure}[H]
+\\centering
+\\includegraphics[width=0.5\\textwidth]{${imagePath}}
+\\caption{${caption}}
+\\end{figure}\n`;
+    } 
+    // For formula embed
+    else if (op.insert.formulaWithCaption) {
+      const { formula = "", caption = "" } = op.insert.formulaWithCaption;
+      latexContent += `\n\\begin{equation}
+${formula}
+\\end{equation}
+\\textit{${caption}}\n`;
+    } 
+    // For table embed
+    else if (op.insert.tableWithCaption) {
+      const { tableHtml = "", caption = "Table" } = op.insert.tableWithCaption;
+      let tabularLatex = convertHtmlTableToLatex(tableHtml);
+      latexContent += `\n\\begin{table}[H]
+\\centering
+\\caption{${caption}}
+${tabularLatex}
+\\end{table}\n`;
+    }
+  });
+  
+  return latexContent;
+}
+
 // **AI-enhanced text processing**
 async function convertSectionsByFullText(sections) {
   for (let section of sections) {
     let { cleanDelta, elements } = extractNonTextElements(section.originalDelta || {});
-    let cleanText = convertDeltaToPlainText(cleanDelta);
-
+   // let cleanText = convertDeltaToPlainText(cleanDelta);
+    let cleanText = convertDeltaToLatexParagraphWise(cleanDelta);
+    
     if (section.aiEnhancement && cleanText.trim()) {
       try {
         const response = await axios.post("https://e95d-34-87-59-81.ngrok-free.app/convert", {

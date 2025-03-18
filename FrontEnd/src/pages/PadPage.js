@@ -8,6 +8,7 @@ import PadHeader from "../components/PadHeader";
 import PadSidebar from "../components/PadSidebar";
 import CiteSidebar from "../components/CiteSideBar";
 import AcademicTextModal from "../components/AcademicTextModal";
+import LoadingScreen from "../animation/documentLoading"
 
 
 const socket = io(`${process.env.REACT_APP_BACKEND_API_URL}`);
@@ -267,6 +268,9 @@ const PadPage = () => {
     // Clean up: remove the anchor and revoke the URL object
     a.remove();
     window.URL.revokeObjectURL(url);
+
+    // Optionally refresh the page
+    window.location.reload();
   } catch (error) {
     console.error("❌ Error fetching pad:", error);
   }
