@@ -248,7 +248,7 @@ function reinsertNonTextElements(text, elements) {
 async function convertTextParagraphWise(text, sectionTitle) {
   // Split text into paragraphs using double newlines as delimiter.
   // You can adjust the regex if your paragraphs are separated differently.
-  const paragraphs = text.split(/\n\s*\n/);
+  const paragraphs = text.split(/\n+/);
   const convertedParagraphs = [];
   
   for (const p of paragraphs) {
@@ -257,7 +257,7 @@ async function convertTextParagraphWise(text, sectionTitle) {
     
     try {
       // Call your AI conversion API for each paragraph
-      const response = await axios.post("https://401e-34-168-238-119.ngrok-free.app/convert", {
+      const response = await axios.post(`${process.env.REACT_APP_BACKEND_API_URL_IEEE}/convert`, {
         section: sectionTitle,
         content: p,
       });
@@ -338,7 +338,7 @@ async function convertSectionsByFullText(sections) {
     
     if (section.aiEnhancement && cleanText.trim()) {
       try {
-        const response = await axios.post("https://e95d-34-87-59-81.ngrok-free.app/convert", {
+        const response = await axios.post(`${process.env.REACT_APP_BACKEND_API_URL_IEEE}/convert`, {
           section: section.title, content: cleanText
         });
         section.content = processAbbreviations(response.data.converted_text || cleanText);
@@ -488,7 +488,7 @@ ejs.renderFile(templatePath, content, {}, (err, latexOutput) => {
 
 
 /*-------------------------------------------------------------------------------------------------*/
-const AI_CONVERSION_API = "https://401e-34-168-238-119.ngrok-free.app/convert";
+//const AI_CONVERSION_API = "https://e3a7-34-142-132-29.ngrok-free.app/convert";
 
 router.post("/convert-text", async (req, res) => {
   try {
@@ -502,7 +502,7 @@ router.post("/convert-text", async (req, res) => {
     console.log("🔄 Sending text to AI API for conversion...");
       const section="";
     // Send request to AI API
-    const response = await axios.post(AI_CONVERSION_API, {
+    const response = await axios.post(`${process.env.REACT_APP_BACKEND_API_URL_IEEE}/convert`, {
       section,
       content,
     });
