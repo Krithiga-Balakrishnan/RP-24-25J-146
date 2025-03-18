@@ -30,6 +30,8 @@ const Sidebar = ({
     { type: "link", label: "Mindmap", icon: "✍️", route: "/mindmap" },
     { type: "link", label: "Citations", icon: "🔬", route: "/citations" },
     { type: "link", label: "IEEE", icon: "🔄", route: "/ieee" },
+    { type: "link", label: "Contributor", icon: "✏️", route: "/contributor" },
+
 
     { type: "header", label: "PAPERPAL APPS" },
     {
