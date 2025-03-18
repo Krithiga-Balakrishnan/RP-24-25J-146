@@ -1006,50 +1006,50 @@ const DocumentMindmap = () => {
     async function fetchDatabase(text) {
       // For now, return a mock mindmap structure
       // This is the mock data for each section's mind map
-      return {
-        mindmap: [
-          {
-            name: "Child Node 1",
-            subnodes: [],
-          },
-          {
-            name: "Child Node 2",
-            subnodes: [
-              { name: "Subchild Node 1", subnodes: [] },
-              { name: "Artificial Intelligence", subnodes: [] },
-            ],
-          },
-          {
-            name: "Machine Learning",
-            subnodes: [
-              { name: "Subchild Node 1", subnodes: [] },
-              { name: "Subchild Node 2", subnodes: [] },
-            ],
-          },
-        ],
-      };
+      // return {
+      //   mindmap: [
+      //     {
+      //       name: "Child Node 1",
+      //       subnodes: [],
+      //     },
+      //     {
+      //       name: "Child Node 2",
+      //       subnodes: [
+      //         { name: "Subchild Node 1", subnodes: [] },
+      //         { name: "Artificial Intelligence", subnodes: [] },
+      //       ],
+      //     },
+      //     {
+      //       name: "Machine Learning",
+      //       subnodes: [
+      //         { name: "Subchild Node 1", subnodes: [] },
+      //         { name: "Subchild Node 2", subnodes: [] },
+      //       ],
+      //     },
+      //   ],
+      // };
 
-      // console.log("Called fetch database with text: ",text.slice(0, 50));
-      // const endpoint = "generate";
+      console.log("Called fetch database with text: ",text.slice(0, 50));
+      const endpoint = "generate";
 
-      // const response = await fetch(`${baseApiUrl}/${endpoint}`, {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify({ content: text }),
-      // });
+      const response = await fetch(`${baseApiUrl}/${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: text }),
+      });
 
-      // if (!response.ok) {
-      //   throw new Error(`Server error: ${response.status}`);
-      // }
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`);
+      }
 
-      // const data = await response.json();
-      // console.log("Data from database: ", data)
-      // // Check if the API returned an error
-      // if (data.error) {
-      //   console.error("API returned error: " + data.error);
-      //   return;
-      // }
-      // return data;
+      const data = await response.json();
+      console.log("Data from database: ", data)
+      // Check if the API returned an error
+      if (data.error) {
+        console.error("API returned error: " + data.error);
+        return;
+      }
+      return data;
     }
 
     function ticked() {
@@ -1682,7 +1682,7 @@ const DocumentMindmap = () => {
           .extend-button,
           .simplify-button,
           .download-button {
-            flex: 0 0 calc((100% - 20px)/3); /* 3 buttons, 2 gaps of 10px = 20px total */
+            flex: 0 0 calc((100% - 20px)/3);
           }
         }
 
