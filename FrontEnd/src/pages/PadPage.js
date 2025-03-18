@@ -8,7 +8,6 @@ import PadHeader from "../components/PadHeader";
 import PadSidebar from "../components/PadSidebar";
 import CiteSidebar from "../components/CiteSideBar";
 import AcademicTextModal from "../components/AcademicTextModal";
-import LoadingScreen from "../animation/documentLoading"
 
 
 const socket = io(`${process.env.REACT_APP_BACKEND_API_URL}`);
