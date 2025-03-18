@@ -1,150 +1,3 @@
-// import React, { useState, useEffect } from "react";
-// import { useNavigate } from "react-router-dom";
-// import Sidebar from "../components/Sidebar"; // Adjust the path as needed
-
-// const Home = () => {
-//   const [pads, setPads] = useState([]);
-//   const [padName, setPadName] = useState("");
-//   const [isExpanded, setIsExpanded] = useState(true);
-//   const [selectedItem, setSelectedItem] = useState("/"); // track which route is selected
-
-//   const navigate = useNavigate();
-
-//   // Decide default sidebar state based on screen width
-//   useEffect(() => {
-//     const handleResize = () => {
-//       if (window.innerWidth < 768) {
-//         setIsExpanded(false); // Simplified on mobile
-//       } else {
-//         setIsExpanded(true); // Expanded on desktop
-//       }
-//     };
-//     handleResize();
-//     window.addEventListener("resize", handleResize);
-//     return () => window.removeEventListener("resize", handleResize);
-//   }, []);
-
-//   // Toggle sidebar
-//   const toggleSidebar = () => {
-//     setIsExpanded(!isExpanded);
-//   };
-
-//   // When user clicks a menu item in the sidebar
-//   const handleSelectItem = (route) => {
-//     setSelectedItem(route);
-//   };
-
-//   // Fetch user's pads
-//   useEffect(() => {
-//     const fetchPads = async () => {
-//       const token = localStorage.getItem("token");
-//       if (!token) return;
-
-//       const res = await fetch(
-//         `${process.env.REACT_APP_BACKEND_API_URL}/api/pads/user-pads`,
-//         {
-//           headers: { Authorization: token },
-//         }
-//       );
-
-//       const data = await res.json();
-//       console.log("📜 Fetched Pads:", data);
-//       setPads(data);
-//     };
-
-//     fetchPads();
-//   }, []);
-
-//   // Create Pad
-//   const createPad = async () => {
-//     if (!padName.trim()) return alert("Pad name is required!");
-
-//     const token = localStorage.getItem("token");
-//     if (!token) return alert("You must be logged in!");
-
-//     const res = await fetch(
-//       `${process.env.REACT_APP_BACKEND_API_URL}/api/pads/create`,
-//       {
-//         method: "POST",
-//         headers: {
-//           "Content-Type": "application/json",
-//           Authorization: token,
-//         },
-//         body: JSON.stringify({ name: padName }),
-//       }
-//     );
-
-//     const data = await res.json();
-//     if (data.padId) {
-//       setPads([...pads, { _id: data.padId, name: data.padName, roles: data.roles }]);
-//       setPadName("");
-//     } else {
-//       alert("Failed to create pad.");
-//     }
-//   };
-
-//   // Layout
-//   const containerStyle = {
-//     display: "flex",
-//     // no need position: "relative" now,
-//     // because the toggle is inside the sidebar
-//   };
-
-//   const mainContentStyle = {
-//     flex: 1,
-//     padding: "1rem",
-//     minHeight: "100vh",
-//     // If you want the main content to remain at normal position:
-//     marginLeft: 0,
-//     // or, if you want it to shift for large screens, you can do:
-//     // marginLeft: isExpanded ? "240px" : "70px",
-//     // but typically, if the sidebar is "position: relative",
-//     // we can just keep the main content next to it.
-//   };
-
-//   return (
-//     <div style={containerStyle}>
-//       {/* Sidebar with arrow inside */}
-//       <Sidebar
-//         isExpanded={isExpanded}
-//         onToggleSidebar={toggleSidebar}
-//         selectedItem={selectedItem}
-//         onSelectItem={handleSelectItem}
-//       />
-
-//       {/* Main Content */}
-//       <div style={mainContentStyle}>
-//         <h1>Collaborative Pads</h1>
-//         <div style={{ marginBottom: "1rem" }}>
-//           <input
-//             value={padName}
-//             onChange={(e) => setPadName(e.target.value)}
-//             placeholder="Pad Name"
-//             style={{ marginRight: "0.5rem" }}
-//           />
-//           <button onClick={createPad}>Create Pad</button>
-//         </div>
-
-//         <ul>
-//           {pads.map((pad) => (
-//             <li key={pad._id}>
-//               <button onClick={() => navigate(`/pad/${pad._id}`)}>
-//                 {pad.name}
-//               </button>
-//               {pad.roles &&
-//                 pad.roles[localStorage.getItem("userId")] === "pad_owner" && (
-//                   <span> (Owner) </span>
-//                 )}
-//             </li>
-//           ))}
-//         </ul>
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default Home;
-
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -193,7 +46,7 @@ const Home = () => {
     };
     
     fetchPads();
-  }, []);
+  }, [navigate]);
 
   // 2) Fetch all users (so we can display “shared with” names)
   useEffect(() => {
@@ -308,6 +161,11 @@ const Home = () => {
               type="text"
               value={padName}
               onChange={(e) => setPadName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  navigate(`/pad/results/?padName=${padName}`);
+                }
+              }}
               placeholder="Pad Name"
               className="form-control custom-focus"
             />

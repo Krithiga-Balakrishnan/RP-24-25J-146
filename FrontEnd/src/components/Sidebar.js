@@ -19,7 +19,7 @@ const Sidebar = ({
   // SAMPLE MENU STRUCTURE
   const menuData = [
     { type: "link", label: "Home", icon: "🏠", route: "/" },
-    { type: "header", label: "PAPERPAL FOR WRITING" },
+    { type: "header", label: "WRITEWIZARD FOR WRITING" },
     { type: "link", label: "Chat PDF", icon: "💬", route: "/chat-pdf" },
     {
       type: "link",
@@ -30,8 +30,10 @@ const Sidebar = ({
     { type: "link", label: "Mindmap", icon: "✍️", route: "/mindmap" },
     { type: "link", label: "Citations", icon: "🔬", route: "/citations" },
     { type: "link", label: "IEEE", icon: "🔄", route: "/ieee" },
+    { type: "link", label: "Contributor", icon: "✏️", route: "/contributor" },
 
-    { type: "header", label: "PAPERPAL APPS" },
+
+    { type: "header", label: "WRITEWIZARD APPS" },
     {
       type: "link",
       label: "For Microsoft Word",
@@ -46,7 +48,7 @@ const Sidebar = ({
     },
     { type: "link", label: "For Overleaf", icon: "🌿", route: "/overleaf" },
 
-    { type: "header", label: "PAPERPAL FOR MANUSCRIPT" },
+    { type: "header", label: "WRITEWIZARD FOR MANUSCRIPT" },
     {
       type: "link",
       label: "Plagiarism Check",
