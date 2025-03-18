@@ -1203,6 +1203,7 @@ function attachTableCellListeners(quill, embedIndex) {
               keyword: keywords,
             });
           }}
+          
         />
         <h2 className="section-subtitle">Abstract</h2>
         <textarea
@@ -1220,6 +1221,11 @@ function attachTableCellListeners(quill, embedIndex) {
               abstract,
               keyword: keywords,
             });
+          }}
+          style={{
+           
+            minHeight: "150px", // Initial larger height
+           
           }}
         />
         <h2 className="section-subtitle">Keywords</h2>
