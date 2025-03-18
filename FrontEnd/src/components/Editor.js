@@ -291,22 +291,111 @@ const Editor = forwardRef(function Editor(
       // quill.setContents(Delta.convert(html));
     });
   }
-  const handleReferenceSave = (newRefData) => {
-    // Update references state with the new reference data
-    const updatedReferences = [...references, newRefData];
-    setReferences(updatedReferences);
+  // const handleReferenceSave = (newRefData) => {
+  //   // Update references state with the new reference data
+  //   const updatedReferences = [...references, newRefData];
+  //   setReferences(updatedReferences);
   
-    // Emit update to the backend
-    socket.emit("update-pad", {
-      padId,
-      sections,
-      authors,
-      references: updatedReferences,
-      title: paperTitle,
-      abstract,
-      keyword: keywords,
-    });
+  //   // Emit update to the backend
+  //   socket.emit("update-pad", {
+  //     padId,
+  //     sections,
+  //     authors,
+  //     references: updatedReferences,
+  //     title: paperTitle,
+  //     abstract,
+  //     keyword: keywords,
+  //   });
+  // };
+  const editorRef = useRef(null);
+
+
+  const handleReferenceSave = async (newRefData) => {
+    // Compute the next key based on existing references.
+    const lastKey = Array.isArray(references)
+      ? references.reduce((max, ref) => {
+        const numericKey = parseInt(ref.key, 10) || 0;
+        return numericKey > max ? numericKey : max;
+      }, 0)
+      : 0;
+    const nextKey = lastKey + 1;
+  
+    // Build the request body from the manual input.
+    const requestBody = {
+      authors: newRefData.author.split(",").map(a => a.trim()),
+      title: newRefData.title,
+      journal: newRefData.journal,
+      year: parseInt(newRefData.year, 10),
+      location: newRefData.location,
+      pages: newRefData.pages,
+      doi: newRefData.doi,
+    };
+  
+    try {
+      // Save the reference in the DB.
+      const saveResponse = await fetch(
+        `${process.env.REACT_APP_BACKEND_API_URL}/api/pads/${padId}/save-citation`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            padId,
+            key: String(nextKey),
+            citation: "", // leave empty for now
+            ...requestBody,
+          }),
+        }
+      );
+  
+      if (!saveResponse.ok) {
+        const errorText = await saveResponse.text();
+        throw new Error(`Failed to save citation: ${errorText}`);
+      }
+      const saveData = await saveResponse.json();
+      console.log("Reference saved successfully!", saveData);
+  
+      // Create a temporary reference object.
+      const updatedReference = {
+        ...newRefData,
+        key: String(nextKey),
+        citation: "",
+      };
+  
+      // Call the citation generation API.
+      const citationResponse = await fetch(
+        "https://a37d-35-236-196-197.ngrok-free.app/generate_manual_citation/",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestBody),
+        }
+      );
+  
+      if (!citationResponse.ok) {
+        const errorText = await citationResponse.text();
+        throw new Error(`Failed to generate citation: ${errorText}`);
+      }
+      const citationDataJSON = await citationResponse.json();
+      const generatedCitation = citationDataJSON.citation || "Citation not available.";
+  
+      // Build the final reference.
+      const finalReference = { ...updatedReference, citation: generatedCitation };
+      console.log("Final Reference:", finalReference);
+  
+      // Update references state.
+      setReferences((prev) => [...prev, finalReference]);
+  
+      // For example, insert the citation bracket in the editor.
+      if (editorRef.current) {
+        editorRef.current.insertCitationBracket(finalReference.key);
+      }
+  
+      return finalReference;
+    } catch (error) {
+      console.error("Error in handleReferenceSave:", error);
+    }
   };
+  
   
   // For our custom embed handlers (table/formula)
   const activeQuillRef = useRef(null);
@@ -1536,7 +1625,15 @@ const Editor = forwardRef(function Editor(
           setShowReferenceModal={setShowReferenceModal}
           newReference={newReference}
           setNewReference={setNewReference}
-          onSaveReference={handleReferenceSave} // <== callback prop
+          references={references}  // Ensure this is the current state!
+          onSaveReference={handleReferenceSave}
+          onCitationData={(finalReference) => {
+            console.log("Parent received final reference:", finalReference);
+            setReferences((prev) => [...prev, finalReference]);
+            if (editorRef.current) {
+              editorRef.current.insertCitationBracket(finalReference.key);
+            }
+          }}
         />
         {/* {showReferenceModal && (
           <div

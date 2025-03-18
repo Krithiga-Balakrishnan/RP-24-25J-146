@@ -18,6 +18,8 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData, ref
   // State for citation style options (default APA)
   const [citationStyle, setCitationStyle] = useState("IEEE");
   const [showCitationOptions, setShowCitationOptions] = useState(false);
+  const baseApiUrl_Search = `${process.env.REACT_APP_BACKEND_API_URL_REFERENCE_SEARCH}`;
+  const baseApiUrl_Citation = `${process.env.REACT_APP_BACKEND_API_URL_REFERENCE_SEARCH}`;
   // const [papers, setPapers] = useState([
   //   {
   //     paper_id: "default1",
@@ -69,7 +71,8 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData, ref
       setError(null);
 
       try {
-        const response = await fetch("https://b93e-34-106-54-141.ngrok-free.app/search/", {
+        // const response = await fetch("https://b93e-34-106-54-141.ngrok-free.app/search/", {
+        const response = await fetch(`${baseApiUrl_Search}/search/`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -117,7 +120,8 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData, ref
       selected_paper_ids: [paper.paper_id],
     };
 
-    fetch("https://dc95-35-230-160-250.ngrok-free.app/generate_citations/", {
+    // fetch("https://dc95-35-230-160-250.ngrok-free.app/generate_citations/", {
+    fetch(`${baseApiUrl_Citation}/generate_citations/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestBody),
