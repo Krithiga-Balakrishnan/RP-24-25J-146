@@ -172,19 +172,19 @@ function useDebouncedValue(initialValue, delay = 500) {
 /* ========= Editor Component ========= */
 const Editor = forwardRef(function Editor(
   {
-  padId,
-  socket,
-  userId,
-  sections = [],
-  setSections,
-  authors = [],
-  setAuthors,
-  references = [],
-  setReferences,
-  setCurrentSelectionText,
-  setLastHighlightText,
-},
-ref
+    padId,
+    socket,
+    userId,
+    sections = [],
+    setSections,
+    authors = [],
+    setAuthors,
+    references = [],
+    setReferences,
+    setCurrentSelectionText,
+    setLastHighlightText,
+  },
+  ref
 ) {
   // Plain text fields
   const quillRefs = useRef({});
@@ -195,69 +195,100 @@ ref
   const [debouncedTitle, setDebouncedTitle] = useDebouncedValue(paperTitle, 500);
   const [debouncedAbstract, setDebouncedAbstract] = useDebouncedValue(abstract, 500);
   const [debouncedKeywords, setDebouncedKeywords] = useDebouncedValue(keywords, 500);
-// The last known Quill selection: which node + index/length
-const [selectedRange, setSelectedRange] = useState(null);
-const [lastActiveNodeId, setLastActiveNodeId] = useState(null);
+  // The last known Quill selection: which node + index/length
+  const [selectedRange, setSelectedRange] = useState(null);
+  const [lastActiveNodeId, setLastActiveNodeId] = useState(null);
+  const [showReferenceModal, setShowReferenceModal] = useState(false);
+  const [newReference, setNewReference] = useState({
+    id: `ref-${Date.now()}`,
+    key: "",
+    author: "",
+    title: "",
+    journal: "",
+    year: "",
+    volume: "",
+    number: "",
+    pages: "",
+  });
 
-// CHANGED: A complete insertCitationBracket function with fallback logic
-const insertCitationBracket = (keyString) => {
-  console.log("DEBUG: insertCitationBracket called with keyString =", keyString);
+  const insertCitationBracket = (keyString) => {
+    console.log("DEBUG: insertCitationBracket called with keyString =", keyString);
 
-  // If there's a real selection, do the old logic:
-  if (selectedRange) {
-    // ... your existing logic ...
-    return;
+    if (selectedRange) {
+      return;
+    }
+
+    // Otherwise, fallback to lastActiveNodeId:
+    console.log("DEBUG: No selectedRange; fallback to lastActiveNodeId =", lastActiveNodeId);
+    if (!lastActiveNodeId) {
+      console.log("DEBUG: We have no lastActiveNodeId. So we can’t insert bracket.");
+      return;
+    }
+
+    const contentId = getNodeContentId(sections, lastActiveNodeId);
+    if (!contentId || !quillRefs.current[contentId]) {
+      console.log("DEBUG: lastActiveNodeId has no quill or invalid contentId. No bracket inserted.");
+      return;
+    }
+
+    const quill = quillRefs.current[contentId];
+    quill.focus();
+
+    const cursorRange = quill.getSelection();
+    let insertPos;
+    if (!cursorRange) {
+      // If truly no cursor/selection, fallback to the end of the doc
+      insertPos = quill.getLength();
+    } else {
+      // Insert at the end of the selection
+      insertPos = cursorRange.index + cursorRange.length;
+    }
+
+    // Insert the bracketed citation text
+    const citationText = ` [${keyString}]`;
+    quill.insertText(insertPos, citationText);
+    quill.setSelection(insertPos + citationText.length, 0);
+
+    // IMPORTANT: Retrieve the updated content and send it to the backend so that it is saved
+    const fullContent = quill.getContents();
+    // Emit an update event (adjust sectionId/subId as needed)
+    socket.emit("send-changes", {
+      padId,
+      sectionId: lastActiveNodeId, // or use the appropriate node id
+      fullContent,
+      userId,
+      cursor: quill.getSelection()
+    });
+
+    console.log("DEBUG: Citation bracket inserted and changes emitted.");
+  };
+
+  // CHANGED: useImperativeHandle so parent can do editorRef.current.insertCitationBracket(...)
+  useImperativeHandle(ref, () => ({
+    insertCitationBracket: (key) => {
+      console.log("DEBUG: Parent is calling insertCitationBracket with key =", key);
+      insertCitationBracket(key);
+    },
+  }));
+
+
+  function updateCitationNumbers(mapping) {
+    // mapping: an object where keys are old citation numbers and values are new ones.
+    Object.values(quillRefs.current).forEach((quill) => {
+      // Get the current HTML content
+      let html = quill.root.innerHTML;
+      // Replace occurrences of [number]
+      html = html.replace(/\[(\d+)\]/g, (match, p1) => {
+        // If the old number is in the mapping, replace it; otherwise, remove it.
+        return mapping[p1] ? `[${mapping[p1]}]` : "";
+      });
+      // Update the Quill editor's content
+      quill.root.innerHTML = html;
+      // Optionally, you might want to update the Delta too:
+      // const Delta = Quill.import("delta");
+      // quill.setContents(Delta.convert(html));
+    });
   }
-
-  // Otherwise, fallback to lastActiveNodeId:
-  console.log("DEBUG: No selectedRange; fallback to lastActiveNodeId =", lastActiveNodeId);
-  if (!lastActiveNodeId) {
-    console.log("DEBUG: We have no lastActiveNodeId. So we can’t insert bracket.");
-    return;
-  }
-
-  const contentId = getNodeContentId(sections, lastActiveNodeId);
-  if (!contentId || !quillRefs.current[contentId]) {
-    console.log("DEBUG: lastActiveNodeId has no quill or invalid contentId. No bracket inserted.");
-    return;
-  }
-
-  const quill = quillRefs.current[contentId];
-  quill.focus();
-
-  const cursorRange = quill.getSelection();
-  // if (!cursorRange) {
-  //   // Insert at end of doc if there's no cursor
-  //   const endIndex = quill.getLength();
-  //   quill.insertText(endIndex, ` [${keyString}]`);
-  //   quill.setSelection(endIndex + ` [${keyString}]`.length, 0);
-  //   console.log("DEBUG: Inserted bracket at doc end in nodeId =", lastActiveNodeId);
-  // } else {
-  //   quill.insertText(cursorRange.index, ` [${keyString}]`);
-  //   quill.setSelection(cursorRange.index + ` [${keyString}]`.length, 0);
-  //   console.log("DEBUG: Inserted bracket in nodeId =", lastActiveNodeId, " at cursorRange =", cursorRange);
-  // }
-  if (!cursorRange) {
-    // If truly no cursor/selection, fallback to the end of the doc
-    const endIndex = quill.getLength();
-    quill.insertText(endIndex, ` [${keyString}]`);
-    quill.setSelection(endIndex + ` [${keyString}]`.length, 0);
-  } else {
-    // Insert at the end of the selection
-    const insertPos = cursorRange.index + cursorRange.length;
-    quill.insertText(insertPos, ` [${keyString}]`);
-    quill.setSelection(insertPos + ` [${keyString}]`.length, 0);
-  }
-};
-
-// CHANGED: useImperativeHandle so parent can do editorRef.current.insertCitationBracket(...)
-useImperativeHandle(ref, () => ({
-  insertCitationBracket: (key) => {
-    console.log("DEBUG: Parent is calling insertCitationBracket with key =", key);
-    insertCitationBracket(key);
-  },
-}));
-
 
   // For our custom embed handlers (table/formula)
   const activeQuillRef = useRef(null);
@@ -711,39 +742,39 @@ useImperativeHandle(ref, () => ({
 
         {" AI?"}
       </label> */}
-      <div
-  className="form-check form-switch"
-  style={{
-    display: "inline-block",
-    marginRight: "1rem",
-    verticalAlign: "middle",
-  }}
->
-  <input
-    className="form-check-input"
-    type="checkbox"
-    role="switch"
-    id={`toggle-switch-${node.id}`}
-    checked={!!node.aiEnhancement}
-    onChange={(e) => {
-      const newValue = e.target.checked;
-      const updated = toggleAiEnhancementInTree(sections, node.id, newValue);
-      setSections(updated);
-      socket.emit("update-pad", {
-        padId,
-        sections: updated,
-        authors,
-        references,
-        title: paperTitle,
-        abstract,
-        keyword: keywords,
-      });
-    }}
-  />
-  <label className="form-check-label" htmlFor={`toggle-switch-${node.id}`}>
-    AI Enhance
-  </label>
-</div>
+        <div
+          className="form-check form-switch"
+          style={{
+            display: "inline-block",
+            marginRight: "1rem",
+            verticalAlign: "middle",
+          }}
+        >
+          <input
+            className="form-check-input"
+            type="checkbox"
+            role="switch"
+            id={`toggle-switch-${node.id}`}
+            checked={!!node.aiEnhancement}
+            onChange={(e) => {
+              const newValue = e.target.checked;
+              const updated = toggleAiEnhancementInTree(sections, node.id, newValue);
+              setSections(updated);
+              socket.emit("update-pad", {
+                padId,
+                sections: updated,
+                authors,
+                references,
+                title: paperTitle,
+                abstract,
+                keyword: keywords,
+              });
+            }}
+          />
+          <label className="form-check-label" htmlFor={`toggle-switch-${node.id}`}>
+            AI Enhance
+          </label>
+        </div>
 
 
         <button onClick={() => removeNode(node.id)} style={{ marginLeft: 5 }}>
