@@ -1,11 +1,11 @@
 
-import React, { useEffect, useRef, useState,useImperativeHandle,forwardRef, } from "react";
+import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef, } from "react";
 import Quill from "quill";
 import "quill/dist/quill.snow.css";
 import ImageWithCaptionBlot from "../blots/ImageWithCaptionBlot.js";
 import TableWithCaptionBlot from "../blots/TableWithCaptionBlot.js";
 import FormulaWithCaptionBlot from "../blots/FormulaWithCaptionBlot.js";
-
+import ReferenceModal from "./ManualCitationModal.js";
 import QuillCursors from "quill-cursors";
 import debounce from "lodash.debounce";
 import TableSizePicker from "./TableSizePicker";
@@ -206,8 +206,10 @@ const Editor = forwardRef(function Editor(
     title: "",
     journal: "",
     year: "",
-    volume: "",
-    number: "",
+    // volume: "",
+    location: "",
+    // number: "",
+    doi: "",
     pages: "",
   });
 
@@ -289,7 +291,23 @@ const Editor = forwardRef(function Editor(
       // quill.setContents(Delta.convert(html));
     });
   }
-
+  const handleReferenceSave = (newRefData) => {
+    // Update references state with the new reference data
+    const updatedReferences = [...references, newRefData];
+    setReferences(updatedReferences);
+  
+    // Emit update to the backend
+    socket.emit("update-pad", {
+      padId,
+      sections,
+      authors,
+      references: updatedReferences,
+      title: paperTitle,
+      abstract,
+      keyword: keywords,
+    });
+  };
+  
   // For our custom embed handlers (table/formula)
   const activeQuillRef = useRef(null);
   const [showTablePicker, setShowTablePicker] = useState(false);
@@ -1306,7 +1324,7 @@ const Editor = forwardRef(function Editor(
               keyword: keywords,
             });
           }}
-          
+
         />
         <h2 className="section-subtitle">Abstract</h2>
         <textarea
@@ -1468,32 +1486,198 @@ const Editor = forwardRef(function Editor(
       {/* References Section */}
       <div className="references-section">
         <h2 className="section-subtitle">References</h2>
-        <button className="custom-button" onClick={() => {
-          const newReference = {
-            id: `ref-${Date.now()}`,
-            key: "",
-            author: "",
-            title: "",
-            journal: "",
-            year: "",
-            volume: "",
-            number: "",
-            pages: "",
-          };
-          const updatedReferences = [...references, newReference];
-          setReferences(updatedReferences);
-          socket.emit("update-pad", {
-            padId,
-            sections,
-            authors,
-            references: updatedReferences,
-            title: paperTitle,
-            abstract,
-            keyword: keywords,
-          });
-        }}>
+        <button className="custom-button"
+          onClick={() => {
+            // Prepare a new reference object (you can also reset fields here if needed)
+            setNewReference({
+              id: `ref-${Date.now()}`,
+              key: "",
+              author: "",
+              title: "",
+              journal: "",
+              year: "",
+              volume: "",
+              number: "",
+              pages: "",
+            });
+            setShowReferenceModal(true);
+          }}
+        // onClick={() => {
+        //   const newReference = {
+        //     id: `ref-${Date.now()}`,
+        //     key: "",
+        //     author: "",
+        //     title: "",
+        //     journal: "",
+        //     year: "",
+        //     volume: "",
+        //     number: "",
+        //     pages: "",
+        //   };
+        //   const updatedReferences = [...references, newReference];
+        //   setReferences(updatedReferences);
+        //   socket.emit("update-pad", {
+        //     padId,
+        //     sections,
+        //     authors,
+        //     references: updatedReferences,
+        //     title: paperTitle,
+        //     abstract,
+        //     keyword: keywords,
+        //   });
+        // }}
+
+        >
           ➕ Add Reference
         </button>
+        <ReferenceModal
+          showReferenceModal={showReferenceModal}
+          padId={padId}
+          setShowReferenceModal={setShowReferenceModal}
+          newReference={newReference}
+          setNewReference={setNewReference}
+          onSaveReference={handleReferenceSave} // <== callback prop
+        />
+        {/* {showReferenceModal && (
+          <div
+            style={{
+              position: "fixed",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              backgroundColor: "#fff",
+              padding: "20px",
+              borderRadius: "8px",
+              boxShadow: "0 2px 10px rgba(0,0,0,0.2)",
+              zIndex: 1100,
+              width: "400px",
+            }}
+          >
+            <h3>Add Reference</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <input
+                className="input-small reference-key"
+                type="text"
+                value={newReference.key}
+                placeholder="Reference Key"
+                onChange={(e) =>
+                  setNewReference({ ...newReference, key: e.target.value })
+                }
+              />
+              <input
+                className="input-small reference-author"
+                type="text"
+                value={newReference.author}
+                placeholder="Author(s)"
+                onChange={(e) =>
+                  setNewReference({ ...newReference, author: e.target.value })
+                }
+              />
+              <input
+                className="input-small reference-title"
+                type="text"
+                value={newReference.title}
+                placeholder="Title"
+                onChange={(e) =>
+                  setNewReference({ ...newReference, title: e.target.value })
+                }
+              />
+              <input
+                className="input-small reference-journal"
+                type="text"
+                value={newReference.journal}
+                placeholder="Journal"
+                onChange={(e) =>
+                  setNewReference({ ...newReference, journal: e.target.value })
+                }
+              />
+              <input
+                className="input-small reference-year"
+                type="text"
+                value={newReference.year}
+                placeholder="Year"
+                onChange={(e) =>
+                  setNewReference({ ...newReference, year: e.target.value })
+                }
+              />
+              <input
+                className="input-small reference-volume"
+                type="text"
+                value={newReference.volume}
+                placeholder="Volume"
+                onChange={(e) =>
+                  setNewReference({ ...newReference, volume: e.target.value })
+                }
+              />
+              <input
+                className="input-small reference-number"
+                type="text"
+                value={newReference.number}
+                placeholder="Number"
+                onChange={(e) =>
+                  setNewReference({ ...newReference, number: e.target.value })
+                }
+              />
+              <input
+                className="input-small reference-pages"
+                type="text"
+                value={newReference.pages}
+                placeholder="Pages"
+                onChange={(e) =>
+                  setNewReference({ ...newReference, pages: e.target.value })
+                }
+              />
+            </div>
+            <div style={{ marginTop: "15px", display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+              <button
+                className="custom-button"
+                onClick={() => {
+                  // Close the modal without saving
+                  setShowReferenceModal(false);
+                }}
+                style={{
+                  backgroundColor: "#aaa",
+                  color: "#fff",
+                  padding: "8px 12px",
+                  border: "none",
+                  borderRadius: "5px",
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="custom-button"
+                onClick={() => {
+                  // When saving, add the new reference to your state and emit update
+                  const updatedReferences = [...references, newReference];
+                  setReferences(updatedReferences);
+                  socket.emit("update-pad", {
+                    padId,
+                    sections,
+                    authors,
+                    references: updatedReferences,
+                    title: paperTitle,
+                    abstract,
+                    keyword: keywords,
+                  });
+                  // Close the modal
+                  setShowReferenceModal(false);
+                }}
+                style={{
+                  backgroundColor: "#56008a",
+                  color: "#fff",
+                  padding: "8px 12px",
+                  border: "none",
+                  borderRadius: "5px",
+                  cursor: "pointer",
+                }}
+              >
+                Save Reference
+              </button>
+            </div>
+          </div>
+        )} */}
         {/* <ul className="reference-list">
   {references.map((reference) => (
     <li key={reference.id} className="list-item">
@@ -1622,33 +1806,41 @@ const Editor = forwardRef(function Editor(
     </li>
   ))}
 </ul> */}
-<ul className="reference-list">
+        <ul className="reference-list">
           {references.map((reference) => (
-            <li key={reference.id} className="list-item" style={{ marginBottom: "1rem" }}>
-              {/* Display the "key" field as plain text (non-editable) */}
-              <div>
-                <strong>Key:</strong> {reference.key}
+            <li key={reference.id} className="list-item" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.5rem", borderBottom: "1px solid #ddd" }}>
+              {/* Small div for the Key */}
+              <div style={{ flex: "0 0 50px", textAlign: "center", fontWeight: "bold" }}>
+                [{reference.key}]
               </div>
-              {/* Display the citationData field as plain text (non-editable) */}
-              <div>
-                <strong>Citation:</strong> {reference.citation}
+
+              {/* Citation div (flexible width) */}
+              <div style={{ flex: "1", padding: "0 10px", textAlign: "left" }}>
+                {/* <strong>Citation:</strong> */}
+                {reference.citation}
               </div>
+
+              {/* Remove Button on the right */}
               <button
                 className="remove-button"
+                style={{ flex: "0 0 100px", textAlign: "center", backgroundColor: "#ff4d4d", color: "white", border: "none", padding: "5px 10px", cursor: "pointer", borderRadius: "5px" }}
                 onClick={() => {
-                  // Remove this particular reference by filtering it out
-                  const updatedReferences = references.filter((r) => r.id !== reference.id);
-                  const renumbered = updatedReferences.map((ref, i) => {
-                    return {
-                      ...ref,
-                      key: String(i + 1), // i is 0-based, so i+1 => 1..n
-                    };
+                  const mapping = {};
+                  let newNumber = 1;
+                  references.forEach((ref) => {
+                    if (ref.id !== reference.id) {
+                      mapping[ref.key] = String(newNumber);
+                      newNumber++;
+                    }
                   });
-                
-                  setReferences(renumbered);
-                  
+                  const updatedReferences = references.filter((r) => r.id !== reference.id);
+                  const renumbered = updatedReferences.map((ref, i) => ({
+                    ...ref,
+                    key: String(i + 1), // Reassigns keys sequentially
+                  }));
 
-                  // Emit updated references to the server
+                  setReferences(renumbered);
+                  updateCitationNumbers(mapping);
                   socket.emit("update-pad", {
                     padId,
                     sections,
@@ -1660,7 +1852,7 @@ const Editor = forwardRef(function Editor(
                   });
                 }}
               >
-                🗑️ Remove Reference
+                🗑️ Remove
               </button>
             </li>
           ))}

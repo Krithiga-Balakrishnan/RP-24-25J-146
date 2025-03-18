@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from "react";
 import IconX from '../Icons/IconX';
+// import LoadinginSideBar from "../animation/documentLoading"
+import Lottie from "react-lottie-player";
+import LoadinginSideBar from "../animation/document-search.json";
+import LoadinginCitation from "../animation/citation-loading.json";
 
-const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData,references = [], }) => {
+const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData, references = [], }) => {
   const [papers, setPapers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingCitation, setLoadingCitation] = useState(false);
@@ -65,7 +69,7 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData,refe
       setError(null);
 
       try {
-        const response = await fetch("https://aa3f-34-91-204-50.ngrok-free.app/search/", {
+        const response = await fetch("https://b93e-34-106-54-141.ngrok-free.app/search/", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -89,7 +93,8 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData,refe
         setPapers(
           data.results?.map(paper => ({
             ...paper,
-            authors: parseAuthors(paper.authors) // Ensure authors is an array
+            authors: parseAuthors(paper.authors), // Ensure authors is an array
+            abstract: paper.abstract || paper.Abstract || "No abstract available."
           })) || []
         );
       } catch (error) {
@@ -112,7 +117,7 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData,refe
       selected_paper_ids: [paper.paper_id],
     };
 
-    fetch("https://0ba8-34-82-163-74.ngrok-free.app/generate_citations/", {
+    fetch("https://dc95-35-230-160-250.ngrok-free.app/generate_citations/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestBody),
@@ -137,6 +142,26 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData,refe
       });
   }
 
+  // function highlightMatch(abstract, matchedSentences) {
+  //   if (!abstract || !matchedSentences || matchedSentences.length === 0) return abstract;
+
+  //   let highlightedAbstract = abstract;
+
+  //   matchedSentences.forEach(({ sentence }) => {
+  //     if (!sentence) return;
+
+  //     // Escape special characters for regex
+  //     const escapedMatch = sentence.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  //     // Highlight matched sentence in the abstract
+  //     highlightedAbstract = highlightedAbstract.replace(
+  //       new RegExp(escapedMatch, "gi"),
+  //       match => `<span style="background-color: violet; font-weight: bold;">${match}</span>`
+  //     );
+  //   });
+
+  //   return highlightedAbstract;
+  // }
   function highlightMatch(abstract, matchedSentences) {
     if (!abstract || !matchedSentences || matchedSentences.length === 0) return abstract;
 
@@ -145,12 +170,21 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData,refe
     matchedSentences.forEach(({ sentence }) => {
       if (!sentence) return;
 
+      // Log the original sentence and check its presence in the abstract
+      console.log("Processing sentence:", sentence);
+      if (!abstract.includes(sentence)) {
+        console.warn("Sentence not found in abstract:", sentence);
+        return;
+      }
+
       // Escape special characters for regex
       const escapedMatch = sentence.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      console.log("Escaped match:", escapedMatch);
 
-      // Highlight matched sentence in the abstract
+      // Create regex and replace matches with highlighted span
+      const regex = new RegExp(escapedMatch, "gi");
       highlightedAbstract = highlightedAbstract.replace(
-        new RegExp(escapedMatch, "gi"),
+        regex,
         match => `<span style="background-color: violet; font-weight: bold;">${match}</span>`
       );
     });
@@ -160,15 +194,16 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData,refe
 
 
 
+
   function handleInsertCitation() {
     console.log("🚀 Insert Citation button clicked!");
     if (!selectedPaper) {
       console.error("❌ No paper selected!");
       return;
     }
-  
+
     console.log("Selected Paper Inside Citation ", selectedPaper);
-  
+
     // 1) Compute next key by looking at existing references
     //    references is passed in as a prop.
     const lastKey = references.reduce((maxSoFar, ref) => {
@@ -177,7 +212,7 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData,refe
       return numericKey > maxSoFar ? numericKey : maxSoFar;
     }, 0);
     const nextKey = lastKey + 1; // the new integer key
-  
+
     const paperId = selectedPaper.paper_id;
     const authorList = selectedPaper.authors?.join(" and ") || "Unknown Author";
     const title = selectedPaper.title || "Unknown Title";
@@ -186,7 +221,7 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData,refe
     const volume = selectedPaper.volume || "N/A";
     const number = selectedPaper.number || "N/A";
     const pages = selectedPaper.pages || "N/A";
-  
+
     // Log your local (optional) BibTeX if you like
     const bibTexCitation = `
       @article{${paperId},
@@ -198,14 +233,14 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData,refe
         number    = {${number}},
         pages     = {${pages}}
       }`.trim();
-  
+
     console.log("🔹 Next numeric key will be:", nextKey);
-  
+
     if (!padId) {
       console.error("❌ padId is missing!");
       return;
     }
-  
+
     // 2) Save citation to the DB with nextKey 
     const saveCitationToDB = async () => {
       try {
@@ -228,7 +263,7 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData,refe
             }),
           }
         );
-  
+
         console.log("🔄 Awaiting response from server...");
         if (!response.ok) {
           console.error("❌ Failed to save citation. Response status:", response.status);
@@ -236,10 +271,10 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData,refe
           console.error("❌ Server Response:", errorText);
           throw new Error("Failed to save citation");
         }
-  
+
         const data = await response.json();
         console.log("✅ Citation saved successfully!", data);
-  
+
         // 3) Call the parent’s callback so it can update references
         if (onCitationData) {
           onCitationData({
@@ -256,16 +291,16 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData,refe
             citation: citationData,
           });
         }
-  
+
       } catch (error) {
         console.error("❌ Error saving citation:", error);
       }
     };
-  
+
     saveCitationToDB();
   }
 
-  
+
   if (!isOpen) return null;
   return (
     <>
@@ -317,7 +352,9 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData,refe
           readOnly
         />
 
-        {loading && <p>Loading papers...</p>}
+        {loading &&
+          <Lottie loop animationData={LoadinginCitation} play />
+        }
         {error && <p style={{ color: "red" }}>{error}</p>}
 
         <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
@@ -465,8 +502,8 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData,refe
               width: "100%",
             }}
           >
-            <button
-              onClick={() => setShowCitationOptions(!showCitationOptions)}
+            <div
+              // onClick={() => setShowCitationOptions(!showCitationOptions)}
               style={{
                 background: "lavender",
                 border: "1px solid lavender",
@@ -479,57 +516,7 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData,refe
               }}
             >
               <i className="bi bi-pencil"></i> {citationStyle}
-            </button>
-            {showCitationOptions && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "30px",
-                  left: "0",
-                  background: "lavender",
-                  border: "1px solid #ccc",
-                  borderRadius: "5px",
-                  padding: "5px",
-                  zIndex: 1100,
-                  textAlign: "left",
-                  width: "10%",
-                }}
-              >
-                <div
-                  onClick={() => {
-                    setCitationStyle("IEEE");
-                    setShowCitationOptions(false);
-                  }}
-                  style={{ cursor: "pointer", padding: "5px 0" }}
-                  onMouseEnter={(e) => (e.target.style.backgroundColor = "violet")}
-                  onMouseLeave={(e) => (e.target.style.backgroundColor = "transparent")}
-                >
-                  IEEE
-                </div>
-                <div
-                  onClick={() => {
-                    setCitationStyle("MLA");
-                    setShowCitationOptions(false);
-                  }}
-                  style={{ cursor: "pointer", padding: "5px 0" }}
-                  onMouseEnter={(e) => (e.target.style.backgroundColor = "violet")}
-                  onMouseLeave={(e) => (e.target.style.backgroundColor = "transparent")}
-                >
-                  MLA
-                </div>
-                <div
-                  onClick={() => {
-                    setCitationStyle("APA");
-                    setShowCitationOptions(false);
-                  }}
-                  style={{ cursor: "pointer", padding: "5px 0" }}
-                  onMouseEnter={(e) => (e.target.style.backgroundColor = "violet")}
-                  onMouseLeave={(e) => (e.target.style.backgroundColor = "transparent")}
-                >
-                  APA
-                </div>
-              </div>
-            )}
+            </div>
           </div>
           {/* Display the generated citation */}
           <p
@@ -542,15 +529,23 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData,refe
             }}
           >
             {loadingCitation ? (
-              <span style={{ color: "#56008a", fontWeight: "bold" }}>
-                🔄 Generating citation...
-              </span>
+              <div style={{ display: "flex", justifyContent: "center" }}>
+                <Lottie
+                  loop
+                  animationData={LoadinginSideBar}
+                  play
+                  style={{ width: "200px", height: "200px" }}
+                />
+              </div>
             ) : (
               citationData
             )}
           </p>
           <button
-            onClick={handleInsertCitation}
+            onClick={() => {
+              handleInsertCitation();
+              setShowCitationModal(false);
+            }}
             style={{
               marginTop: "15px",
               backgroundColor: "#56008a",
@@ -620,7 +615,7 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData,refe
                 wordBreak: "break-word",
               }}
             >
-              {selectedPaper && selectedPaper.abstract ? selectedPaper.abstract : "No abstract available."}
+              {/* {selectedPaper && selectedPaper.abstract ? selectedPaper.abstract : "No abstract available."} */}
               {selectedPaper && selectedPaper.abstract ? (
                 <p dangerouslySetInnerHTML={{ __html: highlightMatch(selectedPaper.abstract, selectedPaper.matched_sentences) }} />
               ) : "No abstract available."}
