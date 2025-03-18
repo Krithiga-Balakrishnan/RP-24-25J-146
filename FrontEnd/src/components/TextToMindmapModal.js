@@ -595,335 +595,335 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
     async function fetchFromDatabase() {
       try {
         hasFetchedDatabaseRef.current = true;
-        let data;
-        const chosen = selectedText.trim();
-        console.log("fetchFromDatabase");
+        // let data;
+        // const chosen = selectedText.trim();
+        // console.log("fetchFromDatabase");
 
-        if (chosen === "1") {
-          data = {
-            mindmap: [
-              {
-                name: "IOT and Big Data",
-                subnodes: [
-                  {
-                    name: "IOT",
-                    subnodes: [
-                      { name: "Main Application of Big Data", subnodes: [] },
-                      { name: "High Diversity of Things", subnodes: [] },
-                      {
-                        name: "Machine-to-Machine Communication",
-                        subnodes: [],
-                      },
-                      {
-                        name: "Track and Locate Positions of Vehicles",
-                        subnodes: [
-                          { name: "Sensor Data", subnodes: [] },
-                          { name: "Wireless Adaptors", subnodes: [] },
-                          { name: "GPS", subnodes: [] },
-                        ],
-                      },
-                    ],
-                  },
-                  {
-                    name: "Large Information Frameworks",
-                    subnodes: [
-                      {
-                        name: "IOT Information Collection and Storage",
-                        subnodes: [],
-                      },
-                      {
-                        name: "Deep Learning Disadvantages",
-                        subnodes: [],
-                      },
-                    ],
-                  },
-                ],
-              },
-            ],
-          };
-        } else if (chosen === "2") {
-          data = {
-            mindmap: [
-              {
-                name: "Artificial Neural Networks (ANN)",
-                subnodes: [
-                  {
-                    name: "Developed based on Biological Neurons",
-                    subnodes: [],
-                  },
-                  {
-                    name: "Perceptron",
-                    subnodes: [
-                      { name: "Trained to Predict", subnodes: [] },
-                      { name: "Fixed Threshold", subnodes: [] },
-                    ],
-                  },
-                  {
-                    name: "Architecture",
-                    subnodes: [
-                      { name: "Many Inputs", subnodes: [] },
-                      { name: "Multiple Processing Layers", subnodes: [] },
-                      { name: "Many Outputs", subnodes: [] },
-                    ],
-                  },
-                  {
-                    name: "Complex Data",
-                    subnodes: [
-                      { name: "Classification Tasks", subnodes: [] },
-                      { name: "Regression Tasks", subnodes: [] },
-                    ],
-                  },
-                ],
-              },
-            ],
-          };
-        } else if (chosen === "3") {
-          data = {
-            mindmap: [
-              {
-                name: "Machine Learning in Healthcare",
-                subnodes: [
-                  {
-                    name: "Overview",
-                    subnodes: [
-                      {
-                        name: "Widely used in applications and research",
-                        subnodes: [],
-                      },
-                      { name: "Crucial role in numerous fields", subnodes: [] },
-                      {
-                        name: "Applications",
-                        subnodes: [
-                          {
-                            name: "Diagnose sizeable medical data patterns",
-                            subnodes: [],
-                          },
-                          { name: "Predict diseases", subnodes: [] },
-                        ],
-                      },
-                    ],
-                  },
-                  {
-                    name: "Survey",
-                    subnodes: [
-                      {
-                        name: "Purpose",
-                        subnodes: [
-                          { name: "Highlight previous work", subnodes: [] },
-                          {
-                            name: "Provide information to researchers",
-                            subnodes: [],
-                          },
-                        ],
-                      },
-                      {
-                        name: "Machine Learning Algorithms",
-                        subnodes: [
-                          { name: "Overview", subnodes: [] },
-                          { name: "Applications in healthcare", subnodes: [] },
-                        ],
-                      },
-                    ],
-                  },
-                  {
-                    name: "Advantages",
-                    subnodes: [
-                      {
-                        name: "Efficient support infrastructure for medical fields",
-                        subnodes: [],
-                      },
-                      { name: "Improve healthcare services", subnodes: [] },
-                    ],
-                  },
-                ],
-              },
-            ],
-          };
-        } else {
-          data = {
-            mindmap: [
-              {
-                name: "Rainfall Prediction and Suicide Analysis",
-                subnodes: [
-                  {
-                    name: "Objective",
-                    subnodes: [
-                      {
-                        name: "Reduce the Suicides due to Rainfall",
-                        subnodes: [],
-                      },
-                    ],
-                  },
-                  {
-                    name: "Data Types",
-                    subnodes: [
-                      {
-                        name: "Categorical Data",
-                        subnodes: [
-                          {
-                            name: "Converted for Machine Learning",
-                            subnodes: [],
-                          },
-                        ],
-                      },
-                      {
-                        name: "Continuous Data",
-                        subnodes: [
-                          {
-                            name: "Converted for Machine Learning",
-                            subnodes: [],
-                          },
-                        ],
-                      },
-                    ],
-                  },
-                  {
-                    name: "Experimental Analysis",
-                    subnodes: [
-                      {
-                        name: "Categorical Data",
-                        subnodes: [
-                          {
-                            name: "Random Forest: Highest Accuracy",
-                            subnodes: [
-                              {
-                                name: "Compared to",
-                                subnodes: [
-                                  { name: "SVM", subnodes: [] },
-                                  { name: "Logistic Regression", subnodes: [] },
-                                  { name: "Linear Regression", subnodes: [] },
-                                ],
-                              },
-                            ],
-                          },
-                          {
-                            name: "Logistic Regression",
-                            subnodes: [
-                              {
-                                name: "Highest Accuracy",
-                                subnodes: [
-                                  {
-                                    name: "Compared to",
-                                    subnodes: [
-                                      { name: "SVM", subnodes: [] },
-                                      { name: "Random Forest", subnodes: [] },
-                                      {
-                                        name: "Linear Regression",
-                                        subnodes: [],
-                                      },
-                                    ],
-                                  },
-                                ],
-                              },
-                            ],
-                          },
-                          {
-                            name: "SVM",
-                            subnodes: [
-                              {
-                                name: "Highest Accuracy",
-                                subnodes: [
-                                  {
-                                    name: "Compared to",
-                                    subnodes: [
-                                      {
-                                        name: "Logistic Regression",
-                                        subnodes: [],
-                                      },
-                                      { name: "Random Forest", subnodes: [] },
-                                      {
-                                        name: "Linear Regression",
-                                        subnodes: [],
-                                      },
-                                    ],
-                                  },
-                                ],
-                              },
-                            ],
-                          },
-                          {
-                            name: "Linear Regression",
-                            subnodes: [
-                              {
-                                name: "Highest Accuracy",
-                                subnodes: [
-                                  {
-                                    name: "Compared to",
-                                    subnodes: [
-                                      {
-                                        name: "Logistic Regression",
-                                        subnodes: [],
-                                      },
-                                      { name: "SVM", subnodes: [] },
-                                      { name: "Random Forest", subnodes: [] },
-                                    ],
-                                  },
-                                ],
-                              },
-                            ],
-                          },
-                        ],
-                      },
-                    ],
-                  },
-                  {
-                    name: "Future Scope",
-                    subnodes: [
-                      { name: "Combine Different Datasets", subnodes: [] },
-                      {
-                        name: "Analysis using Different Algorithms",
-                        subnodes: [],
-                      },
-                    ],
-                  },
-                ],
-              },
-            ],
-          };
-        }
-
-        console.log("Mock Data Chosen:", data);
-        nodesRef.current = [];
-        linksRef.current = [];
-        if (data && data.mindmap && Array.isArray(data.mindmap)) {
-          data.mindmap.forEach((mindmapNode) => {
-            traverseMindmap(mindmapNode, null);
-          });
-        }
-
-        // const endpoint = "generate";
-
-        // const response = await fetch(`${baseApiUrl}/${endpoint}`, {
-        //   method: "POST",
-        //   headers: { "Content-Type": "application/json" },
-        //   body: JSON.stringify({ content: selectedText }),
-        // });
-
-        // if (!response.ok) {
-        //   throw new Error(`Server error: ${response.status}`);
+        // if (chosen === "1") {
+        //   data = {
+        //     mindmap: [
+        //       {
+        //         name: "IOT and Big Data",
+        //         subnodes: [
+        //           {
+        //             name: "IOT",
+        //             subnodes: [
+        //               { name: "Main Application of Big Data", subnodes: [] },
+        //               { name: "High Diversity of Things", subnodes: [] },
+        //               {
+        //                 name: "Machine-to-Machine Communication",
+        //                 subnodes: [],
+        //               },
+        //               {
+        //                 name: "Track and Locate Positions of Vehicles",
+        //                 subnodes: [
+        //                   { name: "Sensor Data", subnodes: [] },
+        //                   { name: "Wireless Adaptors", subnodes: [] },
+        //                   { name: "GPS", subnodes: [] },
+        //                 ],
+        //               },
+        //             ],
+        //           },
+        //           {
+        //             name: "Large Information Frameworks",
+        //             subnodes: [
+        //               {
+        //                 name: "IOT Information Collection and Storage",
+        //                 subnodes: [],
+        //               },
+        //               {
+        //                 name: "Deep Learning Disadvantages",
+        //                 subnodes: [],
+        //               },
+        //             ],
+        //           },
+        //         ],
+        //       },
+        //     ],
+        //   };
+        // } else if (chosen === "2") {
+        //   data = {
+        //     mindmap: [
+        //       {
+        //         name: "Artificial Neural Networks (ANN)",
+        //         subnodes: [
+        //           {
+        //             name: "Developed based on Biological Neurons",
+        //             subnodes: [],
+        //           },
+        //           {
+        //             name: "Perceptron",
+        //             subnodes: [
+        //               { name: "Trained to Predict", subnodes: [] },
+        //               { name: "Fixed Threshold", subnodes: [] },
+        //             ],
+        //           },
+        //           {
+        //             name: "Architecture",
+        //             subnodes: [
+        //               { name: "Many Inputs", subnodes: [] },
+        //               { name: "Multiple Processing Layers", subnodes: [] },
+        //               { name: "Many Outputs", subnodes: [] },
+        //             ],
+        //           },
+        //           {
+        //             name: "Complex Data",
+        //             subnodes: [
+        //               { name: "Classification Tasks", subnodes: [] },
+        //               { name: "Regression Tasks", subnodes: [] },
+        //             ],
+        //           },
+        //         ],
+        //       },
+        //     ],
+        //   };
+        // } else if (chosen === "3") {
+        //   data = {
+        //     mindmap: [
+        //       {
+        //         name: "Machine Learning in Healthcare",
+        //         subnodes: [
+        //           {
+        //             name: "Overview",
+        //             subnodes: [
+        //               {
+        //                 name: "Widely used in applications and research",
+        //                 subnodes: [],
+        //               },
+        //               { name: "Crucial role in numerous fields", subnodes: [] },
+        //               {
+        //                 name: "Applications",
+        //                 subnodes: [
+        //                   {
+        //                     name: "Diagnose sizeable medical data patterns",
+        //                     subnodes: [],
+        //                   },
+        //                   { name: "Predict diseases", subnodes: [] },
+        //                 ],
+        //               },
+        //             ],
+        //           },
+        //           {
+        //             name: "Survey",
+        //             subnodes: [
+        //               {
+        //                 name: "Purpose",
+        //                 subnodes: [
+        //                   { name: "Highlight previous work", subnodes: [] },
+        //                   {
+        //                     name: "Provide information to researchers",
+        //                     subnodes: [],
+        //                   },
+        //                 ],
+        //               },
+        //               {
+        //                 name: "Machine Learning Algorithms",
+        //                 subnodes: [
+        //                   { name: "Overview", subnodes: [] },
+        //                   { name: "Applications in healthcare", subnodes: [] },
+        //                 ],
+        //               },
+        //             ],
+        //           },
+        //           {
+        //             name: "Advantages",
+        //             subnodes: [
+        //               {
+        //                 name: "Efficient support infrastructure for medical fields",
+        //                 subnodes: [],
+        //               },
+        //               { name: "Improve healthcare services", subnodes: [] },
+        //             ],
+        //           },
+        //         ],
+        //       },
+        //     ],
+        //   };
+        // } else {
+        //   data = {
+        //     mindmap: [
+        //       {
+        //         name: "Rainfall Prediction and Suicide Analysis",
+        //         subnodes: [
+        //           {
+        //             name: "Objective",
+        //             subnodes: [
+        //               {
+        //                 name: "Reduce the Suicides due to Rainfall",
+        //                 subnodes: [],
+        //               },
+        //             ],
+        //           },
+        //           {
+        //             name: "Data Types",
+        //             subnodes: [
+        //               {
+        //                 name: "Categorical Data",
+        //                 subnodes: [
+        //                   {
+        //                     name: "Converted for Machine Learning",
+        //                     subnodes: [],
+        //                   },
+        //                 ],
+        //               },
+        //               {
+        //                 name: "Continuous Data",
+        //                 subnodes: [
+        //                   {
+        //                     name: "Converted for Machine Learning",
+        //                     subnodes: [],
+        //                   },
+        //                 ],
+        //               },
+        //             ],
+        //           },
+        //           {
+        //             name: "Experimental Analysis",
+        //             subnodes: [
+        //               {
+        //                 name: "Categorical Data",
+        //                 subnodes: [
+        //                   {
+        //                     name: "Random Forest: Highest Accuracy",
+        //                     subnodes: [
+        //                       {
+        //                         name: "Compared to",
+        //                         subnodes: [
+        //                           { name: "SVM", subnodes: [] },
+        //                           { name: "Logistic Regression", subnodes: [] },
+        //                           { name: "Linear Regression", subnodes: [] },
+        //                         ],
+        //                       },
+        //                     ],
+        //                   },
+        //                   {
+        //                     name: "Logistic Regression",
+        //                     subnodes: [
+        //                       {
+        //                         name: "Highest Accuracy",
+        //                         subnodes: [
+        //                           {
+        //                             name: "Compared to",
+        //                             subnodes: [
+        //                               { name: "SVM", subnodes: [] },
+        //                               { name: "Random Forest", subnodes: [] },
+        //                               {
+        //                                 name: "Linear Regression",
+        //                                 subnodes: [],
+        //                               },
+        //                             ],
+        //                           },
+        //                         ],
+        //                       },
+        //                     ],
+        //                   },
+        //                   {
+        //                     name: "SVM",
+        //                     subnodes: [
+        //                       {
+        //                         name: "Highest Accuracy",
+        //                         subnodes: [
+        //                           {
+        //                             name: "Compared to",
+        //                             subnodes: [
+        //                               {
+        //                                 name: "Logistic Regression",
+        //                                 subnodes: [],
+        //                               },
+        //                               { name: "Random Forest", subnodes: [] },
+        //                               {
+        //                                 name: "Linear Regression",
+        //                                 subnodes: [],
+        //                               },
+        //                             ],
+        //                           },
+        //                         ],
+        //                       },
+        //                     ],
+        //                   },
+        //                   {
+        //                     name: "Linear Regression",
+        //                     subnodes: [
+        //                       {
+        //                         name: "Highest Accuracy",
+        //                         subnodes: [
+        //                           {
+        //                             name: "Compared to",
+        //                             subnodes: [
+        //                               {
+        //                                 name: "Logistic Regression",
+        //                                 subnodes: [],
+        //                               },
+        //                               { name: "SVM", subnodes: [] },
+        //                               { name: "Random Forest", subnodes: [] },
+        //                             ],
+        //                           },
+        //                         ],
+        //                       },
+        //                     ],
+        //                   },
+        //                 ],
+        //               },
+        //             ],
+        //           },
+        //           {
+        //             name: "Future Scope",
+        //             subnodes: [
+        //               { name: "Combine Different Datasets", subnodes: [] },
+        //               {
+        //                 name: "Analysis using Different Algorithms",
+        //                 subnodes: [],
+        //               },
+        //             ],
+        //           },
+        //         ],
+        //       },
+        //     ],
+        //   };
         // }
 
-        // const data = await response.json();
-
-        // // Check if the API returned an error
-        // if (data.error) {
-        //   console.error("API returned error: " + data.error);
-        //   return;
-        // }
-
-        // // Instead of checking data.response, check the data.mindmap4 structure
-        // if (!data || !Array.isArray(data.mindmap)) {
-        //   throw new Error("Invalid data structure: " + JSON.stringify(data));
-        // }
-        // const mindmapRoot = data;
-
-        // // Clear previous data
+        // console.log("Mock Data Chosen:", data);
         // nodesRef.current = [];
         // linksRef.current = [];
-        // // Traverse the response structure
-        // mindmapRoot.mindmap.forEach((mindmapNode) => {
-        //   traverseMindmap(mindmapNode, null);
-        // });
+        // if (data && data.mindmap && Array.isArray(data.mindmap)) {
+        //   data.mindmap.forEach((mindmapNode) => {
+        //     traverseMindmap(mindmapNode, null);
+        //   });
+        // }
+
+        const endpoint = "generate";
+
+        const response = await fetch(`${baseApiUrl}/${endpoint}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: selectedText }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Server error: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Check if the API returned an error
+        if (data.error) {
+          console.error("API returned error: " + data.error);
+          return;
+        }
+
+        // Instead of checking data.response, check the data.mindmap4 structure
+        if (!data || !Array.isArray(data.mindmap)) {
+          throw new Error("Invalid data structure: " + JSON.stringify(data));
+        }
+        const mindmapRoot = data;
+
+        // Clear previous data
+        nodesRef.current = [];
+        linksRef.current = [];
+        // Traverse the response structure
+        mindmapRoot.mindmap.forEach((mindmapNode) => {
+          traverseMindmap(mindmapNode, null);
+        });
 
         const hierarchyData = buildHierarchy(
           nodesRef.current,
@@ -943,77 +943,77 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
         hasFetchedDatabaseRef.current = true;
         console.log("fetchFromExtendDatabase");
 
-        // const endpoint = "extend"; // Use the 'extend' endpoint
-        // const response = await fetch(`${baseApiUrl}/${endpoint}`, {
-        //   method: "POST",
-        //   headers: { "Content-Type": "application/json" },
-        //   body: JSON.stringify({ content: selectedText }),
-        // });
-        // if (!response.ok) {
-        //   throw new Error(`Server error: ${response.status}`);
-        // }
-        // const data = await response.json();
-        // if (data.error) {
-        //   console.error("API returned error: " + data.error);
-        //   return;
-        // }
-        // if (!data || !Array.isArray(data.mindmap)) {
-        //   throw new Error("Invalid data structure: " + JSON.stringify(data));
-        // }
-        // const mindmapRoot = data;
-        // // Clear previous data
-        // nodes = [];
-        // links = [];
-        // mindmapRoot.mindmap.forEach((mindmapNode) => {
-        //   traverseMindmap(mindmapNode, null);
-        // });
-
-        let data;
-        const chosen = selectedText.trim();
-        data = {
-          mindmap: [
-            {
-              name: "Artificial Neural Networks (ANN)",
-              subnodes: [
-                {
-                  name: "Developed based on Biological Neurons",
-                  subnodes: [],
-                },
-                {
-                  name: "Perceptron",
-                  subnodes: [
-                    { name: "Trained to Predict", subnodes: [] },
-                    { name: "Fixed Threshold", subnodes: [] },
-                  ],
-                },
-                {
-                  name: "Architecture",
-                  subnodes: [
-                    { name: "Many Inputs", subnodes: [] },
-                    { name: "Multiple Processing Layers", subnodes: [] },
-                    { name: "Many Outputs", subnodes: [] },
-                  ],
-                },
-                {
-                  name: "Complex Data",
-                  subnodes: [
-                    { name: "Classification Tasks", subnodes: [] },
-                    { name: "Regression Tasks", subnodes: [] },
-                  ],
-                },
-              ],
-            },
-          ],
-        };
-
-        console.log("Mock Data Chosen:", data);
+        const endpoint = "extend"; // Use the 'extend' endpoint
+        const response = await fetch(`${baseApiUrl}/${endpoint}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: selectedText }),
+        });
+        if (!response.ok) {
+          throw new Error(`Server error: ${response.status}`);
+        }
+        const data = await response.json();
+        if (data.error) {
+          console.error("API returned error: " + data.error);
+          return;
+        }
+        if (!data || !Array.isArray(data.mindmap)) {
+          throw new Error("Invalid data structure: " + JSON.stringify(data));
+        }
+        const mindmapRoot = data;
+        // Clear previous data
         nodesRef.current = [];
         linksRef.current = [];
-        if (data && data.mindmap && Array.isArray(data.mindmap)) {
-          data.mindmap.forEach((mindmapNode) => {
-            traverseMindmap(mindmapNode, null);
-          });
-        }
+        mindmapRoot.mindmap.forEach((mindmapNode) => {
+          traverseMindmap(mindmapNode, null);
+        });
+
+        // let data;
+        // const chosen = selectedText.trim();
+        // data = {
+        //   mindmap: [
+        //     {
+        //       name: "Artificial Neural Networks (ANN)",
+        //       subnodes: [
+        //         {
+        //           name: "Developed based on Biological Neurons",
+        //           subnodes: [],
+        //         },
+        //         {
+        //           name: "Perceptron",
+        //           subnodes: [
+        //             { name: "Trained to Predict", subnodes: [] },
+        //             { name: "Fixed Threshold", subnodes: [] },
+        //           ],
+        //         },
+        //         {
+        //           name: "Architecture",
+        //           subnodes: [
+        //             { name: "Many Inputs", subnodes: [] },
+        //             { name: "Multiple Processing Layers", subnodes: [] },
+        //             { name: "Many Outputs", subnodes: [] },
+        //           ],
+        //         },
+        //         {
+        //           name: "Complex Data",
+        //           subnodes: [
+        //             { name: "Classification Tasks", subnodes: [] },
+        //             { name: "Regression Tasks", subnodes: [] },
+        //           ],
+        //         },
+        //       ],
+        //     },
+        //   ],
+        // };
+
+        // console.log("Mock Data Chosen:", data);
+        // nodesRef.current = [];
+        // linksRef.current = [];
+        // if (data && data.mindmap && Array.isArray(data.mindmap)) {
+        //   data.mindmap.forEach((mindmapNode) => {
+        //     traverseMindmap(mindmapNode, null);
+        //   });
+        // }
 
         const hierarchyData = buildHierarchy(
           nodesRef.current,
@@ -1033,103 +1033,103 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
         hasFetchedDatabaseRef.current = true;
         console.log("fetchFromSimplifyDatabase");
 
-        // const endpoint = "simplify"; // Use the 'simplify' endpoint
-        // const response = await fetch(`${baseApiUrl}/${endpoint}`, {
-        //   method: "POST",
-        //   headers: { "Content-Type": "application/json" },
-        //   body: JSON.stringify({ content: selectedText }),
-        // });
-        // if (!response.ok) {
-        //   throw new Error(`Server error: ${response.status}`);
-        // }
-        // const data = await response.json();
-        // if (data.error) {
-        //   console.error("API returned error: " + data.error);
-        //   return;
-        // }
-        // if (!data || !Array.isArray(data.mindmap)) {
-        //   throw new Error("Invalid data structure: " + JSON.stringify(data));
-        // }
-        // const mindmapRoot = data;
-        // // Clear previous data
-        // nodes = [];
-        // links = [];
-        // mindmapRoot.mindmap.forEach((mindmapNode) => {
-        //   traverseMindmap(mindmapNode, null);
-        // });
-
-        let data;
-        const chosen = selectedText.trim();
-        data = {
-          mindmap: [
-            {
-              name: "Machine Learning in Healthcare",
-              subnodes: [
-                {
-                  name: "Overview",
-                  subnodes: [
-                    {
-                      name: "Widely used in applications and research",
-                      subnodes: [],
-                    },
-                    { name: "Crucial role in numerous fields", subnodes: [] },
-                    {
-                      name: "Applications",
-                      subnodes: [
-                        {
-                          name: "Diagnose sizeable medical data patterns",
-                          subnodes: [],
-                        },
-                        { name: "Predict diseases", subnodes: [] },
-                      ],
-                    },
-                  ],
-                },
-                {
-                  name: "Survey",
-                  subnodes: [
-                    {
-                      name: "Purpose",
-                      subnodes: [
-                        { name: "Highlight previous work", subnodes: [] },
-                        {
-                          name: "Provide information to researchers",
-                          subnodes: [],
-                        },
-                      ],
-                    },
-                    {
-                      name: "Machine Learning Algorithms",
-                      subnodes: [
-                        { name: "Overview", subnodes: [] },
-                        { name: "Applications in healthcare", subnodes: [] },
-                      ],
-                    },
-                  ],
-                },
-                {
-                  name: "Advantages",
-                  subnodes: [
-                    {
-                      name: "Efficient support infrastructure for medical fields",
-                      subnodes: [],
-                    },
-                    { name: "Improve healthcare services", subnodes: [] },
-                  ],
-                },
-              ],
-            },
-          ],
-        };
-
-        console.log("Mock Data Chosen:", data);
+        const endpoint = "simplify"; // Use the 'simplify' endpoint
+        const response = await fetch(`${baseApiUrl}/${endpoint}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: selectedText }),
+        });
+        if (!response.ok) {
+          throw new Error(`Server error: ${response.status}`);
+        }
+        const data = await response.json();
+        if (data.error) {
+          console.error("API returned error: " + data.error);
+          return;
+        }
+        if (!data || !Array.isArray(data.mindmap)) {
+          throw new Error("Invalid data structure: " + JSON.stringify(data));
+        }
+        const mindmapRoot = data;
+        // Clear previous data
         nodesRef.current = [];
         linksRef.current = [];
-        if (data && data.mindmap && Array.isArray(data.mindmap)) {
-          data.mindmap.forEach((mindmapNode) => {
-            traverseMindmap(mindmapNode, null);
-          });
-        }
+        mindmapRoot.mindmap.forEach((mindmapNode) => {
+          traverseMindmap(mindmapNode, null);
+        });
+
+        // let data;
+        // const chosen = selectedText.trim();
+        // data = {
+        //   mindmap: [
+        //     {
+        //       name: "Machine Learning in Healthcare",
+        //       subnodes: [
+        //         {
+        //           name: "Overview",
+        //           subnodes: [
+        //             {
+        //               name: "Widely used in applications and research",
+        //               subnodes: [],
+        //             },
+        //             { name: "Crucial role in numerous fields", subnodes: [] },
+        //             {
+        //               name: "Applications",
+        //               subnodes: [
+        //                 {
+        //                   name: "Diagnose sizeable medical data patterns",
+        //                   subnodes: [],
+        //                 },
+        //                 { name: "Predict diseases", subnodes: [] },
+        //               ],
+        //             },
+        //           ],
+        //         },
+        //         {
+        //           name: "Survey",
+        //           subnodes: [
+        //             {
+        //               name: "Purpose",
+        //               subnodes: [
+        //                 { name: "Highlight previous work", subnodes: [] },
+        //                 {
+        //                   name: "Provide information to researchers",
+        //                   subnodes: [],
+        //                 },
+        //               ],
+        //             },
+        //             {
+        //               name: "Machine Learning Algorithms",
+        //               subnodes: [
+        //                 { name: "Overview", subnodes: [] },
+        //                 { name: "Applications in healthcare", subnodes: [] },
+        //               ],
+        //             },
+        //           ],
+        //         },
+        //         {
+        //           name: "Advantages",
+        //           subnodes: [
+        //             {
+        //               name: "Efficient support infrastructure for medical fields",
+        //               subnodes: [],
+        //             },
+        //             { name: "Improve healthcare services", subnodes: [] },
+        //           ],
+        //         },
+        //       ],
+        //     },
+        //   ],
+        // };
+
+        // console.log("Mock Data Chosen:", data);
+        // nodesRef.current = [];
+        // linksRef.current = [];
+        // if (data && data.mindmap && Array.isArray(data.mindmap)) {
+        //   data.mindmap.forEach((mindmapNode) => {
+        //     traverseMindmap(mindmapNode, null);
+        //   });
+        // }
 
         const hierarchyData = buildHierarchy(
           nodesRef.current,
