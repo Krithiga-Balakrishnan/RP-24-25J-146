@@ -191,7 +191,7 @@ const Results = () => {
 
       {/* Pad ID Input (Common for all sections) */}
       <div style={{ ...styles.padSection, fontFamily: "Roboto Condensed, sans-serif" }}>
-        <h2>Fetch Pad Details</h2>
+        <h2>Load the Pad</h2>
         <input
           type="text"
           value={padName} // Display padName
@@ -199,7 +199,7 @@ const Results = () => {
           placeholder="Enter Pad ID"
           style={styles.inputField}
         />
-        <button onClick={fetchPadDetails} style={styles.button}>Fetch Pad</button>
+        <button onClick={fetchPadDetails} style={styles.button}>Load Pad</button>
         {error && <p style={styles.errorText}>{error}</p>}
         {padData && (
           <div>
@@ -267,7 +267,7 @@ const Results = () => {
                   type="text"
                   value={candidate.details}
                   onChange={(e) => handleCandidateChange(sections[currentSectionIndex], index, "details", e.target.value)}
-                  placeholder="Details"
+                  placeholder="Contribution"
                   style={styles.candidateInputField}
                 />
                 <input
@@ -294,11 +294,16 @@ const Results = () => {
             Predict Best Contributor
           </button>
 
+          {/* Add space between buttons */}
+          <div style={{ marginBottom: "20px" }}></div>
+
           {/* Display Best Contributor */}
           {sectionData[sections[currentSectionIndex]].bestContributor && (
             <div style={styles.bestContributor}>
               <h4>Best Contributor:</h4>
-              <p>Name: {sectionData[sections[currentSectionIndex]].bestContributor.name}</p>
+              <p>
+                Name: {sectionData[sections[currentSectionIndex]].bestContributor.name}
+              </p>
               <p>Score: {sectionData[sections[currentSectionIndex]].bestContributor.score}</p>
             </div>
           )}
@@ -318,23 +323,26 @@ const Results = () => {
 const styles = {
   container: {
     padding: "20px",
-    fontFamily: "Roboto Condensed, sans-serif", // Change font family
+    fontFamily: "Roboto Condensed, sans-serif",
     borderRadius: "10px",
-    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
-    maxWidth: "900px",
-    margin: "0 auto",
+    width: "100%",
+    margin: "0",
     color: "#333",
+    backgroundColor: "#f9f9f9",
   },
   header: {
     textAlign: "center",
     color: "#333",
     marginBottom: "20px",
+    fontSize: "2em",
   },
   padSection: {
     marginBottom: "20px",
     padding: "20px",
     border: "1px solid #ccc",
     borderRadius: "5px",
+    backgroundColor: "#fff",
+    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
   },
   inputField: {
     width: "calc(100% - 20px)",
@@ -344,46 +352,61 @@ const styles = {
     border: "1px solid #ccc",
     fontSize: "14px",
     color: "#333",
+    transition: "border-color 0.3s ease",
   },
   button: {
-    padding: "10px 15px",
-    backgroundColor: "#007BFF",
+    padding: "10px 20px",
+    backgroundColor: "#56008a",
     color: "#fff",
     border: "none",
     borderRadius: "5px",
     cursor: "pointer",
     fontSize: "16px",
-    transition: "background-color 0.3s ease",
-    marginLeft: "10px",
+    transition: "background-color 0.3s ease, transform 0.3s ease",
+    marginLeft: "0px",
+  },
+  buttonHover: {
+    ':hover': {
+      backgroundColor: "#0056b3",
+      transform: "scale(1.05)",
+    }
   },
   addButton: {
     height: "40px",
     width: "150px",
     padding: "10px 15px",
-    backgroundColor: "#28A745",
+    backgroundColor: "#56008a",
     color: "#fff",
     border: "none",
     borderRadius: "5px",
     cursor: "pointer",
     fontSize: "14px",
-    transition: "background-color 0.3s ease",
+    transition: "background-color 0.3s ease, transform 0.3s ease",
     marginLeft: "10px",
-    marginTop: "-10px", // Move the button higher
+    marginTop: "-10px",
   },
-  buttonHover: {
+  addButtonHover: {
     ':hover': {
       backgroundColor: "#0056b3",
+      transform: "scale(1.05)",
     }
   },
   deleteButton: {
     padding: "5px 10px",
-    backgroundColor: "#DC3545",
+    backgroundColor: "#56008a",
     color: "#fff",
     border: "none",
     borderRadius: "5px",
     cursor: "pointer",
     fontSize: "14px",
     marginTop: "10px",
+    transition: "background-color 0.3s ease, transform 0.3s ease",
+  },
+  deleteButtonHover: {
+    ':hover': {
+      backgroundColor: "#0056b3",
+      transform: "scale(1.05)",
+    }
   },
   errorText: {
     color: "red",
@@ -394,6 +417,8 @@ const styles = {
     padding: "20px",
     border: "1px solid #ccc",
     borderRadius: "5px",
+    backgroundColor: "#fff",
+    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
   },
   keywordsSection: {
     display: "flex",
@@ -409,11 +434,16 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     gap: "10px",
-    border: "2px solid #ccc", // Gray highlight
+    border: "2px solid #ccc",
     borderRadius: "5px",
     padding: "10px",
-    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
-    transition: "background-color 0.3s ease",
+    transition: "background-color 0.3s ease, transform 0.3s ease",
+  },
+  candidateContainerHover: {
+    ':hover': {
+      backgroundColor: "#e0e0e0",
+      transform: "scale(1.02)",
+    }
   },
   candidateInputField: {
     width: "100%",
@@ -423,33 +453,30 @@ const styles = {
     fontSize: "14px",
     color: "#333",
   },
-  candidateContainerHover: {
-    ':hover': {
-      backgroundColor: "#e0e0e0", // Slightly darker highlight
-    }
-  },
   predictButton: {
     padding: "10px 15px",
-    backgroundColor: "#17a2b8", // User-friendly color
+    backgroundColor: "#56008a",
     color: "#fff",
     border: "none",
     borderRadius: "5px",
     cursor: "pointer",
     fontSize: "16px",
-    transition: "background-color 0.3s ease",
+    transition: "background-color 0.3s ease, transform 0.3s ease",
     marginTop: "10px",
   },
   predictButtonHover: {
     ':hover': {
       backgroundColor: "#138496",
+      transform: "scale(1.05)",
     }
   },
   bestContributor: {
     marginTop: "20px",
     padding: "15px",
-    border: "1px solid #28A745",
+    border: "1px solid #a287b0", // Changed color
     borderRadius: "5px",
-    color: "#28A745",
+    color: "#a287b0", // Changed color
+    backgroundColor: "#f0eaf4", // Adjusted background color to match the new color scheme
   },
   pre: {
     backgroundColor: "#f0f0f0",
@@ -466,12 +493,12 @@ const styles = {
   navButton: {
     padding: "8px 16px",
     backgroundColor: "transparent",
-    color: "#000", // Black color for the arrow
-    border: "2px solid #000", // Black highlight around the transparent circle
+    color: "#000",
+    border: "2px solid #000",
     borderRadius: "50%",
     cursor: "pointer",
-    fontSize: "20px", // Slightly smaller font size
-    fontWeight: "bold", // Bold font for highlighting
+    fontSize: "20px",
+    fontWeight: "bold",
     transition: "background-color 0.3s ease, transform 0.3s ease",
     position: "absolute",
     top: "50%",
@@ -479,8 +506,8 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    width: "40px", // Smaller width
-    height: "40px", // Smaller height
+    width: "40px",
+    height: "40px",
   },
   navButtonHover: {
     ':hover': {
@@ -490,14 +517,24 @@ const styles = {
     }
   },
   leftNavButton: {
-    left: "-20px", // Adjusted to fit the new button size
+    left: "-20px",
   },
   rightNavButton: {
-    right: "-20px", // Adjusted to fit the new button size
+    right: "-20px",
   },
   sectionContainer: {
     position: "relative",
     marginBottom: "20px",
+    width: "100%",
+  },
+  profileLink: {
+    marginLeft: "10px",
+    textDecoration: "none",
+  },
+  profileIcon: {
+    width: "20px",
+    height: "20px",
+    verticalAlign: "middle",
   },
 };
 
