@@ -8,6 +8,7 @@ import PadHeader from "../components/PadHeader";
 import PadSidebar from "../components/PadSidebar";
 import CiteSidebar from "../components/CiteSideBar";
 import AcademicTextModal from "../components/AcademicTextModal";
+import LoadingScreen from "../animation/documentLoading"
 
 
 const socket = io(`${process.env.REACT_APP_BACKEND_API_URL}`);
@@ -27,6 +28,8 @@ const PadPage = () => {
   const [padName, setPadName] = useState("");
   const [showAcademicModal, setShowAcademicModal] = useState(false);
   const [convertedText, setConvertedText] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
 
   const editorRef = useRef(null);
 
@@ -240,6 +243,7 @@ const PadPage = () => {
       console.error("No token found");
       return;
     }
+    setIsLoading(true);
 
     try {
       const response = await fetch(
@@ -266,9 +270,13 @@ const PadPage = () => {
       // Clean up: remove the anchor and revoke the URL object
       a.remove();
       window.URL.revokeObjectURL(url);
+
+      // Optionally refresh the page
+      window.location.reload();
     } catch (error) {
       console.error("❌ Error fetching pad:", error);
     }
+    setIsLoading(false);
   };
 
   const handleReplaceText = () => {
@@ -303,116 +311,121 @@ const PadPage = () => {
         onGenerateReference={handleGenerateCiteSidebar}
         onGenerateIEEE={FetchPadData}
       />
-      <div style={mainContentStyle}>
-        <div
-          className="container sticky-top bg-white py-3"
-          style={{ zIndex: 900 }}
-        >
-          <PadHeader
-            padName={padName}
-            padId={padId}
-            onToggleSidebar={toggleSidebar}
-            sidebarOpen={sidebarOpen}
-            onConvertToAcademic={handleConvertToAcademic}
-          />
-        </div>
-        <div className="container my-3">
-          {/* Main content */}
-          <Editor
-            padId={padId}
-            socket={socket}
-            userId={userId.current}
-            sections={sections}
-            setSections={setSections}
-            authors={authors}
-            setAuthors={setAuthors}
-            references={references}
-            ref={editorRef} // 2) pass ref to Editor
-            setReferences={setReferences}
-            setCurrentSelectionText={handleTextSelection}
-            setLastHighlightText={handleLastTextSelection}
-          />
-
-          {pad && pad.roles && pad.roles[userId.current] === "pad_owner" && (
-            <div
-              style={{
-                backgroundColor: "#f9f9f9",
-                padding: "20px",
-                borderRadius: "10px",
-                boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)",
-                textAlign: "center",
-                maxWidth: "400px",
-                margin: "20px auto",
-              }}
-            >
-              <h3 style={{ marginBottom: "15px", color: "#333", fontSize: "20px" }}>Add User</h3>
-
-              <input
-                type="email"
-                value={userEmail}
-                onChange={(e) => setUserEmail(e.target.value)}
-                placeholder="Enter user email"
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  borderRadius: "5px",
-                  border: "1px solid #ccc",
-                  marginBottom: "15px",
-                  fontSize: "14px",
-                  textAlign: "center",
-                  outline: "none",
-                }}
-              />
-
-              <button
-                onClick={addUserToPad}
-                style={{
-                  backgroundColor: "#56008a",
-                  color: "#fff",
-                  padding: "10px 15px",
-                  borderRadius: "5px",
-                  border: "none",
-                  cursor: "pointer",
-                  fontSize: "14px",
-                  fontWeight: "bold",
-                  transition: "0.3s ease",
-                }}
-                onMouseEnter={(e) => (e.target.style.backgroundColor = "#a287b0")}
-                onMouseLeave={(e) => (e.target.style.backgroundColor = "#56008a")}
-              >
-                ➕ Add User as Editor
-              </button>
-            </div>
-
-          )}
-
-          <h2>Active Users:</h2>
-          {users.length > 0 ? (
-            <ul>
-              {users.map((user) => (
-                <li key={user.userId}>
-                  {user.userName}{" "}
-                  {pad?.roles && pad.roles[user.userId] === "pad_owner"
-                    ? "(Owner)"
-                    : ""}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>⚠️ No active users yet.</p>
-          )}
-
-          {/* Render Mindmap Modal */}
-          {showMindmap && (
-            <MindmapModal
-              show={showMindmap}
-              onClose={() => setShowMindmap(false)}
-              selectedText={selectedText}
+      {isLoading ? (
+        <LoadingScreen />
+      ) : (
+        <div style={mainContentStyle}>
+          <div
+            className="container sticky-top bg-white py-3"
+            style={{ zIndex: 900 }}
+          >
+            <PadHeader
+              padName={padName}
               padId={padId}
+              onToggleSidebar={toggleSidebar}
+              sidebarOpen={sidebarOpen}
+              onConvertToAcademic={handleConvertToAcademic}
             />
-          )}
+          </div>
+          <div className="container my-3">
+            {/* Main content */}
+            <Editor
+              padId={padId}
+              socket={socket}
+              userId={userId.current}
+              sections={sections}
+              setSections={setSections}
+              authors={authors}
+              setAuthors={setAuthors}
+              references={references}
+              ref={editorRef} // 2) pass ref to Editor
+              setReferences={setReferences}
+              setCurrentSelectionText={handleTextSelection}
+              setLastHighlightText={handleLastTextSelection}
+            />
+
+            {pad && pad.roles && pad.roles[userId.current] === "pad_owner" && (
+              <div
+                style={{
+                  backgroundColor: "#f9f9f9",
+                  padding: "20px",
+                  borderRadius: "10px",
+                  boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)",
+                  textAlign: "center",
+                  maxWidth: "400px",
+                  margin: "20px auto",
+                }}
+              >
+                <h3 style={{ marginBottom: "15px", color: "#333", fontSize: "20px" }}>Add User</h3>
+
+                <input
+                  type="email"
+                  value={userEmail}
+                  onChange={(e) => setUserEmail(e.target.value)}
+                  placeholder="Enter user email"
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    borderRadius: "5px",
+                    border: "1px solid #ccc",
+                    marginBottom: "15px",
+                    fontSize: "14px",
+                    textAlign: "center",
+                    outline: "none",
+                  }}
+                />
+
+                <button
+                  onClick={addUserToPad}
+                  style={{
+                    backgroundColor: "#56008a",
+                    color: "#fff",
+                    padding: "10px 15px",
+                    borderRadius: "5px",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: "14px",
+                    fontWeight: "bold",
+                    transition: "0.3s ease",
+                  }}
+                  onMouseEnter={(e) => (e.target.style.backgroundColor = "#a287b0")}
+                  onMouseLeave={(e) => (e.target.style.backgroundColor = "#56008a")}
+                >
+                  ➕ Add User as Editor
+                </button>
+              </div>
+
+            )}
+
+            <h2>Active Users:</h2>
+            {users.length > 0 ? (
+              <ul>
+                {users.map((user) => (
+                  <li key={user.userId}>
+                    {user.userName}{" "}
+                    {pad?.roles && pad.roles[user.userId] === "pad_owner"
+                      ? "(Owner)"
+                      : ""}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>⚠️ No active users yet.</p>
+            )}
+
+            {/* Render Mindmap Modal */}
+            {showMindmap && (
+              <MindmapModal
+                show={showMindmap}
+                onClose={() => setShowMindmap(false)}
+                selectedText={selectedText}
+                padId={padId}
+              />
+            )}
+          </div>
         </div>
-      </div>
+      )}
+
       {isCiteSidebarOpen && (
         <CiteSidebar
           isOpen={isCiteSidebarOpen}

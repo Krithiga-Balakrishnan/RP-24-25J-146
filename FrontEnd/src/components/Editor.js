@@ -1275,6 +1275,7 @@ useImperativeHandle(ref, () => ({
               keyword: keywords,
             });
           }}
+          
         />
         <h2 className="section-subtitle">Abstract</h2>
         <textarea
@@ -1292,6 +1293,11 @@ useImperativeHandle(ref, () => ({
               abstract,
               keyword: keywords,
             });
+          }}
+          style={{
+           
+            minHeight: "150px", // Initial larger height
+           
           }}
         />
         <h2 className="section-subtitle">Keywords</h2>
