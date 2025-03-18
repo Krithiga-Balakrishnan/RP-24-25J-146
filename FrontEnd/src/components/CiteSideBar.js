@@ -19,7 +19,7 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData, ref
   const [citationStyle, setCitationStyle] = useState("IEEE");
   const [showCitationOptions, setShowCitationOptions] = useState(false);
   const baseApiUrl_Search = `${process.env.REACT_APP_BACKEND_API_URL_REFERENCE_SEARCH}`;
-  const baseApiUrl_Citation = `${process.env.REACT_APP_BACKEND_API_URL_REFERENCE_SEARCH}`;
+  const baseApiUrl_Citation = `${process.env.REACT_APP_BACKEND_API_URL_CITATION}`;
   // const [papers, setPapers] = useState([
   //   {
   //     paper_id: "default1",
