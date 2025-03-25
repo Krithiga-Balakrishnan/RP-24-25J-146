@@ -183,16 +183,92 @@ const SavedMindmap = () => {
     const syncMindmapToDatabase = async (updatedNodes, updatedLinks) => {
       try {
         console.log("Called mindmap update in the database.");
+
+        // === NEW: Generate updated image (same logic as handleSave) ===
+        const svgElement = d3.select(graphRef.current).select("svg").node();
+        if (!svgElement) {
+          console.error("SVG element not found.");
+          return;
+        }
+        const clonedSvg = svgElement.cloneNode(true);
+        const tempContainer = document.createElement("div");
+        tempContainer.style.visibility = "hidden";
+        document.body.appendChild(tempContainer);
+        tempContainer.appendChild(clonedSvg);
+        const bbox = clonedSvg.getBBox();
+        document.body.removeChild(tempContainer);
+
+        const offsetX = -Math.min(bbox.x, 0);
+        const offsetY = -Math.min(bbox.y, 0);
+        const canvasWidth = bbox.width + offsetX;
+        const canvasHeight = bbox.height + offsetY;
+
+        clonedSvg.setAttribute("width", canvasWidth);
+        clonedSvg.setAttribute("height", canvasHeight);
+        clonedSvg.setAttribute(
+          "viewBox",
+          `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`
+        );
+
+        const svgData = new XMLSerializer().serializeToString(clonedSvg);
+        const svgBlob = new Blob([svgData], {
+          type: "image/svg+xml;charset=utf-8",
+        });
+        const url = URL.createObjectURL(svgBlob);
+
+        const base64Image = await new Promise((resolve, reject) => {
+          const image = new Image();
+          image.crossOrigin = "anonymous";
+          image.onload = () => {
+            const desiredOutputWidth = 6000;
+            const scale = desiredOutputWidth / canvasWidth;
+            const finalCanvasWidth = Math.floor(canvasWidth * scale);
+            const finalCanvasHeight = Math.floor(canvasHeight * scale);
+            const canvas = document.createElement("canvas");
+            canvas.width = finalCanvasWidth;
+            canvas.height = finalCanvasHeight;
+            const ctx = canvas.getContext("2d");
+
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = "high";
+            ctx.fillStyle = "white";
+            ctx.fillRect(0, 0, finalCanvasWidth, finalCanvasHeight);
+
+            ctx.scale(scale, scale);
+            ctx.translate(offsetX, offsetY);
+            ctx.drawImage(image, -offsetX, -offsetY);
+
+            canvas.toBlob((blob) => {
+              if (!blob) {
+                reject("Failed to generate image blob.");
+                return;
+              }
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result);
+              reader.readAsDataURL(blob);
+            }, "image/png");
+          };
+          image.onerror = (err) => reject(err);
+          image.src = url;
+        });
+        // === END NEW ===
+
         const token = localStorage.getItem("token");
+        const payload = {
+          nodes: updatedNodes,
+          links: updatedLinks,
+          image: base64Image,
+        };
+        console.log("Payload: ", payload);
         const response = await fetch(
-          `${process.env.REACT_APP_BACKEND_API_URL}/api/mindmaps/${_id}`, // <-- Your mindmap ID
+          `${process.env.REACT_APP_BACKEND_API_URL}/api/mindmaps/${_id}`,
           {
-            method: "PUT", // or PATCH if your API expects partial updates
+            method: "PUT",
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({ nodes: updatedNodes, links: updatedLinks }),
+            body: JSON.stringify(payload),
           }
         );
         if (!response.ok) {
@@ -203,7 +279,7 @@ const SavedMindmap = () => {
         console.log("Mindmap updated in the database.");
 
         // ──────────────────────────────────────────
-        // **Broadcast** to other connected clients:
+        // Broadcast to other connected clients:
         // ──────────────────────────────────────────
         const userId = localStorage.getItem("userId");
         socketRef.current.emit("update-mindmap", {

@@ -82,16 +82,21 @@ router.get('/user/:userId', async (req, res) => {
 // PUT /api/mindmaps/:id - Update an existing mindmap by its ID
 router.put('/:id', async (req, res) => {
   try {
-    const { nodes, links } = req.body;
+    const { nodes, links, image } = req.body; // include image
     // Validate that nodes and links are provided (optional)
     if (!nodes || !links) {
       return res.status(400).json({ message: 'Nodes and links data are required.' });
     }
     
-    // Find the mindmap by ID and update with new nodes and links
+    // Find the mindmap by ID and update with new nodes, links, and image if provided
+    const updateData = { nodes, links };
+    if (image) {
+      updateData.image = image;
+    }
+    
     const updatedMindmap = await Mindmap.findByIdAndUpdate(
       req.params.id,
-      { nodes, links },
+      updateData,
       { new: true } // Return the updated document
     );
     
@@ -111,6 +116,7 @@ router.put('/:id', async (req, res) => {
     });
   }
 });
+
 
 // PUT /api/mindmaps/:id/addUser - Add a user to a mindmap
 router.put('/:id/addUser', async (req, res) => {
