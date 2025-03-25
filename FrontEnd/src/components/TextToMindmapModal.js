@@ -251,7 +251,9 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
               links: linksRef.current,
               image: base64Image,
               downloadDate: new Date().toISOString(),
-              userId,
+              users: [
+                { userId, role: "owner" } // Setting the creator's role as 'owner'
+              ],
             };
 
             try {

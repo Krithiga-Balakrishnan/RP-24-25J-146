@@ -16,6 +16,7 @@ import ViewProfile from "./pages/ViewProfile";
 import ProtectedRoute from "./pages/ProtectedRoute";
 import LoadingScreen from "./pages/LoadingScreen";
 import DocumentMindmap from "./pages/DocumentMindmap";
+import SavedMindmap from "./pages/SavedMindmap";
 
 import { UserProvider } from "./context/UserContext";
 
@@ -44,6 +45,7 @@ function App() {
             <Route path="/ieee" element={<Ieee />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/mindmap/pad/:mindmap" element={<DocumentMindmap />} />
+            <Route path="/mindmap/:mindmap" element={<SavedMindmap />} />
             <Route path="/profile/view" element={<ViewProfile />} />
             <Route path="/contributor" element={<Contributor />} />
             <Route path="/pad/results/" element={<Results />} />

@@ -444,7 +444,9 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
               links, // assuming these are your current link objects
               image: base64Image,
               downloadDate: new Date().toISOString(),
-              userId,
+              users: [
+                { userId, role: "owner" } // Setting the creator's role as 'owner'
+              ],
             };
 
             try {
@@ -2340,7 +2342,8 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
             ref={graphRef}
             style={{ width: "100%", height: "100%" }}
           ></div>
-          {loading && (
+        </div>
+        {loading && (
             <div
               style={{
                 position: "absolute",
@@ -2371,7 +2374,6 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
               </div>
             </div>
           )}
-        </div>
       </div>
 
       {fullScreenImageUrl && (
