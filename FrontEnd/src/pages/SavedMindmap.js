@@ -7,10 +7,12 @@ import { Wave } from "react-animated-text";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { io } from "socket.io-client";
+import { useNavigate } from "react-router-dom";
 
 const SavedMindmap = () => {
   const location = useLocation();
   const { _id } = location.state || {};
+  const navigate = useNavigate();
 
   // Create refs for key elements
   const [mindmapTitle, setMindmapTitle] = useState("");
@@ -46,6 +48,7 @@ const SavedMindmap = () => {
   const [activeMindmapUsers, setActiveMindmapUsers] = useState([]);
   const [newUserValue, setNewUserValue] = useState("");
   const [currentUserIsOwner, setCurrentUserIsOwner] = useState(false);
+  const [downloadDropdownVisible, setDownloadDropdownVisible] = useState(false);
 
   // Global variables for the mind map
   // Instead of let nodes/links, use refs to persist across renders:
@@ -79,6 +82,157 @@ const SavedMindmap = () => {
   if (!socketRef.current) {
     socketRef.current = io(process.env.REACT_APP_BACKEND_API_URL);
   }
+
+  const downloadAsPNG = () => {
+    const svgElement = d3.select(graphRef.current).select("svg").node();
+    if (!svgElement) {
+      console.error("SVG element not found.");
+      return;
+    }
+
+    // Clone the SVG element so that changes don’t affect the live DOM
+    const clonedSvg = svgElement.cloneNode(true);
+
+    // Append clone temporarily to the DOM for accurate bounding box measurement
+    const tempContainer = document.createElement("div");
+    tempContainer.style.visibility = "hidden";
+    document.body.appendChild(tempContainer);
+    tempContainer.appendChild(clonedSvg);
+
+    const bbox = clonedSvg.getBBox();
+    console.log("Computed BBox:", bbox);
+    tempContainer.remove();
+
+    // If parts of your SVG lie outside the (0,0) origin, calculate offsets to include them
+    const offsetX = -Math.min(bbox.x, 0);
+    const offsetY = -Math.min(bbox.y, 0);
+    const canvasWidth = bbox.width + offsetX;
+    const canvasHeight = bbox.height + offsetY;
+
+    // Set the cloned SVG dimensions and viewBox so it renders correctly
+    clonedSvg.setAttribute("width", canvasWidth);
+    clonedSvg.setAttribute("height", canvasHeight);
+    clonedSvg.setAttribute(
+      "viewBox",
+      `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`
+    );
+
+    // Serialize the SVG to a string and create a blob URL
+    const svgData = new XMLSerializer().serializeToString(clonedSvg);
+    const svgBlob = new Blob([svgData], {
+      type: "image/svg+xml;charset=utf-8",
+    });
+    const url = URL.createObjectURL(svgBlob);
+
+    // Set your desired output resolution (increase this value for higher quality)
+    const desiredOutputWidth = 24000;
+    // Compute the scale factor based solely on the desired output width
+    const scale = desiredOutputWidth / canvasWidth;
+
+    const image = new Image();
+    image.crossOrigin = "anonymous"; // Ensures external images are not tainted
+
+    image.onload = () => {
+      // Calculate final canvas dimensions based on the computed scale
+      const finalCanvasWidth = Math.floor(canvasWidth * scale);
+      const finalCanvasHeight = Math.floor(canvasHeight * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = finalCanvasWidth;
+      canvas.height = finalCanvasHeight;
+      const ctx = canvas.getContext("2d");
+
+      // Enable high-quality image smoothing
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+
+      // Fill the canvas background with white (optional, in case of transparency)
+      ctx.fillStyle = "white";
+      ctx.fillRect(0, 0, finalCanvasWidth, finalCanvasHeight);
+
+      // Apply the scaling transformation to the canvas context
+      ctx.scale(scale, scale);
+      // Translate the context so that negative offsets are handled correctly
+      ctx.translate(offsetX, offsetY);
+      // Draw the image; the negative translation ensures the full content appears
+      ctx.drawImage(image, -offsetX, -offsetY);
+
+      // Convert the canvas to a PNG blob and trigger download
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(blob);
+          link.download = "mindmap.png";
+          link.click();
+          URL.revokeObjectURL(link.href);
+          toast.success("Mindmap downloaded");
+        } else {
+          console.warn("toBlob returned null, falling back to toDataURL");
+          const dataUrl = canvas.toDataURL("image/png");
+          const link = document.createElement("a");
+          link.href = dataUrl;
+          link.download = "mindmap.png";
+          link.click();
+          toast.success("Mindmap downloaded (fallback method)");
+        }
+      }, "image/png");
+    };
+
+    image.src = url;
+  };
+
+  const downloadAsSVG = () => {
+    const svgElement = d3.select(graphRef.current).select("svg").node();
+    if (!svgElement) {
+      console.error("SVG element not found.");
+      return;
+    }
+
+    // 1) Clone the SVG so we don’t affect the live DOM
+    const clonedSvg = svgElement.cloneNode(true);
+
+    // 2) Append clone to a hidden container to measure bounding box
+    const tempContainer = document.createElement("div");
+    tempContainer.style.visibility = "hidden";
+    document.body.appendChild(tempContainer);
+    tempContainer.appendChild(clonedSvg);
+
+    // 3) Measure bounding box
+    const bbox = clonedSvg.getBBox();
+    console.log("Computed BBox (SVG):", bbox);
+    document.body.removeChild(tempContainer);
+
+    // 4) Compute offsets if content is at negative x/y
+    const offsetX = -Math.min(bbox.x, 0);
+    const offsetY = -Math.min(bbox.y, 0);
+    const finalWidth = bbox.width + offsetX;
+    const finalHeight = bbox.height + offsetY;
+
+    // 5) Set <svg> dimensions and viewBox
+    clonedSvg.setAttribute("width", finalWidth);
+    clonedSvg.setAttribute("height", finalHeight);
+    clonedSvg.setAttribute(
+      "viewBox",
+      `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`
+    );
+
+    // 6) Serialize and prepend XML declaration
+    const svgData = clonedSvg.outerHTML;
+    const svgString = `<?xml version="1.0" encoding="UTF-8"?>\n${svgData}`;
+
+    // 7) Create a Blob URL and download
+    const svgBlob = new Blob([svgString], {
+      type: "image/svg+xml;charset=utf-8",
+    });
+    const url = URL.createObjectURL(svgBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "mindmap.svg";
+    link.click();
+    URL.revokeObjectURL(url);
+
+    toast.success("Mindmap downloaded as SVG");
+  };
+
   useEffect(() => {
     const modal = modalRef.current;
     const mindmapContainer = graphRef.current;
@@ -293,101 +447,10 @@ const SavedMindmap = () => {
       }
     };
 
-    const handleDownload = () => {
-      const svgElement = d3.select(graphRef.current).select("svg").node();
-      if (!svgElement) {
-        console.error("SVG element not found.");
-        return;
-      }
-
-      // Clone the SVG element so that changes don’t affect the live DOM
-      const clonedSvg = svgElement.cloneNode(true);
-
-      // Append clone temporarily to the DOM for accurate bounding box measurement
-      const tempContainer = document.createElement("div");
-      tempContainer.style.visibility = "hidden";
-      document.body.appendChild(tempContainer);
-      tempContainer.appendChild(clonedSvg);
-
-      const bbox = clonedSvg.getBBox();
-      console.log("Computed BBox:", bbox);
-      tempContainer.remove();
-
-      // If parts of your SVG lie outside the (0,0) origin, calculate offsets to include them
-      const offsetX = -Math.min(bbox.x, 0);
-      const offsetY = -Math.min(bbox.y, 0);
-      const canvasWidth = bbox.width + offsetX;
-      const canvasHeight = bbox.height + offsetY;
-
-      // Set the cloned SVG dimensions and viewBox so it renders correctly
-      clonedSvg.setAttribute("width", canvasWidth);
-      clonedSvg.setAttribute("height", canvasHeight);
-      clonedSvg.setAttribute(
-        "viewBox",
-        `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`
-      );
-
-      // Serialize the SVG to a string and create a blob URL
-      const svgData = new XMLSerializer().serializeToString(clonedSvg);
-      const svgBlob = new Blob([svgData], {
-        type: "image/svg+xml;charset=utf-8",
-      });
-      const url = URL.createObjectURL(svgBlob);
-
-      // Set your desired output resolution (increase this value for higher quality)
-      const desiredOutputWidth = 24000;
-      // Compute the scale factor based solely on the desired output width
-      const scale = desiredOutputWidth / canvasWidth;
-
-      const image = new Image();
-      image.crossOrigin = "anonymous"; // Ensures external images are not tainted
-
-      image.onload = () => {
-        // Calculate final canvas dimensions based on the computed scale
-        const finalCanvasWidth = Math.floor(canvasWidth * scale);
-        const finalCanvasHeight = Math.floor(canvasHeight * scale);
-        const canvas = document.createElement("canvas");
-        canvas.width = finalCanvasWidth;
-        canvas.height = finalCanvasHeight;
-        const ctx = canvas.getContext("2d");
-
-        // Enable high-quality image smoothing
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = "high";
-
-        // Fill the canvas background with white (optional, in case of transparency)
-        ctx.fillStyle = "white";
-        ctx.fillRect(0, 0, finalCanvasWidth, finalCanvasHeight);
-
-        // Apply the scaling transformation to the canvas context
-        ctx.scale(scale, scale);
-        // Translate the context so that negative offsets are handled correctly
-        ctx.translate(offsetX, offsetY);
-        // Draw the image; the negative translation ensures the full content appears
-        ctx.drawImage(image, -offsetX, -offsetY);
-
-        // Convert the canvas to a PNG blob and trigger download
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = "mindmap.png";
-            link.click();
-            URL.revokeObjectURL(link.href);
-            toast.success("Mindmap downloaded");
-          } else {
-            console.warn("toBlob returned null, falling back to toDataURL");
-            const dataUrl = canvas.toDataURL("image/png");
-            const link = document.createElement("a");
-            link.href = dataUrl;
-            link.download = "mindmap.png";
-            link.click();
-            toast.success("Mindmap downloaded (fallback method)");
-          }
-        }, "image/png");
-      };
-
-      image.src = url;
+    const handleDownload = (e) => {
+      // Toggle dropdown visibility on button click
+      setDownloadDropdownVisible((prev) => !prev);
+      e.stopPropagation();
     };
 
     const handleSave = async () => {
@@ -734,7 +797,7 @@ const SavedMindmap = () => {
         console.warn("Hierarchy is null, skipping update.");
         return;
       }
-      
+
       hierarchyData.each((node) => {
         const dataNode = nodesRef.current.find((n) => n.id === node.data.id);
         if (dataNode && dataNode.depth == null) {
@@ -977,6 +1040,10 @@ const SavedMindmap = () => {
     async function buildFullMindmap(mindmapId) {
       try {
         const token = localStorage.getItem("token");
+        if (!token || !mindmapId) {
+          navigate("/mindmap");
+          return;
+        }
         const response = await fetch(
           `${process.env.REACT_APP_BACKEND_API_URL}/api/mindmaps/${mindmapId}`,
           { headers: { Authorization: `Bearer ${token}` } }
@@ -1265,6 +1332,8 @@ const SavedMindmap = () => {
         nodeId: null,
         userName,
       });
+
+      setDownloadDropdownVisible(false);
     };
 
     const handleKeyDown = (event) => {
@@ -1841,7 +1910,7 @@ const SavedMindmap = () => {
                         <i className="bi bi-save"></i>
                       </button>
                     </div>
-                    <div className="p-1 col-6">
+                    <div className="p-1 col-6" style={{ position: "relative" }}>
                       <button
                         id="download-map"
                         ref={downloadBtnRef}
@@ -1849,6 +1918,51 @@ const SavedMindmap = () => {
                       >
                         <i className="bi bi-download"></i>
                       </button>
+                      {downloadDropdownVisible && (
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: "100%",
+                            right: 0,
+                            zIndex: 999,
+                            background: "#fff",
+                            border: "1px solid #ccc",
+                            padding: "2px",
+                            boxShadow: "0 2px 5px rgba(0,0,0,0.3)",
+                          }}
+                        >
+                          <button
+                            className="btn btn-primary primary-button btn-custom w-100"
+                            onClick={() => {
+                              setDownloadDropdownVisible(false);
+                              downloadAsPNG();
+                            }}
+                            style={{
+                              display: "block",
+                              marginTop: "5px",
+                              marginBottom: "5px",
+                              paddingLeft: "40px",
+                              paddingRight: "40px", 
+                            }}
+                          >
+                            PNG
+                          </button>
+                          <button
+                            className="btn btn-primary primary-button btn-custom w-100"
+                            onClick={() => {
+                              setDownloadDropdownVisible(false);
+                              downloadAsSVG();
+                            }}
+                            style={{ 
+                              display: "block", 
+                              marginBottom: "5px",
+                              paddingLeft: "40px",
+                              paddingRight: "40px",  }}
+                          >
+                            SVG
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1931,7 +2045,8 @@ const SavedMindmap = () => {
                   ref={graphRef}
                   style={{ width: "100%", height: "100%" }}
                 ></div>
-                {loading && (
+              </div>
+              {loading && (
                   <div
                     style={{
                       position: "absolute",
@@ -1962,7 +2077,6 @@ const SavedMindmap = () => {
                     </div>
                   </div>
                 )}
-              </div>
             </div>
 
             {fullScreenImageUrl && (
