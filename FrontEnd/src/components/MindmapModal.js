@@ -4,8 +4,8 @@ import * as d3 from "d3";
 import Lottie from "react-lottie-player";
 import Loading from "../animation/mindmap-loading.json";
 import { Wave } from "react-animated-text";
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const MindmapModal = ({ show, onClose, selectedText, padId }) => {
   // Create refs for key elements in the modal
@@ -27,6 +27,7 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
   const hasFetchedDatabaseRef = useRef(false);
   const [imageCatalog, setImageCatalog] = useState([]);
   const imageCatalogRef = useRef([]);
+  const [downloadDropdownVisible, setDownloadDropdownVisible] = useState(false);
 
   // Global variables for the mind map (internal to this component)
   let nodes = [];
@@ -228,6 +229,156 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
     return null;
   }
 
+  const downloadAsPNG = () => {
+    const svgElement = d3.select(graphRef.current).select("svg").node();
+    if (!svgElement) {
+      console.error("SVG element not found.");
+      return;
+    }
+
+    // Clone the SVG element so that changes don’t affect the live DOM
+    const clonedSvg = svgElement.cloneNode(true);
+
+    // Append clone temporarily to the DOM for accurate bounding box measurement
+    const tempContainer = document.createElement("div");
+    tempContainer.style.visibility = "hidden";
+    document.body.appendChild(tempContainer);
+    tempContainer.appendChild(clonedSvg);
+
+    const bbox = clonedSvg.getBBox();
+    console.log("Computed BBox:", bbox);
+    tempContainer.remove();
+
+    // If parts of your SVG lie outside the (0,0) origin, calculate offsets to include them
+    const offsetX = -Math.min(bbox.x, 0);
+    const offsetY = -Math.min(bbox.y, 0);
+    const canvasWidth = bbox.width + offsetX;
+    const canvasHeight = bbox.height + offsetY;
+
+    // Set the cloned SVG dimensions and viewBox so it renders correctly
+    clonedSvg.setAttribute("width", canvasWidth);
+    clonedSvg.setAttribute("height", canvasHeight);
+    clonedSvg.setAttribute(
+      "viewBox",
+      `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`
+    );
+
+    // Serialize the SVG to a string and create a blob URL
+    const svgData = new XMLSerializer().serializeToString(clonedSvg);
+    const svgBlob = new Blob([svgData], {
+      type: "image/svg+xml;charset=utf-8",
+    });
+    const url = URL.createObjectURL(svgBlob);
+
+    // Set your desired output resolution (increase this value for higher quality)
+    const desiredOutputWidth = 24000;
+    // Compute the scale factor based solely on the desired output width
+    const scale = desiredOutputWidth / canvasWidth;
+
+    const image = new Image();
+    image.crossOrigin = "anonymous"; // Ensures external images are not tainted
+
+    image.onload = () => {
+      // Calculate final canvas dimensions based on the computed scale
+      const finalCanvasWidth = Math.floor(canvasWidth * scale);
+      const finalCanvasHeight = Math.floor(canvasHeight * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = finalCanvasWidth;
+      canvas.height = finalCanvasHeight;
+      const ctx = canvas.getContext("2d");
+
+      // Enable high-quality image smoothing
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+
+      // Fill the canvas background with white (optional, in case of transparency)
+      ctx.fillStyle = "white";
+      ctx.fillRect(0, 0, finalCanvasWidth, finalCanvasHeight);
+
+      // Apply the scaling transformation to the canvas context
+      ctx.scale(scale, scale);
+      // Translate the context so that negative offsets are handled correctly
+      ctx.translate(offsetX, offsetY);
+      // Draw the image; the negative translation ensures the full content appears
+      ctx.drawImage(image, -offsetX, -offsetY);
+
+      // Convert the canvas to a PNG blob and trigger download
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(blob);
+          link.download = "mindmap.png";
+          link.click();
+          URL.revokeObjectURL(link.href);
+          toast.success("Mindmap downloaded");
+        } else {
+          console.warn("toBlob returned null, falling back to toDataURL");
+          const dataUrl = canvas.toDataURL("image/png");
+          const link = document.createElement("a");
+          link.href = dataUrl;
+          link.download = "mindmap.png";
+          link.click();
+          toast.success("Mindmap downloaded (fallback method)");
+        }
+      }, "image/png");
+    };
+
+    image.src = url;
+  };
+
+  const downloadAsSVG = () => {
+    const svgElement = d3.select(graphRef.current).select("svg").node();
+    if (!svgElement) {
+      console.error("SVG element not found.");
+      return;
+    }
+
+    // 1) Clone the SVG so we don’t affect the live DOM
+    const clonedSvg = svgElement.cloneNode(true);
+
+    // 2) Append clone to a hidden container to measure bounding box
+    const tempContainer = document.createElement("div");
+    tempContainer.style.visibility = "hidden";
+    document.body.appendChild(tempContainer);
+    tempContainer.appendChild(clonedSvg);
+
+    // 3) Measure bounding box
+    const bbox = clonedSvg.getBBox();
+    console.log("Computed BBox (SVG):", bbox);
+    document.body.removeChild(tempContainer);
+
+    // 4) Compute offsets if content is at negative x/y
+    const offsetX = -Math.min(bbox.x, 0);
+    const offsetY = -Math.min(bbox.y, 0);
+    const finalWidth = bbox.width + offsetX;
+    const finalHeight = bbox.height + offsetY;
+
+    // 5) Set <svg> dimensions and viewBox
+    clonedSvg.setAttribute("width", finalWidth);
+    clonedSvg.setAttribute("height", finalHeight);
+    clonedSvg.setAttribute(
+      "viewBox",
+      `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`
+    );
+
+    // 6) Serialize and prepend XML declaration
+    const svgData = clonedSvg.outerHTML;
+    const svgString = `<?xml version="1.0" encoding="UTF-8"?>\n${svgData}`;
+
+    // 7) Create a Blob URL and download
+    const svgBlob = new Blob([svgString], {
+      type: "image/svg+xml;charset=utf-8",
+    });
+    const url = URL.createObjectURL(svgBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "mindmap.svg";
+    link.click();
+    URL.revokeObjectURL(url);
+
+    toast.success("Mindmap downloaded as SVG");
+  };
+
   useEffect(() => {
     if (!show) return;
 
@@ -264,101 +415,10 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
     }
     // ---------- Define Handler Functions ----------
 
-    const handleDownload = () => {
-      const svgElement = d3.select(graphRef.current).select("svg").node();
-      if (!svgElement) {
-        console.error("SVG element not found.");
-        return;
-      }
-
-      // Clone the SVG element so that changes don’t affect the live DOM
-      const clonedSvg = svgElement.cloneNode(true);
-
-      // Append clone temporarily to the DOM for accurate bounding box measurement
-      const tempContainer = document.createElement("div");
-      tempContainer.style.visibility = "hidden";
-      document.body.appendChild(tempContainer);
-      tempContainer.appendChild(clonedSvg);
-
-      const bbox = clonedSvg.getBBox();
-      console.log("Computed BBox:", bbox);
-      tempContainer.remove();
-
-      // If parts of your SVG lie outside the (0,0) origin, calculate offsets to include them
-      const offsetX = -Math.min(bbox.x, 0);
-      const offsetY = -Math.min(bbox.y, 0);
-      const canvasWidth = bbox.width + offsetX;
-      const canvasHeight = bbox.height + offsetY;
-
-      // Set the cloned SVG dimensions and viewBox so it renders correctly
-      clonedSvg.setAttribute("width", canvasWidth);
-      clonedSvg.setAttribute("height", canvasHeight);
-      clonedSvg.setAttribute(
-        "viewBox",
-        `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`
-      );
-
-      // Serialize the SVG to a string and create a blob URL
-      const svgData = new XMLSerializer().serializeToString(clonedSvg);
-      const svgBlob = new Blob([svgData], {
-        type: "image/svg+xml;charset=utf-8",
-      });
-      const url = URL.createObjectURL(svgBlob);
-
-      // Set your desired output resolution (increase this value for higher quality)
-      const desiredOutputWidth = 24000;
-      // Compute the scale factor based solely on the desired output width
-      const scale = desiredOutputWidth / canvasWidth;
-
-      const image = new Image();
-      image.crossOrigin = "anonymous"; // Ensures external images are not tainted
-
-      image.onload = () => {
-        // Calculate final canvas dimensions based on the computed scale
-        const finalCanvasWidth = Math.floor(canvasWidth * scale);
-        const finalCanvasHeight = Math.floor(canvasHeight * scale);
-        const canvas = document.createElement("canvas");
-        canvas.width = finalCanvasWidth;
-        canvas.height = finalCanvasHeight;
-        const ctx = canvas.getContext("2d");
-
-        // Enable high-quality image smoothing
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = "high";
-
-        // Fill the canvas background with white (optional, in case of transparency)
-        ctx.fillStyle = "white";
-        ctx.fillRect(0, 0, finalCanvasWidth, finalCanvasHeight);
-
-        // Apply the scaling transformation to the canvas context
-        ctx.scale(scale, scale);
-        // Translate the context so that negative offsets are handled correctly
-        ctx.translate(offsetX, offsetY);
-        // Draw the image; the negative translation ensures the full content appears
-        ctx.drawImage(image, -offsetX, -offsetY);
-
-        // Convert the canvas to a PNG blob and trigger download
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = "mindmap.png";
-            link.click();
-            URL.revokeObjectURL(link.href);
-            toast.success("Mindmap downloaded");
-          } else {
-            console.warn("toBlob returned null, falling back to toDataURL");
-            const dataUrl = canvas.toDataURL("image/png");
-            const link = document.createElement("a");
-            link.href = dataUrl;
-            link.download = "mindmap.png";
-            link.click();
-            toast.success("Mindmap saved (fallback method)");
-          }
-        }, "image/png");
-      };
-
-      image.src = url;
+    const handleDownload = (e) => {
+      // Toggle dropdown visibility on button click
+      setDownloadDropdownVisible((prev) => !prev);
+      e.stopPropagation();
     };
 
     const handleSave = async () => {
@@ -444,7 +504,9 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
               links, // assuming these are your current link objects
               image: base64Image,
               downloadDate: new Date().toISOString(),
-              userId,
+              users: [
+                { userId, role: "owner" }, // Setting the creator's role as 'owner'
+              ],
             };
 
             try {
@@ -586,6 +648,8 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
       if (!nodeGroup || !linkGroup) return;
 
       updateBlinking();
+
+      setDownloadDropdownVisible(false);
     };
 
     const handleKeyDown = (event) => {
@@ -1168,7 +1232,7 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
       try {
         hasFetchedDatabaseRef.current = true;
         console.log("fetchFromExtendDatabase");
-        
+
         const endpoint = "extend"; // Use the 'extend' endpoint
         const response = await fetch(`${baseApiUrl}/${endpoint}`, {
           method: "POST",
@@ -2010,7 +2074,7 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
       }
       downloadBtnRef.current &&
         downloadBtnRef.current.removeEventListener("click", handleDownload);
-        handleSaveBtnRef.current &&
+      handleSaveBtnRef.current &&
         handleSaveBtnRef.current.removeEventListener("click", handleSave);
       addNodeBtn.removeEventListener("click", handleAddNode);
       // addRelationBtn.removeEventListener("click", handleAddRelation);
@@ -2165,16 +2229,19 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
         {/* Title and Close Button Row */}
         <div
           style={{
+            position: "relative",
             display: "flex",
-            justifyContent: "space-between",
             alignItems: "center",
             width: "100%",
+            padding: "10px 0",
             marginBottom: "10px",
           }}
         >
           <h2
             style={{
-              margin: "0 auto",
+              flex: 1,
+              margin: 0,
+              textAlign: "center",
               fontSize: "1.5rem",
               color: "#333",
             }}
@@ -2185,6 +2252,8 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
             id="close-modal"
             ref={closeModalBtnRef}
             style={{
+              position: "absolute",
+              right: 0,
               backgroundColor: "transparent",
               border: "none",
               cursor: "pointer",
@@ -2250,7 +2319,7 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
                   <i className="bi bi-save"></i>
                 </button>
               </div>
-              <div className="p-1 col-2">
+              <div className="p-1 col-2" style={{ position: "relative" }}>
                 <button
                   id="download-map"
                   ref={downloadBtnRef}
@@ -2258,6 +2327,52 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
                 >
                   <i className="bi bi-download"></i>
                 </button>
+                {downloadDropdownVisible && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "100%",
+                      right: 0,
+                      zIndex: 999,
+                      background: "#fff",
+                      border: "1px solid #ccc",
+                      padding: "2px",
+                      boxShadow: "0 2px 5px rgba(0,0,0,0.3)",
+                    }}
+                  >
+                    <button
+                      className="btn btn-primary primary-button btn-custom w-100"
+                      onClick={() => {
+                        setDownloadDropdownVisible(false);
+                        downloadAsPNG();
+                      }}
+                      style={{
+                        display: "block",
+                        marginTop: "5px",
+                        marginBottom: "5px",
+                        paddingLeft: "40px",
+                        paddingRight: "40px",
+                      }}
+                    >
+                      PNG
+                    </button>
+                    <button
+                      className="btn btn-primary primary-button btn-custom w-100"
+                      onClick={() => {
+                        setDownloadDropdownVisible(false);
+                        downloadAsSVG();
+                      }}
+                      style={{
+                        display: "block",
+                        marginBottom: "5px",
+                        paddingLeft: "40px",
+                        paddingRight: "40px",
+                      }}
+                    >
+                      SVG
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -2340,38 +2455,38 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
             ref={graphRef}
             style={{ width: "100%", height: "100%" }}
           ></div>
-          {loading && (
-            <div
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: "100%",
-                height: "100%",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                background: "rgba(255, 255, 255, 0.8)",
-                zIndex: 1000,
-              }}
-            >
-              <Lottie
-                loop
-                animationData={Loading}
-                play
-                style={{ width: 150, height: 150 }}
-              />
-              <div className="mindmap-loading-container">
-                <Wave
-                  text="Loading Your Mind Map..."
-                  effect="fadeOut"
-                  effectChange={3.0}
-                />
-              </div>
-            </div>
-          )}
         </div>
+        {loading && (
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "rgba(255, 255, 255, 0.8)",
+              zIndex: 1000,
+            }}
+          >
+            <Lottie
+              loop
+              animationData={Loading}
+              play
+              style={{ width: 150, height: 150 }}
+            />
+            <div className="mindmap-loading-container">
+              <Wave
+                text="Loading Your Mind Map..."
+                effect="fadeOut"
+                effectChange={3.0}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {fullScreenImageUrl && (
@@ -2398,7 +2513,7 @@ const MindmapModal = ({ show, onClose, selectedText, padId }) => {
           />
         </div>
       )}
-       <ToastContainer />
+      <ToastContainer />
     </div>
   );
 };
