@@ -72,7 +72,7 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData, ref
 
       try {
         // const response = await fetch("https://b93e-34-106-54-141.ngrok-free.app/search/", {
-        const response = await fetch(`${baseApiUrl_Search}/search/`, {
+       const response = await fetch(`${baseApiUrl_Search}/search/`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
