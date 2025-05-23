@@ -153,7 +153,9 @@ function convertHtmlTableToLatex(tableHtml) {
 
   // Determine max columns
   const maxCols = Math.max(...rows.map(r => r.length), 0);
-  let latex = `\\begin{tabular}{|${"c|".repeat(maxCols)}}\n\\hline\n`;
+  //let latex = `\\begin{tabular}{|${"c|".repeat(maxCols)}}\n\\hline\n`;
+  let latex = `\\begin{tabularx}{\\linewidth}{|${"X|".repeat(maxCols)}}\n\\hline\n`;
+
 
   rows.forEach(cells => {
     while (cells.length < maxCols) {
@@ -162,7 +164,9 @@ function convertHtmlTableToLatex(tableHtml) {
     latex += cells.map(c => `\\textnormal{${c}}`).join(" & ") + " \\\\\n\\hline\n";
   });
 
-  latex += "\\end{tabular}\n";
+  //latex += "\\end{tabular}\n";
+  latex += "\\end{tabularx}\n";
+
   return latex;
 }
 

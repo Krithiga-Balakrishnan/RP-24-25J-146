@@ -1,22 +1,43 @@
 // test/ieeeRoutes.test.js
 
+const sinon = require('sinon');
+const child_process = require('child_process');
+const ejs = require('ejs');
+const fs = require('fs');
+const axios = require('axios');
+const resProto = require('express/lib/response');
+
+// 1) Stub exec before requiring the route, so the local `exec` in ieeeRoutes.js is stubbed.
+sinon.stub(child_process, 'exec').callsFake((cmd, cb) => cb(null, 'stdout', 'stderr'));
+
+// 2) Stub fs.existsSync so it always “finds” the PDF
+sinon.stub(fs, 'existsSync').returns(true);
+
+// 3) Stub ejs.renderFile to capture its `data` argument and return dummy LaTeX
+let capturedContent;
+sinon.stub(ejs, 'renderFile').callsFake((tplPath, data, opts, cb) => {
+  capturedContent = data;
+  cb(null, 'DUMMY LATEX');
+});
+
+// 4) Override res.download to return JSON of `capturedContent`
+sinon.stub(resProto, 'download').callsFake(function(_path, _name, _opts, cb) {
+  return this.status(200).json(capturedContent);
+});
+
+// Now require everything else
 const chai = require('chai');
 const expect = chai.expect;
 const request = require('supertest');
 const express = require('express');
-const sinon = require('sinon');
-const axios = require('axios');
-
-// Import the router and your Pad model
-const router = require('../routes/ieeeRoute');
+const router = require('../routes/ieeeRoutes');
 const Pad = require('../models/Pad');
 
-// Create an express app and attach middleware and the router for testing
 const app = express();
 app.use(express.json());
 app.use('/api/pads', router);
 
-// Sample Pad document for testing (using an in-memory stub)
+// In-memory samplePad with a valid `sections` array
 const samplePad = {
   _id: 'sample123',
   title: 'Sample Document',
@@ -26,35 +47,43 @@ const samplePad = {
   ],
   abstract: 'This is a sample abstract.',
   keyword: 'IEEE, AI, Academic Writing',
-  sections: [],
   image_path: "default_image_path.jpg",
-  references: []
+  references: [],
+  sections: [
+    {
+      title: "Test Section",
+      content: { ops: [{ insert: "This is a test section.\n" }] },
+      aiEnhancement: false,
+      subsections: []
+    }
+  ]
 };
 
-// Stub the Pad.findById method to simulate database operations
 before(() => {
-  sinon.stub(Pad, 'findById').callsFake((id) => {
-    if (id === samplePad._id) {
-      return { exec: () => Promise.resolve(samplePad) };
-    } else {
-      return { exec: () => Promise.resolve(null) };
-    }
-  });
+  // Stub the DB lookup to return samplePad or null
+  sinon.stub(Pad, 'findById').callsFake(id =>
+    id === samplePad._id
+      ? Promise.resolve(samplePad)
+      : Promise.resolve(null)
+  );
 });
 
 after(() => {
+  // Restore everything
+  child_process.exec.restore();
+  fs.existsSync.restore();
+  ejs.renderFile.restore();
+  resProto.download.restore();
   Pad.findById.restore();
 });
 
 describe('IEEE Routes', function() {
-
   describe('GET /api/pads/:padId', function() {
-
     it('should return a pad when a valid padId is provided', function(done) {
       request(app)
         .get('/api/pads/sample123')
         .expect(200)
-        .end(function(err, res) {
+        .end((err, res) => {
           if (err) return done(err);
           expect(res.body).to.have.property('title', samplePad.title);
           expect(res.body).to.have.property('abstract', samplePad.abstract);
@@ -66,7 +95,7 @@ describe('IEEE Routes', function() {
       request(app)
         .get('/api/pads/nonexistentId')
         .expect(404)
-        .end(function(err, res) {
+        .end((err, res) => {
           if (err) return done(err);
           expect(res.body).to.have.property('msg', 'Pad not found');
           done();
@@ -75,13 +104,12 @@ describe('IEEE Routes', function() {
   });
 
   describe('POST /api/pads/convert-text', function() {
-
     it('should return 400 if content is empty', function(done) {
       request(app)
         .post('/api/pads/convert-text')
         .send({ content: '' })
         .expect(400)
-        .end(function(err, res) {
+        .end((err, res) => {
           if (err) return done(err);
           expect(res.body).to.have.property('msg', 'No text provided for conversion.');
           done();
@@ -89,20 +117,18 @@ describe('IEEE Routes', function() {
     });
 
     it('should return converted text for valid content', function(done) {
-      // Stub the axios.post call that is made to the external AI API
-      const fakeResponse = { data: { converted_text: "Converted academic text." } };
-      const axiosStub = sinon.stub(axios, 'post').resolves(fakeResponse);
+      // Stub only the POST for this test
+      const fakeResp = { data: { converted_text: "Converted academic text." } };
+      const stub = sinon.stub(axios, 'post').resolves(fakeResp);
 
       request(app)
         .post('/api/pads/convert-text')
         .send({ content: 'Informal academic text.' })
         .expect(200)
-        .end(function(err, res) {
-          // Restore the stub after test execution
-          axiosStub.restore();
-          if(err) return done(err);
-          expect(res.body).to.have.property('converted_text');
-          expect(res.body.converted_text).to.equal("Converted academic text.");
+        .end((err, res) => {
+          stub.restore();
+          if (err) return done(err);
+          expect(res.body).to.have.property('converted_text', "Converted academic text.");
           done();
         });
     });
