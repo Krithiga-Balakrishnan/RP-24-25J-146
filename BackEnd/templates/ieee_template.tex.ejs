@@ -18,6 +18,7 @@
             \centering
             {<%= row[0].name %>}\\
             \emph{<%= row[0].affiliation || "Unknown Affiliation" %>}\\
+            <%= row[0].city || "Unknown City" %>\\
             <%= row[0].email || "No Email" %>
           \end{minipage}
         } \\ 
@@ -27,6 +28,7 @@
             \centering
             {<%= row[0].name %>}\\
             \emph{<%= row[0].affiliation || "Unknown Affiliation" %>}\\
+            <%= row[0].city || "Unknown City" %>\\
             <%= row[0].email || "No Email" %>
           \end{minipage}
         } &
@@ -35,6 +37,7 @@
             \centering
             {<%= row[1].name %>}\\
             \emph{<%= row[1].affiliation || "Unknown Affiliation" %>}\\
+            <%= row[1].city || "Unknown City" %>\\
             <%= row[1].email || "No Email" %>
           \end{minipage}
         } \\ 
@@ -44,6 +47,7 @@
             \centering
             {<%= author.name %>}\\
             \emph{<%= author.affiliation || "Unknown Affiliation" %>}\\
+            <%= row.city || "Unknown City" %>\\
             <%= author.email || "No Email" %>
           \end{minipage}
           <% if (index < row.length - 1) { %> & <% } %>

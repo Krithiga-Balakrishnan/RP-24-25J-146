@@ -172,30 +172,68 @@ function convertHtmlTableToLatex(tableHtml) {
 
 // **Extract images, tables, and formulas before sending text to AI**
 function extractNonTextElements(delta) {
-  let elements = [];
-  let cleanOps = [];
+  let sequence = [];
 
-  if (!delta || !delta.ops || !Array.isArray(delta.ops)) return { cleanDelta: delta, elements };
+  if (!delta || !delta.ops || !Array.isArray(delta.ops)) return { sequence };
 
-  delta.ops.forEach((op, index) => {
+  delta.ops.forEach((op) => {
     if (typeof op.insert === "string") {
-      cleanOps.push(op);
+      sequence.push({ type: "text", content: op.insert });
     } 
-    // Image
     else if (op.insert.imageWithCaption) {
-      elements.push({ index, type: "image", content: op.insert.imageWithCaption });
+      sequence.push({ type: "image", content: op.insert.imageWithCaption });
     } 
-    // Formula
     else if (op.insert.formulaWithCaption) {
-      elements.push({ index, type: "formula", content: op.insert.formulaWithCaption });
+      sequence.push({ type: "formula", content: op.insert.formulaWithCaption });
     } 
-    // Table
     else if (op.insert.tableWithCaption) {
-      elements.push({ index, type: "table", content: op.insert.tableWithCaption });
+      sequence.push({ type: "table", content: op.insert.tableWithCaption });
     }
   });
 
-  return { cleanDelta: { ops: cleanOps }, elements };
+  return { sequence };
+}
+
+
+
+async function convertParagraphsWithNonText(sequence, sectionTitle) {
+  const result = [];
+
+  for (const item of sequence) {
+    if (item.type === "text") {
+      const paragraphs = item.content.split(/\n+/).filter(p => p.trim() !== "");
+      for (const p of paragraphs) {
+        try {
+          const response = await axios.post(`${process.env.REACT_APP_BACKEND_API_URL_IEEE}/convert`, {
+            section: sectionTitle,
+            content: p,
+          });
+          result.push(response.data.converted_text || p);
+        } catch (err) {
+          console.error("Error converting paragraph:", err);
+          result.push(p);
+        }
+      }
+    } else if (item.type === "image") {
+      const { src = "", caption = "Image" } = item.content || {};
+      if (!src) continue;
+      const imagePath = `../uploads/${src.split("uploads/").pop()}`;
+      result.push(`\\begin{figure}[H]\n\\centering\n\\includegraphics[width=0.5\\textwidth]{${imagePath}}\n\\caption{${caption}}\n\\end{figure}`);
+    } else if (item.type === "formula") {
+      const { formula = "", caption = "" } = item.content || {};
+      if (!formula) continue;
+      result.push(`\\begin{equation}\n${formula}\n\\end{equation}\n\\textit{${caption}}`);
+    }
+    
+    else if (item.type === "table") {
+      const { tableHtml = "", caption = "Table" } = item.content || {};
+      if (!tableHtml) continue;
+      const tabularLatex = convertHtmlTableToLatex(tableHtml);
+      result.push(`\\begin{table}[H]\n\\centering\n\\caption{${caption}}\n${tabularLatex}\n\\end{table}`);
+    }
+  }
+
+  return result.join("\n\n");
 }
 
 // **Reinsert images, tables, and formulas after AI enhancement**
@@ -332,56 +370,55 @@ async function convertTextParagraphWise(text, sectionTitle) {
 
 async function convertSectionsByFullText(sections) {
   for (let section of sections) {
-    let { cleanDelta, elements } = extractNonTextElements(section.originalDelta || {});
-   // let cleanText = convertDeltaToPlainText(cleanDelta);
-    let cleanText = convertDeltaToPlainText(cleanDelta);
-    
-    if (section.aiEnhancement && cleanText.trim()) {
+    const { sequence } = extractNonTextElements(section.originalDelta || {});
+
+    if (section.aiEnhancement && sequence.length) {
       try {
-        const response = await axios.post(`${process.env.REACT_APP_BACKEND_API_URL_IEEE}/convert`, {
-          section: section.title, content: cleanText
-        });
-        section.content = processAbbreviations(response.data.converted_text || cleanText);
+        const converted = await convertParagraphsWithNonText(sequence, section.title);
+        section.content = processAbbreviations(converted);
       } catch (apiErr) {
         console.error("Conversion API error:", apiErr);
-        section.content = processAbbreviations(cleanText);
+        //section.content = processAbbreviations(sequence.map(i => i.content).join("\n"));
+        const fallbackLatex = await convertParagraphsWithNonText(sequence, section.title);
+        section.content = processAbbreviations(fallbackLatex);
       }
     } else {
-      section.content = processAbbreviations(cleanText);
+      //section.content = processAbbreviations(sequence.map(i => i.content).join("\n"));
+      const fallbackLatex = await convertParagraphsWithNonText(sequence, section.title);
+      section.content = processAbbreviations(fallbackLatex);
     }
-
-    section.content = reinsertNonTextElements(section.content, elements);
 
     if (section.subsections) await convertSectionsByFullText(section.subsections);
   }
 }
 
-async function convertSectionsByFullText(sections) {
-  for (let section of sections) {
-    // Extract non-text elements if needed
-    let { cleanDelta, elements } = extractNonTextElements(section.originalDelta || {});
-    // Convert Delta to plain text (or to a LaTeX format if needed)
-    let plainText = convertDeltaToPlainText(cleanDelta);
+
+// async function convertSectionsByFullText(sections) {
+//   for (let section of sections) {
+//     // Extract non-text elements if needed
+//     let { cleanDelta, elements } = extractNonTextElements(section.originalDelta || {});
+//     // Convert Delta to plain text (or to a LaTeX format if needed)
+//     let plainText = convertDeltaToPlainText(cleanDelta);
     
-    // Process each paragraph individually if AI enhancement is enabled
-    if (section.aiEnhancement && plainText.trim()) {
-      try {
-        const convertedParagraphs = await convertTextParagraphWise(plainText, section.title);
-        section.content = processAbbreviations(convertedParagraphs);
-      } catch (apiErr) {
-        console.error("Conversion API error:", apiErr);
-        section.content = processAbbreviations(plainText);
-      }
-    } else {
-      section.content = processAbbreviations(plainText);
-    }
+//     // Process each paragraph individually if AI enhancement is enabled
+//     if (section.aiEnhancement && plainText.trim()) {
+//       try {
+//         const convertedParagraphs = await convertTextParagraphWise(plainText, section.title);
+//         section.content = processAbbreviations(convertedParagraphs);
+//       } catch (apiErr) {
+//         console.error("Conversion API error:", apiErr);
+//         section.content = processAbbreviations(plainText);
+//       }
+//     } else {
+//       section.content = processAbbreviations(plainText);
+//     }
     
-    // Optionally, reinsert non-text elements after conversion:
-    section.content = reinsertNonTextElements(section.content, elements);
+//     // Optionally, reinsert non-text elements after conversion:
+//     section.content = reinsertNonTextElements(section.content, elements);
     
-    if (section.subsections) await convertSectionsByFullText(section.subsections);
-  }
-}
+//     if (section.subsections) await convertSectionsByFullText(section.subsections);
+//   }
+// }
 
 // Render and Compile LaTeX
 router.get("/:padId", async (req, res) => {
@@ -404,6 +441,7 @@ router.get("/:padId", async (req, res) => {
     }));
 
     await convertSectionsByFullText(processedSections);
+    console.log("🧾 Final section content:", processedSections.map(s => s.content).join("\n\n"));
 
     const content = {
       title: pad.title || "Untitled Document",
@@ -444,6 +482,7 @@ router.get("/:padId", async (req, res) => {
     //     });
     //   });
     // });
+
     const templatePath = path.join(__dirname, "../templates/ieee_template.tex.ejs");
 ejs.renderFile(templatePath, content, {}, (err, latexOutput) => {
   if (err) {
