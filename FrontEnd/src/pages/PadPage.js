@@ -63,29 +63,6 @@ const PadPage = () => {
     padding: "1rem",
   };
 
-  useEffect(() => {
-    localStorage.setItem("userId", userId.current);
-    localStorage.setItem("userName", userName.current);
-
-    // Join the pad via WebSocket
-    socket.emit("join-pad", {
-      padId,
-      userId: userId.current,
-      userName: userName.current,
-    });
-
-    socket.on("update-users", (activeUsers) => {
-      console.log("🔄 Active Users:", activeUsers);
-      setUsers(activeUsers);
-    });
-
-    // Load sections, authors, references from the server
-    socket.on("load-pad", ({ sections, authors, references }) => {
-      console.log("✅ Pad Loaded", { sections, authors, references });
-      setSections(sections || []);
-      setAuthors(authors || []);
-      setReferences(references || []);
-    });
 
     // Fetch pad details from REST endpoint
     const fetchPad = async () => {
@@ -117,6 +94,61 @@ const PadPage = () => {
         console.error("❌ Error fetching pad:", error);
       }
     };
+
+  useEffect(() => {
+    localStorage.setItem("userId", userId.current);
+    localStorage.setItem("userName", userName.current);
+
+    // Join the pad via WebSocket
+    socket.emit("join-pad", {
+      padId,
+      userId: userId.current,
+      userName: userName.current,
+    });
+
+    socket.on("update-users", (activeUsers) => {
+      console.log("🔄 Active Users:", activeUsers);
+      setUsers(activeUsers);
+    });
+
+    // Load sections, authors, references from the server
+    socket.on("load-pad", ({ sections, authors, references }) => {
+      console.log("✅ Pad Loaded", { sections, authors, references });
+      setSections(sections || []);
+      setAuthors(authors || []);
+      setReferences(references || []);
+    });
+
+    // Fetch pad details from REST endpoint
+    // const fetchPad = async () => {
+    //   const token = localStorage.getItem("token");
+    //   if (!token) return;
+
+    //   try {
+    //     const res = await fetch(
+    //       `${process.env.REACT_APP_BACKEND_API_URL}/api/pads/${padId}`,
+    //       {
+    //         headers: { Authorization: token },
+    //       }
+    //     );
+
+    //     if (!res.ok) {
+    //       console.error("❌ Failed to fetch pad:", res.status);
+    //       return;
+    //     }
+
+    //     const data = await res.json();
+    //     console.log("📜 Pad Data:", data);
+
+    //     setPad(data);
+    //     setSections(data.sections || []);
+    //     setAuthors(data.authors || []);
+    //     setReferences(data.references || []);
+    //     setPadName(data.name || "");
+    //   } catch (error) {
+    //     console.error("❌ Error fetching pad:", error);
+    //   }
+    // };
 
     fetchPad();
 
@@ -215,27 +247,16 @@ const PadPage = () => {
 
   // Fetch pad details from REST endpoint
   const FetchPadData = async () => {
-    // const token = localStorage.getItem("token");
-    // if (!token) return;
 
-    // try {
-    //   const res = await fetch(
-    //     `${process.env.REACT_APP_BACKEND_API_URL}/api/convert/${padId}`,
-    //     {
-    //       headers: { Authorization: token },
-    //     }
-    //   );
+    await fetchPad();
+    console.log("authors",authors)
 
-    //   if (!res.ok) {
-    //     console.error("❌ Failed to fetch pad:", res.status);
-    //     return;
-    //   }
+     if (!authors || authors.length === 0) {
+    alert("At least one author must be added before generating the paper.");
+    return;
+  }
 
-    //   const data = await res.json();
-    //   console.log("📜 Pad Data for IEEE doc:", data);
-    // } catch (error) {
-    //   console.error("❌ Error fetching pad:", error);
-    // }
+   
     const token = localStorage.getItem("token");
     if (!token) {
       console.error("No token found");

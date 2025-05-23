@@ -1494,6 +1494,7 @@ const Editor = forwardRef(function Editor(
             id: `author-${Date.now()}`,
             name: "New Author",
             affiliation: "",
+            city: "",
             email: "",
           };
           const updatedAuthors = [...authors, newAuthor];
@@ -1534,6 +1535,19 @@ const Editor = forwardRef(function Editor(
                 onChange={(e) => {
                   const updatedAuthors = authors.map((a) =>
                     a.id === author.id ? { ...a, affiliation: e.target.value } : a
+                  );
+                  setAuthors(updatedAuthors);
+                }}
+                onBlur={handleNodeTitleBlur}
+              />
+               <input
+                className="input-small author-city"
+                type="text"
+                value={author.city}
+                placeholder="city"
+                onChange={(e) => {
+                  const updatedAuthors = authors.map((a) =>
+                    a.id === author.id ? { ...a, city: e.target.value } : a
                   );
                   setAuthors(updatedAuthors);
                 }}
