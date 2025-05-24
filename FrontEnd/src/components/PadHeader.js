@@ -54,7 +54,7 @@ const PadHeader = ({
           cursor: "pointer",
         }}
       >
-        Convert to Academic
+        Refine Text
       </button>
     </div>
   );

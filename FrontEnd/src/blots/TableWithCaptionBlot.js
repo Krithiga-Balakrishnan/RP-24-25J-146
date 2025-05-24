@@ -16,6 +16,20 @@ class TableWithCaptionBlot extends BlockEmbed {
     const cells = tableWrapper.querySelectorAll("td");
     cells.forEach((cell) => {
       cell.setAttribute("contenteditable", "true");
+
+       // Stop Quill from seeing backspace or other keystrokes
+      //  cell.addEventListener(
+      //   "keydown",
+      //   (e) => {
+      //     // If user presses Backspace or Delete,
+      //     // we fully stop the event from reaching Quill.
+      //     if (e.key === "Backspace" || e.key === "Delete") {
+      //       e.stopPropagation();
+      //       e.stopImmediatePropagation();
+      //     }
+      //   },
+      //   true // capture phase
+      // );
     });
 
     node.appendChild(tableWrapper);
