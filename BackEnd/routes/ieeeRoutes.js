@@ -11,6 +11,11 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 const he = require("he");
 const cheerio = require("cheerio");
 
+const multer = require("multer");
+const pdfParse = require("pdf-parse");
+
+const upload = multer({ dest: "uploads/" });
+
 const outputDir = path.join(__dirname, "../output");
 if (!fs.existsSync(outputDir)) {
   fs.mkdirSync(outputDir, { recursive: true });
@@ -562,6 +567,56 @@ router.post("/convert-text", async (req, res) => {
     return res.status(500).json({ msg: "Error converting text.", error: error.message });
   }
 });
+
+
+/*---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+
+
+// Dynamically import text-readability since it's ESM
+
+
+
+router.post("/evaluate-pdf", upload.single("file"), async (req, res) => {
+  const readability = await import("text-readability");
+  const filePath = req.file?.path;
+
+  try {
+    if (!req.file || !req.file.originalname.endsWith(".pdf")) {
+      return res.status(400).json({ error: "Only PDF files are supported." });
+    }
+
+    const dataBuffer = fs.readFileSync(filePath);
+    const data = await pdfParse(dataBuffer);
+    const text = data.text;
+
+    const ieeeSections = ["abstract", "introduction", "methodology", "results", "discussion", "conclusion", "references"];
+    const foundSections = ieeeSections.filter(sec => text.toLowerCase().includes(sec));
+
+    const gradeLevel = readability.default.fleschKincaidGrade(text);
+    const readingEase = readability.default.fleschReadingEase(text);
+
+    const result = {
+      pageCount: data.numpages,
+      sectionsFound: foundSections,
+      gradeLevel,
+      readingEase,
+      sampleText: text.slice(0, 1000)
+    };
+
+    res.json(result);
+  } catch (err) {
+    console.error("Evaluation error:", err);
+    res.status(500).json({ error: "Failed to evaluate PDF." });
+  } finally {
+    // ✅ Always delete the file
+    if (filePath && fs.existsSync(filePath)) {
+      fs.unlink(filePath, (err) => {
+        if (err) console.error("Failed to delete uploaded PDF:", err);
+      });
+    }
+  }
+});
+
 
 
 module.exports = router;
