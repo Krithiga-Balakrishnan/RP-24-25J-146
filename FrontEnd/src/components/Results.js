@@ -4,13 +4,13 @@ import { useNavigate, useLocation } from "react-router-dom";
 const Results = () => {
   const [padId, setPadId] = useState("");
   const [padData, setPadData] = useState(null);
-  const [socket, setSocket] = useState(null);
   const [error, setError] = useState("");
-  const [currentSectionIndex, setCurrentSectionIndex] = useState(0); // Track current section
-  const [padName, setPadName] = useState(""); // Store pad name
+  const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
+  const [padName, setPadName] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const sections = [
-    "Abstract", // Added Abstract section
+    "Abstract",
     "Introduction",
     "Related Work / Literature Review",
     "Methodology / Proposed Method",
@@ -28,58 +28,47 @@ const Results = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  useEffect(() => {
-    const newSocket = new WebSocket("ws://127.0.0.1:4000/ws");
-
-    newSocket.onopen = () => console.log("WebSocket connected");
-
-    newSocket.onmessage = (event) => {
-      try {
-        const response = JSON.parse(event.data);
-        if (response.error) {
-          setError(response.error);
-          setPadData(null);
-        } else {
-          setError("");
-          setPadData(response);
-        }
-      } catch (err) {
-        setError("Invalid response from WebSocket");
-      }
-    };
-
-    newSocket.onerror = (err) => setError(`WebSocket Error: ${err.message}`);
-
-    newSocket.onclose = () => {
-      console.log("WebSocket disconnected, reconnecting...");
-      setTimeout(() => setSocket(new WebSocket("ws://127.0.0.1:4000/ws")), 3000);
-    };
-
-    setSocket(newSocket);
-    return () => newSocket.close();
-  }, []);
+  // Updated backend base URL
+  const BACKEND_URL = "http://20.235.168.0";
 
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
     const padNameFromQuery = queryParams.get("name") || "";
     setPadName(padNameFromQuery);
-    setPadId(padNameFromQuery); // Also set padId to padNameFromQuery
+    setPadId(padNameFromQuery);
   }, [location.search]);
 
   const handlePadIdChange = (e) => {
     setPadId(e.target.value);
-    setPadName(e.target.value); // Update padName state as well
+    setPadName(e.target.value);
   };
 
-  const fetchPadDetails = () => {
+  const fetchPadDetails = async () => {
     if (!padId) {
       setError("Please provide a valid Pad ID");
       return;
     }
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify({ pad_id: padId }));
-    } else {
-      setError("WebSocket is not connected yet. Please try again.");
+    
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${BACKEND_URL}/get_pad_details`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pad_id: padId }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch pad details");
+      }
+
+      const data = await response.json();
+      setPadData(data);
+      setError("");
+    } catch (err) {
+      setError(err.message || "Error fetching pad details");
+      setPadData(null);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -91,7 +80,7 @@ const Results = () => {
 
     if (field === "keywords") {
       try {
-        const response = await fetch("http://127.0.0.1:4000/updateKeywords", {
+        const response = await fetch(`${BACKEND_URL}/updateKeywords`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ section, keywords: value }),
@@ -111,7 +100,13 @@ const Results = () => {
       ...prevData,
       [section]: {
         ...prevData[section],
-        candidates: [...prevData[section].candidates, { full_name: "", about: "", details: "", bio: "", position: "" }]
+        candidates: [...prevData[section].candidates, { 
+          full_name: "", 
+          about: "", 
+          details: "", 
+          bio: "", 
+          position: "" 
+        }]
       }
     }));
   };
@@ -144,25 +139,28 @@ const Results = () => {
       return;
     }
 
+    setIsLoading(true);
     try {
-      const response = await fetch("http://127.0.0.1:4000/predict", {
+      const response = await fetch(`${BACKEND_URL}/predict`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ keywords, candidates }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setSectionData((prevData) => ({
-          ...prevData,
-          [section]: { ...prevData[section], bestContributor: data }
-        }));
-        setError("");
-      } else {
-        setError(`Error while fetching the best contributor for ${section}.`);
+      if (!response.ok) {
+        throw new Error(`Error while fetching the best contributor for ${section}.`);
       }
+
+      const data = await response.json();
+      setSectionData((prevData) => ({
+        ...prevData,
+        [section]: { ...prevData[section], bestContributor: data }
+      }));
+      setError("");
     } catch (err) {
-      setError("Server error. Please try again later.");
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -180,26 +178,34 @@ const Results = () => {
 
   const handleSubmit = () => {
     const queryParams = new URLSearchParams(location.search);
-    const padNameFromQuery = queryParams.get("padName") || "Example Pad Name"; // Replace with actual pad name logic
-    setPadName(padNameFromQuery); // Store pad name in state
+    const padNameFromQuery = queryParams.get("padName") || "Example Pad Name";
+    setPadName(padNameFromQuery);
     navigate(`/?name=${padNameFromQuery}`);
   };
 
   return (
     <div style={styles.container}>
-      <h1 style={{ ...styles.header, fontFamily: "Roboto Condensed, sans-serif" }}>Pad Details and Contributor Selection</h1>
+      <h1 style={{ ...styles.header, fontFamily: "Roboto Condensed, sans-serif" }}>
+        Pad Details and Contributor Selection
+      </h1>
 
-      {/* Pad ID Input (Common for all sections) */}
+      {/* Pad ID Input */}
       <div style={{ ...styles.padSection, fontFamily: "Roboto Condensed, sans-serif" }}>
-        <h2>Fetch Pad Details</h2>
+        <h2>Load the Pad</h2>
         <input
           type="text"
-          value={padName} // Display padName
+          value={padName}
           onChange={handlePadIdChange}
           placeholder="Enter Pad ID"
           style={styles.inputField}
         />
-        <button onClick={fetchPadDetails} style={styles.button}>Fetch Pad</button>
+        <button 
+          onClick={fetchPadDetails} 
+          style={styles.button}
+          disabled={isLoading}
+        >
+          {isLoading ? "Loading..." : "Load Pad"}
+        </button>
         {error && <p style={styles.errorText}>{error}</p>}
         {padData && (
           <div>
@@ -239,7 +245,10 @@ const Results = () => {
               placeholder="Enter relevant keywords"
               style={styles.inputField}
             />
-            <button onClick={() => handleAddCandidate(sections[currentSectionIndex])} style={styles.addButton}>
+            <button 
+              onClick={() => handleAddCandidate(sections[currentSectionIndex])} 
+              style={styles.addButton}
+            >
               Add Candidate
             </button>
           </div>
@@ -267,7 +276,7 @@ const Results = () => {
                   type="text"
                   value={candidate.details}
                   onChange={(e) => handleCandidateChange(sections[currentSectionIndex], index, "details", e.target.value)}
-                  placeholder="Details"
+                  placeholder="Contribution"
                   style={styles.candidateInputField}
                 />
                 <input
@@ -284,21 +293,32 @@ const Results = () => {
                   placeholder="Position"
                   style={styles.candidateInputField}
                 />
-                <button onClick={() => handleDeleteCandidate(sections[currentSectionIndex], index)} style={styles.deleteButton}>
+                <button 
+                  onClick={() => handleDeleteCandidate(sections[currentSectionIndex], index)} 
+                  style={styles.deleteButton}
+                >
                   Delete
                 </button>
               </div>
             ))}
           </div>
-          <button onClick={() => handlePredict(sections[currentSectionIndex])} style={styles.predictButton}>
-            Predict Best Contributor
+          <button 
+            onClick={() => handlePredict(sections[currentSectionIndex])} 
+            style={styles.predictButton}
+            disabled={isLoading}
+          >
+            {isLoading ? "Processing..." : "Predict Best Contributor"}
           </button>
+
+          <div style={{ marginBottom: "20px" }}></div>
 
           {/* Display Best Contributor */}
           {sectionData[sections[currentSectionIndex]].bestContributor && (
             <div style={styles.bestContributor}>
               <h4>Best Contributor:</h4>
-              <p>Name: {sectionData[sections[currentSectionIndex]].bestContributor.name}</p>
+              <p>
+                Name: {sectionData[sections[currentSectionIndex]].bestContributor.name}
+              </p>
               <p>Score: {sectionData[sections[currentSectionIndex]].bestContributor.score}</p>
             </div>
           )}
@@ -314,27 +334,30 @@ const Results = () => {
   );
 };
 
-// Styles
+// Styles remain the same as in your original code
 const styles = {
   container: {
     padding: "20px",
-    fontFamily: "Roboto Condensed, sans-serif", // Change font family
+    fontFamily: "Roboto Condensed, sans-serif",
     borderRadius: "10px",
-    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
-    maxWidth: "900px",
-    margin: "0 auto",
+    width: "100%",
+    margin: "0",
     color: "#333",
+    backgroundColor: "#f9f9f9",
   },
   header: {
     textAlign: "center",
     color: "#333",
     marginBottom: "20px",
+    fontSize: "2em",
   },
   padSection: {
     marginBottom: "20px",
     padding: "20px",
     border: "1px solid #ccc",
     borderRadius: "5px",
+    backgroundColor: "#fff",
+    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
   },
   inputField: {
     width: "calc(100% - 20px)",
@@ -344,46 +367,48 @@ const styles = {
     border: "1px solid #ccc",
     fontSize: "14px",
     color: "#333",
+    transition: "border-color 0.3s ease",
   },
   button: {
-    padding: "10px 15px",
-    backgroundColor: "#007BFF",
+    padding: "10px 20px",
+   // backgroundColor: "#56008a",
+     backgroundColor: "var(--primary-color)",
     color: "#fff",
     border: "none",
     borderRadius: "5px",
     cursor: "pointer",
     fontSize: "16px",
-    transition: "background-color 0.3s ease",
-    marginLeft: "10px",
+    transition: "background-color 0.3s ease, transform 0.3s ease",
+    marginLeft: "0px",
+    fontFamily: '"Roboto Condensed", serif',
   },
   addButton: {
     height: "40px",
     width: "150px",
     padding: "10px 15px",
-    backgroundColor: "#28A745",
+    //backgroundColor: "#56008a",
+    backgroundColor: "var(--primary-color)",
     color: "#fff",
     border: "none",
     borderRadius: "5px",
     cursor: "pointer",
     fontSize: "14px",
-    transition: "background-color 0.3s ease",
+    transition: "background-color 0.3s ease, transform 0.3s ease",
     marginLeft: "10px",
-    marginTop: "-10px", // Move the button higher
-  },
-  buttonHover: {
-    ':hover': {
-      backgroundColor: "#0056b3",
-    }
+    marginTop: "-10px",
+    fontFamily: '"Roboto Condensed", serif',
   },
   deleteButton: {
     padding: "5px 10px",
-    backgroundColor: "#DC3545",
+    backgroundColor: "var(--primary-color)",
     color: "#fff",
     border: "none",
     borderRadius: "5px",
     cursor: "pointer",
     fontSize: "14px",
     marginTop: "10px",
+    transition: "background-color 0.3s ease, transform 0.3s ease",
+    fontFamily: '"Roboto Condensed", serif', 
   },
   errorText: {
     color: "red",
@@ -394,6 +419,8 @@ const styles = {
     padding: "20px",
     border: "1px solid #ccc",
     borderRadius: "5px",
+    backgroundColor: "#fff",
+    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
   },
   keywordsSection: {
     display: "flex",
@@ -409,11 +436,10 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     gap: "10px",
-    border: "2px solid #ccc", // Gray highlight
+    border: "2px solid #ccc",
     borderRadius: "5px",
     padding: "10px",
-    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
-    transition: "background-color 0.3s ease",
+    transition: "background-color 0.3s ease, transform 0.3s ease",
   },
   candidateInputField: {
     width: "100%",
@@ -423,33 +449,28 @@ const styles = {
     fontSize: "14px",
     color: "#333",
   },
-  candidateContainerHover: {
-    ':hover': {
-      backgroundColor: "#e0e0e0", // Slightly darker highlight
-    }
-  },
   predictButton: {
     padding: "10px 15px",
-    backgroundColor: "#17a2b8", // User-friendly color
+    backgroundColor: "var(--primary-color)",
     color: "#fff",
     border: "none",
     borderRadius: "5px",
     cursor: "pointer",
     fontSize: "16px",
-    transition: "background-color 0.3s ease",
+    transition: "background-color 0.3s ease, transform 0.3s ease",
     marginTop: "10px",
-  },
-  predictButtonHover: {
-    ':hover': {
-      backgroundColor: "#138496",
-    }
+    fontFamily: '"Roboto Condensed", serif',
   },
   bestContributor: {
     marginTop: "20px",
     padding: "15px",
-    border: "1px solid #28A745",
+    border: "1px solid var(--secondary-color)",
+    //border: "1px solid #a287b0",
     borderRadius: "5px",
-    color: "#28A745",
+   // color: "#a287b0",
+   // backgroundColor: "#f0eaf4",
+    color: "var(--secondary-color)", // Updated
+    backgroundColor: "var(--tertiary-color)", // Updated
   },
   pre: {
     backgroundColor: "#f0f0f0",
@@ -458,20 +479,15 @@ const styles = {
     overflowX: "auto",
     color: "#333",
   },
-  navButtonsContainer: {
-    display: "flex",
-    justifyContent: "space-between",
-    marginBottom: "20px",
-  },
   navButton: {
     padding: "8px 16px",
     backgroundColor: "transparent",
-    color: "#000", // Black color for the arrow
-    border: "2px solid #000", // Black highlight around the transparent circle
+    color: "#000",
+    border: "2px solid #000",
     borderRadius: "50%",
     cursor: "pointer",
-    fontSize: "20px", // Slightly smaller font size
-    fontWeight: "bold", // Bold font for highlighting
+    fontSize: "20px",
+    fontWeight: "bold",
     transition: "background-color 0.3s ease, transform 0.3s ease",
     position: "absolute",
     top: "50%",
@@ -479,25 +495,19 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    width: "40px", // Smaller width
-    height: "40px", // Smaller height
-  },
-  navButtonHover: {
-    ':hover': {
-      backgroundColor: "#000",
-      color: "#fff",
-      transform: "scale(1.1)",
-    }
+    width: "40px",
+    height: "40px",
   },
   leftNavButton: {
-    left: "-20px", // Adjusted to fit the new button size
+    left: "-20px",
   },
   rightNavButton: {
-    right: "-20px", // Adjusted to fit the new button size
+    right: "-20px",
   },
   sectionContainer: {
     position: "relative",
     marginBottom: "20px",
+    width: "100%",
   },
 };
 
