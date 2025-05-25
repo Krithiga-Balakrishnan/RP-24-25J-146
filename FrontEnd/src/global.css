@@ -184,7 +184,6 @@ body {
 /* .editor-container.ql-container.ql-snow:focus-within {
   min-height: 400px;  /* Increase height when typing */
   /* transition: height 0.3s ease-in-out; */
- */
 
 /* 🔥 Scrollbar Styling for Overflow */ 
 /* .editor-container.ql-container.ql-snow::-webkit-scrollbar {
@@ -365,7 +364,7 @@ body {
 /* Remove Button */
 .remove-button {
   margin-left: 5px;
-  background: red;
+  background: rgb(186, 90, 224);
   color: white;
   border: none;
   padding: 6px 12px;

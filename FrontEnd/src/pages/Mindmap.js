@@ -136,7 +136,7 @@ const Mindmap = () => {
         }
         const data = await response.json();
         setMindmaps(data);
-        console.log("Fetched Mindmaps");
+        console.log("Fetched Mindmaps :", data);
       } catch (error) {
         console.error("Error fetching mindmaps:", error);
       }
@@ -206,6 +206,11 @@ const Mindmap = () => {
   // When user clicks "Generate" on a file, navigate to page
   const handleFileSelect = (file) => {
     navigate(`/mindmap/pad/${file._id}`, { state: file });
+  };
+
+  // Define the navigation handler at the top of your component:
+  const handleMindmapClick = (mindmap) => {
+    navigate(`/mindmap/${mindmap._id}`, { state: mindmap });
   };
 
   // When "Generate Mind Map" is clicked, capture the textarea text and open the modal
@@ -459,6 +464,7 @@ const Mindmap = () => {
                     key={item._id || item.id}
                     className="col"
                     style={{ cursor: "pointer" }}
+                    onClick={() => handleMindmapClick(item)} // <-- Updated onClick
                     onMouseEnter={(e) => {
                       e.currentTarget.querySelector(".card").style.boxShadow =
                         "0 2px 6px rgba(0,0,0,0.1)";
@@ -477,7 +483,6 @@ const Mindmap = () => {
                       }}
                     >
                       <div className="card-body d-flex align-items-center">
-                        {/* Image on left */}
                         <img
                           src={item.image}
                           alt={item.nodes[0]?.text || "Mindmap"}
@@ -488,7 +493,6 @@ const Mindmap = () => {
                             objectFit: "cover",
                           }}
                         />
-                        {/* Container for title and date */}
                         <div className="d-flex flex-column flex-md-row justify-content-md-between align-items-start align-items-md-center w-100">
                           <p className="mb-1">{item.nodes[0]?.text}</p>
                           <p className="mindmap-small-text text-muted mt-2 mt-md-0">

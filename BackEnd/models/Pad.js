@@ -55,6 +55,7 @@ const PadSchema = new mongoose.Schema({
     id: String,
     name: String,
     affiliation: String,
+    city: String,
     email: String,
     bio: String,
   }],

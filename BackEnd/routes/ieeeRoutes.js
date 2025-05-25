@@ -153,7 +153,9 @@ function convertHtmlTableToLatex(tableHtml) {
 
   // Determine max columns
   const maxCols = Math.max(...rows.map(r => r.length), 0);
-  let latex = `\\begin{tabular}{|${"c|".repeat(maxCols)}}\n\\hline\n`;
+  //let latex = `\\begin{tabular}{|${"c|".repeat(maxCols)}}\n\\hline\n`;
+  let latex = `\\begin{tabularx}{\\linewidth}{|${"X|".repeat(maxCols)}}\n\\hline\n`;
+
 
   rows.forEach(cells => {
     while (cells.length < maxCols) {
@@ -162,7 +164,9 @@ function convertHtmlTableToLatex(tableHtml) {
     latex += cells.map(c => `\\textnormal{${c}}`).join(" & ") + " \\\\\n\\hline\n";
   });
 
-  latex += "\\end{tabular}\n";
+  //latex += "\\end{tabular}\n";
+  latex += "\\end{tabularx}\n";
+
   return latex;
 }
 
@@ -172,30 +176,68 @@ function convertHtmlTableToLatex(tableHtml) {
 
 // **Extract images, tables, and formulas before sending text to AI**
 function extractNonTextElements(delta) {
-  let elements = [];
-  let cleanOps = [];
+  let sequence = [];
 
-  if (!delta || !delta.ops || !Array.isArray(delta.ops)) return { cleanDelta: delta, elements };
+  if (!delta || !delta.ops || !Array.isArray(delta.ops)) return { sequence };
 
-  delta.ops.forEach((op, index) => {
+  delta.ops.forEach((op) => {
     if (typeof op.insert === "string") {
-      cleanOps.push(op);
+      sequence.push({ type: "text", content: op.insert });
     } 
-    // Image
     else if (op.insert.imageWithCaption) {
-      elements.push({ index, type: "image", content: op.insert.imageWithCaption });
+      sequence.push({ type: "image", content: op.insert.imageWithCaption });
     } 
-    // Formula
     else if (op.insert.formulaWithCaption) {
-      elements.push({ index, type: "formula", content: op.insert.formulaWithCaption });
+      sequence.push({ type: "formula", content: op.insert.formulaWithCaption });
     } 
-    // Table
     else if (op.insert.tableWithCaption) {
-      elements.push({ index, type: "table", content: op.insert.tableWithCaption });
+      sequence.push({ type: "table", content: op.insert.tableWithCaption });
     }
   });
 
-  return { cleanDelta: { ops: cleanOps }, elements };
+  return { sequence };
+}
+
+
+
+async function convertParagraphsWithNonText(sequence, sectionTitle) {
+  const result = [];
+
+  for (const item of sequence) {
+    if (item.type === "text") {
+      const paragraphs = item.content.split(/\n+/).filter(p => p.trim() !== "");
+      for (const p of paragraphs) {
+        try {
+          const response = await axios.post(`${process.env.REACT_APP_BACKEND_API_URL_IEEE}/convert`, {
+            section: sectionTitle,
+            content: p,
+          });
+          result.push(response.data.converted_text || p);
+        } catch (err) {
+          console.error("Error converting paragraph:", err);
+          result.push(p);
+        }
+      }
+    } else if (item.type === "image") {
+      const { src = "", caption = "Image" } = item.content || {};
+      if (!src) continue;
+      const imagePath = `../uploads/${src.split("uploads/").pop()}`;
+      result.push(`\\begin{figure}[H]\n\\centering\n\\includegraphics[width=0.5\\textwidth]{${imagePath}}\n\\caption{${caption}}\n\\end{figure}`);
+    } else if (item.type === "formula") {
+      const { formula = "", caption = "" } = item.content || {};
+      if (!formula) continue;
+      result.push(`\\begin{equation}\n${formula}\n\\end{equation}\n\\textit{${caption}}`);
+    }
+    
+    else if (item.type === "table") {
+      const { tableHtml = "", caption = "Table" } = item.content || {};
+      if (!tableHtml) continue;
+      const tabularLatex = convertHtmlTableToLatex(tableHtml);
+      result.push(`\\begin{table}[H]\n\\centering\n\\caption{${caption}}\n${tabularLatex}\n\\end{table}`);
+    }
+  }
+
+  return result.join("\n\n");
 }
 
 // **Reinsert images, tables, and formulas after AI enhancement**
@@ -244,31 +286,143 @@ function reinsertNonTextElements(text, elements) {
 //   }
 // }
 
-// **AI-enhanced text processing**
+
+async function convertTextParagraphWise(text, sectionTitle) {
+  // Split text into paragraphs using double newlines as delimiter.
+  // You can adjust the regex if your paragraphs are separated differently.
+  const paragraphs = text.split(/\n+/);
+  const convertedParagraphs = [];
+  
+  for (const p of paragraphs) {
+    // Skip empty paragraphs
+    if (p.trim() === "") continue;
+    
+    try {
+      // Call your AI conversion API for each paragraph
+      const response = await axios.post(`${process.env.REACT_APP_BACKEND_API_URL_IEEE}/convert`, {
+        section: sectionTitle,
+        content: p,
+      });
+      // If conversion succeeds, push the converted text.
+      convertedParagraphs.push(response.data.converted_text || p);
+    } catch (err) {
+      console.error("Error converting paragraph:", err);
+      // If conversion fails, keep the original paragraph.
+      convertedParagraphs.push(p);
+    }
+  }
+  
+  // Join paragraphs back together using double newlines (which LaTeX can interpret as a paragraph break)
+  return convertedParagraphs.join("\n\n");
+}
+
+
+// function convertDeltaToLatexParagraphWise(delta) {
+//   if (!delta || !delta.ops || !Array.isArray(delta.ops)) return "";
+//   let latexContent = "";
+     
+//   delta.ops.forEach((op) => {
+//     if (typeof op.insert === "string") {
+//       // Escape LaTeX special characters in text
+//       let text = op.insert.replace(/([_%#&{}])/g, "\\$1");
+//       // Split text into paragraphs at newlines.
+//       // (Assuming a single newline indicates a line break and two newlines indicate a paragraph break.)
+//       let paragraphs = text.split(/\n/);
+//       paragraphs.forEach((p, i) => {
+//         if (p.trim() !== "") {
+//           latexContent += p;
+//         }
+//         // Add a line break after every line. Adjust the logic if you need a full paragraph break.
+//         latexContent += " \\\\ \n"; // LaTeX line break
+//       });
+//     } 
+//     // For image embed
+//     else if (op.insert.imageWithCaption) {
+//       const { src = "", caption = "Image" } = op.insert.imageWithCaption;
+//       let imagePath = `../uploads/${src.split("uploads/").pop()}`;
+//       latexContent += `\n\\begin{figure}[H]
+// \\centering
+// \\includegraphics[width=0.5\\textwidth]{${imagePath}}
+// \\caption{${caption}}
+// \\end{figure}\n`;
+//     } 
+//     // For formula embed
+//     else if (op.insert.formulaWithCaption) {
+//       const { formula = "", caption = "" } = op.insert.formulaWithCaption;
+//       latexContent += `\n\\begin{equation}
+// ${formula}
+// \\end{equation}
+// \\textit{${caption}}\n`;
+//     } 
+//     // For table embed
+//     else if (op.insert.tableWithCaption) {
+//       const { tableHtml = "", caption = "Table" } = op.insert.tableWithCaption;
+//       let tabularLatex = convertHtmlTableToLatex(tableHtml);
+//       latexContent += `\n\\begin{table}[H]
+// \\centering
+// \\caption{${caption}}
+// ${tabularLatex}
+// \\end{table}\n`;
+//     }
+//   });
+  
+//   return latexContent;
+// }
+
+//**AI-enhanced text processing**
+
+
 async function convertSectionsByFullText(sections) {
   for (let section of sections) {
-    let { cleanDelta, elements } = extractNonTextElements(section.originalDelta || {});
-    let cleanText = convertDeltaToPlainText(cleanDelta);
+    const { sequence } = extractNonTextElements(section.originalDelta || {});
 
-    if (section.aiEnhancement && cleanText.trim()) {
+    if (section.aiEnhancement && sequence.length) {
       try {
-        const response = await axios.post("https://e95d-34-87-59-81.ngrok-free.app/convert", {
-          section: section.title, content: cleanText
-        });
-        section.content = processAbbreviations(response.data.converted_text || cleanText);
+        const converted = await convertParagraphsWithNonText(sequence, section.title);
+        section.content = processAbbreviations(converted);
       } catch (apiErr) {
         console.error("Conversion API error:", apiErr);
-        section.content = processAbbreviations(cleanText);
+        //section.content = processAbbreviations(sequence.map(i => i.content).join("\n"));
+        const fallbackLatex = await convertParagraphsWithNonText(sequence, section.title);
+        section.content = processAbbreviations(fallbackLatex);
       }
     } else {
-      section.content = processAbbreviations(cleanText);
+      //section.content = processAbbreviations(sequence.map(i => i.content).join("\n"));
+      const fallbackLatex = await convertParagraphsWithNonText(sequence, section.title);
+      section.content = processAbbreviations(fallbackLatex);
     }
-
-    section.content = reinsertNonTextElements(section.content, elements);
 
     if (section.subsections) await convertSectionsByFullText(section.subsections);
   }
 }
+
+
+// async function convertSectionsByFullText(sections) {
+//   for (let section of sections) {
+//     // Extract non-text elements if needed
+//     let { cleanDelta, elements } = extractNonTextElements(section.originalDelta || {});
+//     // Convert Delta to plain text (or to a LaTeX format if needed)
+//     let plainText = convertDeltaToPlainText(cleanDelta);
+    
+//     // Process each paragraph individually if AI enhancement is enabled
+//     if (section.aiEnhancement && plainText.trim()) {
+//       try {
+//         const convertedParagraphs = await convertTextParagraphWise(plainText, section.title);
+//         section.content = processAbbreviations(convertedParagraphs);
+//       } catch (apiErr) {
+//         console.error("Conversion API error:", apiErr);
+//         section.content = processAbbreviations(plainText);
+//       }
+//     } else {
+//       section.content = processAbbreviations(plainText);
+//     }
+    
+//     // Optionally, reinsert non-text elements after conversion:
+//     section.content = reinsertNonTextElements(section.content, elements);
+    
+//     if (section.subsections) await convertSectionsByFullText(section.subsections);
+//   }
+// }
 
 // Render and Compile LaTeX
 router.get("/:padId", async (req, res) => {
@@ -291,6 +445,7 @@ router.get("/:padId", async (req, res) => {
     }));
 
     await convertSectionsByFullText(processedSections);
+    console.log("🧾 Final section content:", processedSections.map(s => s.content).join("\n\n"));
 
     const content = {
       title: pad.title || "Untitled Document",
@@ -331,6 +486,7 @@ router.get("/:padId", async (req, res) => {
     //     });
     //   });
     // });
+
     const templatePath = path.join(__dirname, "../templates/ieee_template.tex.ejs");
 ejs.renderFile(templatePath, content, {}, (err, latexOutput) => {
   if (err) {
@@ -375,7 +531,7 @@ ejs.renderFile(templatePath, content, {}, (err, latexOutput) => {
 
 
 /*-------------------------------------------------------------------------------------------------*/
-const AI_CONVERSION_API = "https://e95d-34-87-59-81.ngrok-free.app/convert";
+//const AI_CONVERSION_API = "https://e3a7-34-142-132-29.ngrok-free.app/convert";
 
 router.post("/convert-text", async (req, res) => {
   try {
@@ -389,7 +545,7 @@ router.post("/convert-text", async (req, res) => {
     console.log("🔄 Sending text to AI API for conversion...");
       const section="";
     // Send request to AI API
-    const response = await axios.post(AI_CONVERSION_API, {
+    const response = await axios.post(`${process.env.REACT_APP_BACKEND_API_URL_IEEE}/convert`, {
       section,
       content,
     });

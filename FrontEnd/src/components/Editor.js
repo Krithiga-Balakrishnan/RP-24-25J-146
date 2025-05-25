@@ -1,11 +1,11 @@
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef, } from "react";
 import Quill from "quill";
 import "quill/dist/quill.snow.css";
 import ImageWithCaptionBlot from "../blots/ImageWithCaptionBlot.js";
 import TableWithCaptionBlot from "../blots/TableWithCaptionBlot.js";
 import FormulaWithCaptionBlot from "../blots/FormulaWithCaptionBlot.js";
-
+import ReferenceModal from "./ManualCitationModal.js";
 import QuillCursors from "quill-cursors";
 import debounce from "lodash.debounce";
 import TableSizePicker from "./TableSizePicker";
@@ -141,7 +141,7 @@ function createNode(title) {
     subsections: [],
     aiEnhancement: false,
   };
-  
+
 }
 
 function toggleAiEnhancementInTree(list, nodeId, newValue) {
@@ -170,19 +170,22 @@ function useDebouncedValue(initialValue, delay = 500) {
 }
 
 /* ========= Editor Component ========= */
-function Editor({
-  padId,
-  socket,
-  userId,
-  sections = [],
-  setSections,
-  authors = [],
-  setAuthors,
-  references = [],
-  setReferences,
-  setCurrentSelectionText,
-  setLastHighlightText,
-}) {
+const Editor = forwardRef(function Editor(
+  {
+    padId,
+    socket,
+    userId,
+    sections = [],
+    setSections,
+    authors = [],
+    setAuthors,
+    references = [],
+    setReferences,
+    setCurrentSelectionText,
+    setLastHighlightText,
+  },
+  ref
+) {
   // Plain text fields
   const quillRefs = useRef({});
   const [paperTitle, setPaperTitle] = useState("");
@@ -192,7 +195,208 @@ function Editor({
   const [debouncedTitle, setDebouncedTitle] = useDebouncedValue(paperTitle, 500);
   const [debouncedAbstract, setDebouncedAbstract] = useDebouncedValue(abstract, 500);
   const [debouncedKeywords, setDebouncedKeywords] = useDebouncedValue(keywords, 500);
+  // The last known Quill selection: which node + index/length
+  const [selectedRange, setSelectedRange] = useState(null);
+  const [lastActiveNodeId, setLastActiveNodeId] = useState(null);
+  const [showReferenceModal, setShowReferenceModal] = useState(false);
+  const [newReference, setNewReference] = useState({
+    id: `ref-${Date.now()}`,
+    key: "",
+    author: "",
+    title: "",
+    journal: "",
+    year: "",
+    // volume: "",
+    location: "",
+    // number: "",
+    doi: "",
+    pages: "",
+  });
 
+  const insertCitationBracket = (keyString) => {
+    console.log("DEBUG: insertCitationBracket called with keyString =", keyString);
+
+    if (selectedRange) {
+      return;
+    }
+
+    // Otherwise, fallback to lastActiveNodeId:
+    console.log("DEBUG: No selectedRange; fallback to lastActiveNodeId =", lastActiveNodeId);
+    if (!lastActiveNodeId) {
+      console.log("DEBUG: We have no lastActiveNodeId. So we can’t insert bracket.");
+      return;
+    }
+
+    const contentId = getNodeContentId(sections, lastActiveNodeId);
+    if (!contentId || !quillRefs.current[contentId]) {
+      console.log("DEBUG: lastActiveNodeId has no quill or invalid contentId. No bracket inserted.");
+      return;
+    }
+
+    const quill = quillRefs.current[contentId];
+    quill.focus();
+
+    const cursorRange = quill.getSelection();
+    let insertPos;
+    if (!cursorRange) {
+      // If truly no cursor/selection, fallback to the end of the doc
+      insertPos = quill.getLength();
+    } else {
+      // Insert at the end of the selection
+      insertPos = cursorRange.index + cursorRange.length;
+    }
+
+    // Insert the bracketed citation text
+    const citationText = ` [${keyString}]`;
+    quill.insertText(insertPos, citationText);
+    quill.setSelection(insertPos + citationText.length, 0);
+
+    // IMPORTANT: Retrieve the updated content and send it to the backend so that it is saved
+    const fullContent = quill.getContents();
+    // Emit an update event (adjust sectionId/subId as needed)
+    socket.emit("send-changes", {
+      padId,
+      sectionId: lastActiveNodeId, // or use the appropriate node id
+      fullContent,
+      userId,
+      cursor: quill.getSelection()
+    });
+
+    console.log("DEBUG: Citation bracket inserted and changes emitted.");
+  };
+
+  // CHANGED: useImperativeHandle so parent can do editorRef.current.insertCitationBracket(...)
+  useImperativeHandle(ref, () => ({
+    insertCitationBracket: (key) => {
+      console.log("DEBUG: Parent is calling insertCitationBracket with key =", key);
+      insertCitationBracket(key);
+    },
+  }));
+
+
+  function updateCitationNumbers(mapping) {
+    // mapping: an object where keys are old citation numbers and values are new ones.
+    Object.values(quillRefs.current).forEach((quill) => {
+      // Get the current HTML content
+      let html = quill.root.innerHTML;
+      // Replace occurrences of [number]
+      html = html.replace(/\[(\d+)\]/g, (match, p1) => {
+        // If the old number is in the mapping, replace it; otherwise, remove it.
+        return mapping[p1] ? `[${mapping[p1]}]` : "";
+      });
+      // Update the Quill editor's content
+      quill.root.innerHTML = html;
+      // Optionally, you might want to update the Delta too:
+      // const Delta = Quill.import("delta");
+      // quill.setContents(Delta.convert(html));
+    });
+  }
+  // const handleReferenceSave = (newRefData) => {
+  //   // Update references state with the new reference data
+  //   const updatedReferences = [...references, newRefData];
+  //   setReferences(updatedReferences);
+  
+  //   // Emit update to the backend
+  //   socket.emit("update-pad", {
+  //     padId,
+  //     sections,
+  //     authors,
+  //     references: updatedReferences,
+  //     title: paperTitle,
+  //     abstract,
+  //     keyword: keywords,
+  //   });
+  // };
+  const editorRef = useRef(null);
+
+
+  const handleReferenceSave = async (newRefData) => {
+    // Compute the next key based on existing references.
+    const lastKey = Array.isArray(references)
+      ? references.reduce((max, ref) => {
+        const numericKey = parseInt(ref.key, 10) || 0;
+        return numericKey > max ? numericKey : max;
+      }, 0)
+      : 0;
+    const nextKey = lastKey + 1;
+  
+    // Build the request body from the manual input.
+    const requestBody = {
+      authors: newRefData.author.split(",").map(a => a.trim()),
+      title: newRefData.title,
+      journal: newRefData.journal,
+      year: parseInt(newRefData.year, 10),
+      location: newRefData.location,
+      pages: newRefData.pages,
+      doi: newRefData.doi,
+    };
+  
+    try {
+      // Save the reference in the DB.
+      const saveResponse = await fetch(
+        `${process.env.REACT_APP_BACKEND_API_URL}/api/pads/${padId}/save-citation`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            padId,
+            key: String(nextKey),
+            citation: "", // leave empty for now
+            ...requestBody,
+          }),
+        }
+      );
+  
+      if (!saveResponse.ok) {
+        const errorText = await saveResponse.text();
+        throw new Error(`Failed to save citation: ${errorText}`);
+      }
+      const saveData = await saveResponse.json();
+      console.log("Reference saved successfully!", saveData);
+  
+      // Create a temporary reference object.
+      const updatedReference = {
+        ...newRefData,
+        key: String(nextKey),
+        citation: "",
+      };
+  
+      // Call the citation generation API.
+      const citationResponse = await fetch(
+        "https://a37d-35-236-196-197.ngrok-free.app/generate_manual_citation/",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestBody),
+        }
+      );
+  
+      if (!citationResponse.ok) {
+        const errorText = await citationResponse.text();
+        throw new Error(`Failed to generate citation: ${errorText}`);
+      }
+      const citationDataJSON = await citationResponse.json();
+      const generatedCitation = citationDataJSON.citation || "Citation not available.";
+  
+      // Build the final reference.
+      const finalReference = { ...updatedReference, citation: generatedCitation };
+      console.log("Final Reference:", finalReference);
+  
+      // Update references state.
+      setReferences((prev) => [...prev, finalReference]);
+  
+      // For example, insert the citation bracket in the editor.
+      if (editorRef.current) {
+        editorRef.current.insertCitationBracket(finalReference.key);
+      }
+  
+      return finalReference;
+    } catch (error) {
+      console.error("Error in handleReferenceSave:", error);
+    }
+  };
+  
+  
   // For our custom embed handlers (table/formula)
   const activeQuillRef = useRef(null);
   const [showTablePicker, setShowTablePicker] = useState(false);
@@ -317,8 +521,8 @@ function Editor({
             },
           },
         });
-      
-                
+
+
         quillRefs.current[node.contentId] = quill;
         if (node.content && node.content.ops) {
           quill.setContents(node.content);
@@ -338,12 +542,18 @@ function Editor({
         });
         quill.on("selection-change", (range, oldRange, source) => {
           if (source === "user") {
+            setLastActiveNodeId(node.id);
             if (range && range.length > 0) {
               const text = quill.getText(range.index, range.length);
+              console.log("DEBUG: selection-change => selected text:", text, "in nodeId =", node.id); // DEBUG
               setCurrentSelectionText(text);
               setLastHighlightText(text);
+              // NEW: Also remember which node and the exact range
+              setSelectedRange({ nodeId: node.id, range });
             } else {
+              console.log("DEBUG: selection-change => no text selected in nodeId =", node.id); // DEBUG
               setCurrentSelectionText("");
+              setSelectedRange(null);
             }
             socket.emit("cursor-selection", { padId, userId, cursor: range, nodeId: node.id });
           }
@@ -381,46 +591,46 @@ function Editor({
 
 
   // [ADDED] Helper to attach blur listeners to all <td> in the newly inserted table
-function attachTableCellListeners(quill, embedIndex) {
-  // Wait a tick so Quill updates the DOM
-  setTimeout(() => {
-    // The editor DOM we just inserted the table into
-    const editorEl = quill.root.parentNode; 
-    // Grab the figure for the newly inserted table
-    // embedIndex is where we inserted the table in the Delta
-    const tableFigure = editorEl.querySelector(
-      `figure.ql-table-with-caption:nth-of-type(${embedIndex + 1})`
-    );
-    if (!tableFigure) return;
+  function attachTableCellListeners(quill, embedIndex) {
+    // Wait a tick so Quill updates the DOM
+    setTimeout(() => {
+      // The editor DOM we just inserted the table into
+      const editorEl = quill.root.parentNode;
+      // Grab the figure for the newly inserted table
+      // embedIndex is where we inserted the table in the Delta
+      const tableFigure = editorEl.querySelector(
+        `figure.ql-table-with-caption:nth-of-type(${embedIndex + 1})`
+      );
+      if (!tableFigure) return;
 
-    // For every <td>, on blur => re-insert the table
-    const cells = tableFigure.querySelectorAll("td");
-    cells.forEach((cell) => {
-      cell.addEventListener("blur", () => {
-        // Read the updated HTML from the figure
-        const wrapper = tableFigure.querySelector(".table-wrapper");
-        const newTableHtml = wrapper ? wrapper.innerHTML : "";
-        const captionEl = tableFigure.querySelector("figcaption");
-        const newCaption = captionEl ? captionEl.innerText : "";
+      // For every <td>, on blur => re-insert the table
+      const cells = tableFigure.querySelectorAll("td");
+      cells.forEach((cell) => {
+        cell.addEventListener("blur", () => {
+          // Read the updated HTML from the figure
+          const wrapper = tableFigure.querySelector(".table-wrapper");
+          const newTableHtml = wrapper ? wrapper.innerHTML : "";
+          const captionEl = tableFigure.querySelector("figcaption");
+          const newCaption = captionEl ? captionEl.innerText : "";
 
-        // Remove the old embed
-        const blot = Quill.find(tableFigure);
-        if (!blot) return;
-        const oldIndex = quill.getIndex(blot);
+          // Remove the old embed
+          const blot = Quill.find(tableFigure);
+          if (!blot) return;
+          const oldIndex = quill.getIndex(blot);
 
-        quill.deleteText(oldIndex, 1);
-        // Insert updated embed with new HTML
-        quill.insertEmbed(oldIndex, "tableWithCaption", {
-          tableHtml: newTableHtml,
-          caption: newCaption,
+          quill.deleteText(oldIndex, 1);
+          // Insert updated embed with new HTML
+          quill.insertEmbed(oldIndex, "tableWithCaption", {
+            tableHtml: newTableHtml,
+            caption: newCaption,
+          });
+          // Insert a newline to keep spacing
+          quill.insertText(oldIndex + 1, "\n");
+          quill.setSelection(oldIndex + 2, 0);
         });
-        // Insert a newline to keep spacing
-        quill.insertText(oldIndex + 1, "\n");
-        quill.setSelection(oldIndex + 2, 0);
       });
-    });
-  }, 0);
-}
+    }, 0);
+  }
 
   // Socket listeners for remote changes and loading the pad remain unchanged
   useEffect(() => {
@@ -584,7 +794,7 @@ function attachTableCellListeners(quill, embedIndex) {
   };
 
   const renderNode = (node, indent = 0) => (
-    
+
     <div
       key={node.id}
       style={{
@@ -639,39 +849,39 @@ function attachTableCellListeners(quill, embedIndex) {
 
         {" AI?"}
       </label> */}
-      <div
-  className="form-check form-switch"
-  style={{
-    display: "inline-block",
-    marginRight: "1rem",
-    verticalAlign: "middle",
-  }}
->
-  <input
-    className="form-check-input"
-    type="checkbox"
-    role="switch"
-    id={`toggle-switch-${node.id}`}
-    checked={!!node.aiEnhancement}
-    onChange={(e) => {
-      const newValue = e.target.checked;
-      const updated = toggleAiEnhancementInTree(sections, node.id, newValue);
-      setSections(updated);
-      socket.emit("update-pad", {
-        padId,
-        sections: updated,
-        authors,
-        references,
-        title: paperTitle,
-        abstract,
-        keyword: keywords,
-      });
-    }}
-  />
-  <label className="form-check-label" htmlFor={`toggle-switch-${node.id}`}>
-    AI Enhance
-  </label>
-</div>
+        <div
+          className="form-check form-switch"
+          style={{
+            display: "inline-block",
+            marginRight: "1rem",
+            verticalAlign: "middle",
+          }}
+        >
+          <input
+            className="form-check-input"
+            type="checkbox"
+            role="switch"
+            id={`toggle-switch-${node.id}`}
+            checked={!!node.aiEnhancement}
+            onChange={(e) => {
+              const newValue = e.target.checked;
+              const updated = toggleAiEnhancementInTree(sections, node.id, newValue);
+              setSections(updated);
+              socket.emit("update-pad", {
+                padId,
+                sections: updated,
+                authors,
+                references,
+                title: paperTitle,
+                abstract,
+                keyword: keywords,
+              });
+            }}
+          />
+          <label className="form-check-label" htmlFor={`toggle-switch-${node.id}`}>
+            AI Enhance
+          </label>
+        </div>
 
 
         <button onClick={() => removeNode(node.id)} style={{ marginLeft: 5 }}>
@@ -689,7 +899,7 @@ function attachTableCellListeners(quill, embedIndex) {
       {node.subsections &&
         node.subsections.map((child) => renderNode(child, indent + 1))}
     </div>
-  
+
   );
 
   return (
@@ -1167,23 +1377,23 @@ function attachTableCellListeners(quill, embedIndex) {
     //   </div>
     // </div>
     <div className="editor-container">
-          
-       {showTablePicker && (
+
+      {showTablePicker && (
         <div
-           style={{
+          style={{
             position: "absolute",
             top: tablePickerPosition.top,
             left: tablePickerPosition.left,
             zIndex: 1000,
-           }}
-         >
-           <TableSizePicker
-             onSelect={(rows, cols) => handleTableSelect(rows, cols)}
-             onClose={() => setShowTablePicker(false)}
-           />
-         </div>
-       )} 
-      
+          }}
+        >
+          <TableSizePicker
+            onSelect={(rows, cols) => handleTableSelect(rows, cols)}
+            onClose={() => setShowTablePicker(false)}
+          />
+        </div>
+      )}
+
       {/* Plain text fields */}
       <div className="paper-section">
         <h1 className="section-title">Paper Title</h1>
@@ -1203,6 +1413,7 @@ function attachTableCellListeners(quill, embedIndex) {
               keyword: keywords,
             });
           }}
+
         />
         <h2 className="section-subtitle">Abstract</h2>
         <textarea
@@ -1220,6 +1431,11 @@ function attachTableCellListeners(quill, embedIndex) {
               abstract,
               keyword: keywords,
             });
+          }}
+          style={{
+           
+            minHeight: "150px", // Initial larger height
+           
           }}
         />
         <h2 className="section-subtitle">Keywords</h2>
@@ -1278,6 +1494,7 @@ function attachTableCellListeners(quill, embedIndex) {
             id: `author-${Date.now()}`,
             name: "New Author",
             affiliation: "",
+            city: "",
             email: "",
           };
           const updatedAuthors = [...authors, newAuthor];
@@ -1323,6 +1540,19 @@ function attachTableCellListeners(quill, embedIndex) {
                 }}
                 onBlur={handleNodeTitleBlur}
               />
+               <input
+                className="input-small author-city"
+                type="text"
+                value={author.city}
+                placeholder="city"
+                onChange={(e) => {
+                  const updatedAuthors = authors.map((a) =>
+                    a.id === author.id ? { ...a, city: e.target.value } : a
+                  );
+                  setAuthors(updatedAuthors);
+                }}
+                onBlur={handleNodeTitleBlur}
+              />
               <input
                 className="input-small author-email"
                 type="text"
@@ -1359,33 +1589,207 @@ function attachTableCellListeners(quill, embedIndex) {
       {/* References Section */}
       <div className="references-section">
         <h2 className="section-subtitle">References</h2>
-        <button className="custom-button" onClick={() => {
-          const newReference = {
-            id: `ref-${Date.now()}`,
-            key: "",
-            author: "",
-            title: "",
-            journal: "",
-            year: "",
-            volume: "",
-            number: "",
-            pages: "",
-          };
-          const updatedReferences = [...references, newReference];
-          setReferences(updatedReferences);
-          socket.emit("update-pad", {
-            padId,
-            sections,
-            authors,
-            references: updatedReferences,
-            title: paperTitle,
-            abstract,
-            keyword: keywords,
-          });
-        }}>
+        <button className="custom-button"
+          onClick={() => {
+            // Prepare a new reference object (you can also reset fields here if needed)
+            setNewReference({
+              id: `ref-${Date.now()}`,
+              key: "",
+              author: "",
+              title: "",
+              journal: "",
+              year: "",
+              volume: "",
+              number: "",
+              pages: "",
+            });
+            setShowReferenceModal(true);
+          }}
+        // onClick={() => {
+        //   const newReference = {
+        //     id: `ref-${Date.now()}`,
+        //     key: "",
+        //     author: "",
+        //     title: "",
+        //     journal: "",
+        //     year: "",
+        //     volume: "",
+        //     number: "",
+        //     pages: "",
+        //   };
+        //   const updatedReferences = [...references, newReference];
+        //   setReferences(updatedReferences);
+        //   socket.emit("update-pad", {
+        //     padId,
+        //     sections,
+        //     authors,
+        //     references: updatedReferences,
+        //     title: paperTitle,
+        //     abstract,
+        //     keyword: keywords,
+        //   });
+        // }}
+
+        >
           ➕ Add Reference
         </button>
-        <ul className="reference-list">
+        <ReferenceModal
+          showReferenceModal={showReferenceModal}
+          padId={padId}
+          setShowReferenceModal={setShowReferenceModal}
+          newReference={newReference}
+          setNewReference={setNewReference}
+          references={references}  // Ensure this is the current state!
+          onSaveReference={handleReferenceSave}
+          onCitationData={(finalReference) => {
+            console.log("Parent received final reference:", finalReference);
+            setReferences((prev) => [...prev, finalReference]);
+            if (editorRef.current) {
+              editorRef.current.insertCitationBracket(finalReference.key);
+            }
+          }}
+        />
+        {/* {showReferenceModal && (
+          <div
+            style={{
+              position: "fixed",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              backgroundColor: "#fff",
+              padding: "20px",
+              borderRadius: "8px",
+              boxShadow: "0 2px 10px rgba(0,0,0,0.2)",
+              zIndex: 1100,
+              width: "400px",
+            }}
+          >
+            <h3>Add Reference</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <input
+                className="input-small reference-key"
+                type="text"
+                value={newReference.key}
+                placeholder="Reference Key"
+                onChange={(e) =>
+                  setNewReference({ ...newReference, key: e.target.value })
+                }
+              />
+              <input
+                className="input-small reference-author"
+                type="text"
+                value={newReference.author}
+                placeholder="Author(s)"
+                onChange={(e) =>
+                  setNewReference({ ...newReference, author: e.target.value })
+                }
+              />
+              <input
+                className="input-small reference-title"
+                type="text"
+                value={newReference.title}
+                placeholder="Title"
+                onChange={(e) =>
+                  setNewReference({ ...newReference, title: e.target.value })
+                }
+              />
+              <input
+                className="input-small reference-journal"
+                type="text"
+                value={newReference.journal}
+                placeholder="Journal"
+                onChange={(e) =>
+                  setNewReference({ ...newReference, journal: e.target.value })
+                }
+              />
+              <input
+                className="input-small reference-year"
+                type="text"
+                value={newReference.year}
+                placeholder="Year"
+                onChange={(e) =>
+                  setNewReference({ ...newReference, year: e.target.value })
+                }
+              />
+              <input
+                className="input-small reference-volume"
+                type="text"
+                value={newReference.volume}
+                placeholder="Volume"
+                onChange={(e) =>
+                  setNewReference({ ...newReference, volume: e.target.value })
+                }
+              />
+              <input
+                className="input-small reference-number"
+                type="text"
+                value={newReference.number}
+                placeholder="Number"
+                onChange={(e) =>
+                  setNewReference({ ...newReference, number: e.target.value })
+                }
+              />
+              <input
+                className="input-small reference-pages"
+                type="text"
+                value={newReference.pages}
+                placeholder="Pages"
+                onChange={(e) =>
+                  setNewReference({ ...newReference, pages: e.target.value })
+                }
+              />
+            </div>
+            <div style={{ marginTop: "15px", display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+              <button
+                className="custom-button"
+                onClick={() => {
+                  // Close the modal without saving
+                  setShowReferenceModal(false);
+                }}
+                style={{
+                  backgroundColor: "#aaa",
+                  color: "#fff",
+                  padding: "8px 12px",
+                  border: "none",
+                  borderRadius: "5px",
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="custom-button"
+                onClick={() => {
+                  // When saving, add the new reference to your state and emit update
+                  const updatedReferences = [...references, newReference];
+                  setReferences(updatedReferences);
+                  socket.emit("update-pad", {
+                    padId,
+                    sections,
+                    authors,
+                    references: updatedReferences,
+                    title: paperTitle,
+                    abstract,
+                    keyword: keywords,
+                  });
+                  // Close the modal
+                  setShowReferenceModal(false);
+                }}
+                style={{
+                  backgroundColor: "#56008a",
+                  color: "#fff",
+                  padding: "8px 12px",
+                  border: "none",
+                  borderRadius: "5px",
+                  cursor: "pointer",
+                }}
+              >
+                Save Reference
+              </button>
+            </div>
+          </div>
+        )} */}
+        {/* <ul className="reference-list">
   {references.map((reference) => (
     <li key={reference.id} className="list-item">
       <input
@@ -1512,12 +1916,63 @@ function attachTableCellListeners(quill, embedIndex) {
       </button>
     </li>
   ))}
-</ul>
+</ul> */}
+        <ul className="reference-list">
+          {references.map((reference) => (
+            <li key={reference.id} className="list-item" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.5rem", borderBottom: "1px solid #ddd" }}>
+              {/* Small div for the Key */}
+              <div style={{ flex: "0 0 50px", textAlign: "center", fontWeight: "bold" }}>
+                [{reference.key}]
+              </div>
 
+              {/* Citation div (flexible width) */}
+              <div style={{ flex: "1", padding: "0 10px", textAlign: "left" }}>
+                {/* <strong>Citation:</strong> */}
+                {reference.citation}
+              </div>
+
+              {/* Remove Button on the right */}
+              <button
+                className="remove-button"
+                style={{ flex: "0 0 100px", textAlign: "center", backgroundColor: "#ff4d4d", color: "white", border: "none", padding: "5px 10px", cursor: "pointer", borderRadius: "5px" }}
+                onClick={() => {
+                  const mapping = {};
+                  let newNumber = 1;
+                  references.forEach((ref) => {
+                    if (ref.id !== reference.id) {
+                      mapping[ref.key] = String(newNumber);
+                      newNumber++;
+                    }
+                  });
+                  const updatedReferences = references.filter((r) => r.id !== reference.id);
+                  const renumbered = updatedReferences.map((ref, i) => ({
+                    ...ref,
+                    key: String(i + 1), // Reassigns keys sequentially
+                  }));
+
+                  setReferences(renumbered);
+                  updateCitationNumbers(mapping);
+                  socket.emit("update-pad", {
+                    padId,
+                    sections,
+                    authors,
+                    references: renumbered,
+                    title: paperTitle,
+                    abstract,
+                    keyword: keywords,
+                  });
+                }}
+              >
+                🗑️ Remove
+              </button>
+            </li>
+          ))}
+
+        </ul>
       </div>
-</div>
+    </div>
 
   );
-}
+});
 
 export default Editor;
