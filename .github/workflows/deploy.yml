@@ -39,6 +39,5 @@ jobs:
             # --- BackEnd (Node.js) ---
             cd /home/azureuser/RP-24-25J-146/BackEnd
             npm install
-            npm run build
             sudo systemctl restart backend
           EOF
