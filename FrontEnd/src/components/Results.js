@@ -440,6 +440,7 @@ const styles = {
     borderRadius: "5px",
     padding: "10px",
     transition: "background-color 0.3s ease, transform 0.3s ease",
+
   },
   candidateInputField: {
     width: "100%",

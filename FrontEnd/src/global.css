@@ -487,6 +487,54 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+.nav-pills.custom-tabs .nav-link {
+  /* keep your existing styles */
+  position: relative;
+  background: #fef7ff;
+  color: #333;
+  border: 1px solid #ccc;
+  border-bottom: none;
+  margin-right: -1px;
+  padding: .5rem 1.25rem;
+  border-radius: 0;
+}
+
+/* First tab: rounded top-left, no right border */
+.nav-pills.custom-tabs .nav-item:first-child .nav-link {
+  border-top-left-radius: .5rem;
+  border-right: none;
+}
+
+/* Second tab: rounded top-right, no left border */
+.nav-pills.custom-tabs .nav-item:last-child .nav-link {
+  border-top-right-radius: .5rem;
+  border-left: none;
+}
+
+/* Active styling (both upper corners rounded) */
+.nav-pills.custom-tabs .nav-link.active {
+  background: #56008a;
+  color: #fff;
+  border-color: #56008a;
+  z-index: 1;
+  border-top-left-radius: .5rem;
+  border-top-right-radius: .5rem;
+}
+
+/* in your App.css (or whatever global stylesheet) */
+
+.btn-outline-custom {
+  color: #28a745;
+  border-color: #28a745;
+}
+
+.btn-outline-custom:hover,
+.btn-outline-custom:focus {
+  background-color: #28a745;
+  color: #fff;
+  border-color: #28a745;
+}
+
 /* Saara */
 
 /* Sanjayan */
