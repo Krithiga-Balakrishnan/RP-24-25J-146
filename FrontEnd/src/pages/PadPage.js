@@ -9,7 +9,11 @@ import PadSidebar from "../components/PadSidebar";
 import CiteSidebar from "../components/CiteSideBar";
 import AcademicTextModal from "../components/AcademicTextModal";
 import LoadingScreen from "../animation/documentLoading"
-const socket = io(`${process.env.REACT_APP_BACKEND_API_URL}`);
+// const socket = io(`${process.env.REACT_APP_BACKEND_API_URL}`);
+
+const socket = io("http://98.70.36.206", {
+  path: "/api/node/socket.io"
+});
 
 const PadPage = () => {
   const { padId } = useParams();
