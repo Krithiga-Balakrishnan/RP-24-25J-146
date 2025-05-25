@@ -36,7 +36,7 @@ const ReferenceModal = ({
       
         try {
             const citationResponse = await fetch(
-                `${process.env.REACT_APP_BACKEND_API_URL_MANUAL_CITATION}/generate_manual_citation/`,
+                `${baseApiUrl_Manual_Citation}`,
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },

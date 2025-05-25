@@ -72,7 +72,7 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData, ref
 
       try {
         // const response = await fetch("https://b93e-34-106-54-141.ngrok-free.app/search/", {
-        const response = await fetch(`${baseApiUrl_Search}/search/`, {
+       const response = await fetch(`${baseApiUrl_Search}`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -121,7 +121,7 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData, ref
     };
 
     // fetch("https://dc95-35-230-160-250.ngrok-free.app/generate_citations/", {
-    fetch(`${baseApiUrl_Citation}/generate_citations/`, {
+    fetch(`${baseApiUrl_Citation}/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestBody),
@@ -270,9 +270,9 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData, ref
 
         console.log("🔄 Awaiting response from server...");
         if (!response.ok) {
-          console.error("❌ Failed to save citation. Response status:", response.status);
+          console.error(" Failed to save citation. Response status:", response.status);
           const errorText = await response.text();
-          console.error("❌ Server Response:", errorText);
+          console.error(" Server Response:", errorText);
           throw new Error("Failed to save citation");
         }
 
@@ -297,7 +297,7 @@ const CiteSidebar = ({ isOpen, onClose, selectedText, padId, onCitationData, ref
         }
 
       } catch (error) {
-        console.error("❌ Error saving citation:", error);
+        console.error(" Error saving citation:", error);
       }
     };
 
