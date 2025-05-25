@@ -1,0 +1,44 @@
+name: Deploy FastAPI App
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to Server
+        run: |
+          ssh azureuser@${{ secrets.SERVER_IP }} << 'EOF'
+            # --- Reference Suggester ---
+            cd ~/reference_suggester
+            git pull origin main
+            source venv/bin/activate
+            pip install -r requirements.txt
+            sudo systemctl restart reference
+
+            # --- FrontEnd (Node.js) ---
+            cd /home/azureuser/RP-24-25J-146/FrontEnd
+            npm install
+            npm run build
+            sudo systemctl restart nodeapp
+
+            # --- BackEnd (Node.js) ---
+            cd /home/azureuser/RP-24-25J-146/BackEnd
+            npm install
+            npm run build
+            sudo systemctl restart backend
+          EOF
