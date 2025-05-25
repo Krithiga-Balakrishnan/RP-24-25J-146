@@ -356,7 +356,7 @@ async function convertSectionsByFullText(sections) {
   }
 }
 
-async function convertSectionsByFullText(sections) {
+async function convertSectionsByFullTextV2(sections) {
   for (let section of sections) {
     // Extract non-text elements if needed
     let { cleanDelta, elements } = extractNonTextElements(section.originalDelta || {});

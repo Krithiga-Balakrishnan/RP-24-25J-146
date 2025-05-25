@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const http = require("http");
 const mongoose = require("mongoose");
@@ -12,10 +13,8 @@ const Pad = require("./models/Pad");
 const Mindmap = require("./models/Mindmap");
 const path = require("path");
 const mindmapRoutes = require("./routes/mindmapRoutes");
-require("dotenv").config();
 
 const app = express();
-connectDB();
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 
@@ -202,11 +201,16 @@ io.on("connection", (socket) => {
         }
       }
       if (userToRemove) {
-        console.log(`🔻 Removing user: ${userToRemove} from mindmap ${mindmapId}`);
+        console.log(
+          `🔻 Removing user: ${userToRemove} from mindmap ${mindmapId}`
+        );
         delete mindmaps[mindmapId].users[userToRemove];
         // Emit update for the mindmap users list
-        io.to(mindmapId).emit("mindmap-users", Object.values(mindmaps[mindmapId].users));
-  
+        io.to(mindmapId).emit(
+          "mindmap-users",
+          Object.values(mindmaps[mindmapId].users)
+        );
+
         // Emit the "node-selected" event with null nodeId and the user's name
         // Make sure you send the same identifier (e.g., username) as used on the client side.
         const userName = (userData && userData.username) || userToRemove;
@@ -297,7 +301,27 @@ app.use("/api/mindmaps", mindmapRoutes);
 // });
 
 // Use when hosted
-const port = process.env.PORT || 4000;
-server.listen(port, "0.0.0.0", () => {
-  console.log(`✅ Server running on port ${port}`);
-});
+// const port = process.env.PORT || 4000;
+// server.listen(port, "0.0.0.0", () => {
+//   console.log(`✅ Server running on port ${port}`);
+// });
+
+// only start listening if this file is run directly
+if (require.main === module) {
+  const uri = process.env.MONGO_URI;
+  const port = process.env.PORT || 4000;
+
+  console.log("⏳ About to connect using MONGO_URI=", uri);
+  connectDB(uri)
+    .then(() => {
+      server.listen(port, "0.0.0.0", () =>
+        console.log(`✅ Server running on port ${port}`)
+      );
+    })
+    .catch((err) => {
+      console.error("❌ Failed to start server:", err);
+      process.exit(1);
+    });
+}
+
+module.exports = app;
