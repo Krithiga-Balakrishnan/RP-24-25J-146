@@ -175,7 +175,7 @@ const ContributorForm = () => {
                 </div>
                 <div className="row mb-3">
                   <div className="col-sm-8 offset-sm-4">
-                    <button type="submit" className="btn btn-primary w-100 mb-2">
+                    <button type="submit" className="btn btn-primary w-100 mb-2" style={{ backgroundColor: "#56008a", borderColor: "#56008a" }}>
                       Save Profile
                     </button>
                   </div>
