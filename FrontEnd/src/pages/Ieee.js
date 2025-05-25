@@ -5,6 +5,7 @@ import { FileText } from "lucide-react";
 import FloatingShapes from "../animation/flying-shapes.json";
 // import WritingAnimation from "../animation/FloatingPapers.json";
 
+
 const AcademicConverter = () => {
   const [textValue, setTextValue] = useState("");
   const [outputText, setOutputText] = useState("");
@@ -37,6 +38,41 @@ const AcademicConverter = () => {
   }
 };
 
+
+const [pdfFile, setPdfFile] = useState(null);
+const [evaluationResult, setEvaluationResult] = useState(null);
+const [uploading, setUploading] = useState(false);
+
+const handleUploadAndEvaluate = async () => {
+  if (!pdfFile) return;
+
+  setUploading(true);
+  const formData = new FormData();
+  formData.append("file", pdfFile);
+
+  try {
+    const res = await fetch(`${process.env.REACT_APP_BACKEND_API_URL}/api/convert/evaluate-pdf`, {
+      method: "POST",
+      body: formData,
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      // Calculate compliance score
+      const requiredSections = ["abstract", "introduction", "methodology", "results", "conclusion", "references"];
+      const matchCount = requiredSections.filter((s) => data.sectionsFound.includes(s)).length;
+      const score = Math.round((matchCount / requiredSections.length) * 100);
+      setEvaluationResult({ ...data, complianceScore: score });
+    } else {
+      setEvaluationResult({ error: data.error || "Evaluation failed" });
+    }
+  } catch (err) {
+    setEvaluationResult({ error: "Server error during evaluation." });
+    console.error(err);
+  } finally {
+    setUploading(false);
+  }
+};
 
   return (
     <div className="container py-3">
@@ -86,6 +122,50 @@ const AcademicConverter = () => {
           </button>
         </div>
       </div>
+      {/* PDF Upload Section */}
+<div className="row mb-4">
+  <div className="col text-center">
+    <h4 className="mb-3">Evaluate an IEEE-style PDF</h4>
+    <input
+      type="file"
+      accept=".pdf"
+      onChange={(e) => setPdfFile(e.target.files[0])}
+      className="form-control mb-2"
+      style={{ maxWidth: 300, margin: "0 auto" }}
+    />
+    <button className="btn btn-secondary" onClick={handleUploadAndEvaluate} disabled={!pdfFile || uploading}>
+      {uploading ? "Evaluating..." : "Upload and Evaluate"}
+    </button>
+  </div>
+</div>
+
+{/* Evaluation Result Section */}
+{evaluationResult && !evaluationResult.error && (
+  <div className="row mb-5">
+    <div className="col">
+      <h5 className="mb-3">📊 Evaluation Report</h5>
+      <ul className="list-group mb-3">
+        <li className="list-group-item">📄 Page Count: <strong>{evaluationResult.pageCount}</strong></li>
+        <li className="list-group-item">✅ Sections Found: {evaluationResult.sectionsFound.join(", ")}</li>
+        <li className="list-group-item">🎓 Grade Level: <strong>{evaluationResult.gradeLevel}</strong></li>
+        <li className="list-group-item">📖 Reading Ease: <strong>{evaluationResult.readingEase.toFixed(2)}</strong></li>
+        <li className="list-group-item">
+          🧠 Academic Compliance Score: 
+          <span className="badge bg-success ms-2">{evaluationResult.complianceScore}%</span>
+        </li>
+      </ul>
+      <p><strong>Preview:</strong></p>
+      <pre className="bg-light p-2">{evaluationResult.sampleText}</pre>
+    </div>
+  </div>
+)}
+
+{evaluationResult?.error && (
+  <div className="alert alert-danger mt-3 text-center">
+    {evaluationResult.error}
+  </div>
+)}
+
 
       {/* Floating animation and illustration */}
       <div className="row mb-5 h-full">
