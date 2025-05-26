@@ -95,6 +95,21 @@ const Citations = () => {
     }
   };
 
+  function parseAuthors(authors) {
+    if (!authors) return []; // Return empty array if authors field is missing
+
+    if (typeof authors === "string") {
+      try {
+        const parsed = JSON.parse(authors.replace(/'/g, '"')); // Convert single quotes to double & parse
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (error) {
+        console.error("Error parsing authors:", authors, error);
+        return [];
+      }
+    }
+
+    return Array.isArray(authors) ? authors : [];
+  }
   // // 1) Save & generate manual citation
   // const handleSaveReference = async () => {
   //   // 2) pick the right sub‐object based on the toggle
@@ -217,10 +232,14 @@ const Citations = () => {
 
       const data = await response.json();
       const formatted = data.results?.map(paper => ({
+        //   ...paper,
+        //   authors: Array.isArray(paper.authors) ? paper.authors : [],
+        //   abstract: paper.abstract || paper.Abstract || "No abstract available.",
+        // })) || [];
         ...paper,
-        authors: Array.isArray(paper.authors) ? paper.authors : [],
-        abstract: paper.abstract || paper.Abstract || "No abstract available.",
-      })) || [];
+        authors: parseAuthors(paper.authors), // Ensure authors is an array
+        abstract: paper.abstract || paper.Abstract || "No abstract available."
+      })) || []
 
       setPapers(formatted);
     } catch (err) {
