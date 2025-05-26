@@ -116,7 +116,7 @@ const Register = () => {
                   <span className="input-group-text">
                     <i className="bi bi-lock"></i>
                   </span>
-                  <input type="password" className="form-control" placeholder="Repeat your password" />
+                  <input type="password" className="form-control" placeholder="Repeat your password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}/>
                 </div>
               </div>
 
