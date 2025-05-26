@@ -28,12 +28,18 @@ const Register = () => {
     }
 
     // Password strength validation: at least 8 characters, one letter and one number
-    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+    // const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,}$/;
+    // if (!passwordRegex.test(password)) {
+    //   toast.error("Password must be at least 8 characters and include letters and numbers");
+    //   return;
+    // }
     if (!passwordRegex.test(password)) {
-      toast.error("Password must be at least 8 characters and include letters and numbers");
+      toast.error(
+        "Password must be at least 8 characters, include letters, numbers, and may contain @$!%*?&"
+      );
       return;
     }
-
     // Confirm password match
     if (password !== confirmPassword) {
       toast.error("Passwords do not match");
@@ -110,7 +116,7 @@ const Register = () => {
                   <span className="input-group-text">
                     <i className="bi bi-lock"></i>
                   </span>
-                  <input type="password" className="form-control" placeholder="Repeat your password" />
+                  <input type="password" className="form-control" placeholder="Repeat your password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}/>
                 </div>
               </div>
 
