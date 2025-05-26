@@ -11,6 +11,11 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 const he = require("he");
 const cheerio = require("cheerio");
 
+const multer = require("multer");
+const pdfParse = require("pdf-parse");
+
+const upload = multer({ dest: "uploads/" });
+
 const outputDir = path.join(__dirname, "../output");
 if (!fs.existsSync(outputDir)) {
   fs.mkdirSync(outputDir, { recursive: true });
@@ -371,6 +376,30 @@ async function convertTextParagraphWise(text, sectionTitle) {
 
 //**AI-enhanced text processing**
 
+//shandeep
+// async function convertSectionsByFullText(sections) {
+//   for (let section of sections) {
+//     const { sequence } = extractNonTextElements(section.originalDelta || {});
+
+//     if (section.aiEnhancement && sequence.length) {
+//       try {
+//         const converted = await convertParagraphsWithNonText(sequence, section.title);
+//         section.content = processAbbreviations(converted);
+//       } catch (apiErr) {
+//         console.error("Conversion API error:", apiErr);
+//         //section.content = processAbbreviations(sequence.map(i => i.content).join("\n"));
+//         const fallbackLatex = await convertParagraphsWithNonText(sequence, section.title);
+//         section.content = processAbbreviations(fallbackLatex);
+//       }
+//     } else {
+//       //section.content = processAbbreviations(sequence.map(i => i.content).join("\n"));
+//       const fallbackLatex = await convertParagraphsWithNonText(sequence, section.title);
+//       section.content = processAbbreviations(fallbackLatex);
+//     }
+
+//     if (section.subsections) await convertSectionsByFullText(section.subsections);
+//   }
+// }
 
 async function convertSectionsByFullText(sections) {
   for (let section of sections) {
@@ -382,19 +411,37 @@ async function convertSectionsByFullText(sections) {
         section.content = processAbbreviations(converted);
       } catch (apiErr) {
         console.error("Conversion API error:", apiErr);
-        //section.content = processAbbreviations(sequence.map(i => i.content).join("\n"));
-        const fallbackLatex = await convertParagraphsWithNonText(sequence, section.title);
-        section.content = processAbbreviations(fallbackLatex);
+        section.content = processAbbreviations(sequence.map(i => i.content).join("\n"));
       }
     } else {
-      //section.content = processAbbreviations(sequence.map(i => i.content).join("\n"));
-      const fallbackLatex = await convertParagraphsWithNonText(sequence, section.title);
-      section.content = processAbbreviations(fallbackLatex);
+      // 🔒 No API call here — just raw LaTeX-safe content
+      const rawContent = sequence.map(i => {
+        if (i.type === "text") return i.content;
+        if (i.type === "image") {
+          const { src = "", caption = "Image" } = i.content || {};
+          const imagePath = `../uploads/${src.split("uploads/").pop()}`;
+          return `\\begin{figure}[H]\n\\centering\n\\includegraphics[width=0.5\\textwidth]{${imagePath}}\n\\caption{${caption}}\n\\end{figure}`;
+        }
+        if (i.type === "formula") {
+          const { formula = "", caption = "" } = i.content || {};
+          return `\\begin{equation}\n${formula}\n\\end{equation}\n\\textit{${caption}}`;
+        }
+        if (i.type === "table") {
+          const { tableHtml = "", caption = "Table" } = i.content || {};
+          const tabularLatex = convertHtmlTableToLatex(tableHtml);
+          return `\\begin{table}[H]\n\\centering\n\\caption{${caption}}\n${tabularLatex}\n\\end{table}`;
+        }
+        return "";
+      });
+
+      section.content = processAbbreviations(rawContent.join("\n\n"));
     }
 
     if (section.subsections) await convertSectionsByFullText(section.subsections);
   }
 }
+
+
 
 
 // async function convertSectionsByFullText(sections) {
@@ -494,7 +541,15 @@ ejs.renderFile(templatePath, content, {}, (err, latexOutput) => {
     return res.status(500).json({ msg: "Error rendering LaTeX template", error: err });
   }
 
-  const outputTexPath = path.join(outputDir, "output_paper.tex").replace(/\\/g, "/");
+
+  const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+const texFilename = `output_${uniqueId}.tex`;
+const pdfFilename = `output_${uniqueId}.pdf`;
+
+const outputTexPath = path.join(outputDir, texFilename).replace(/\\/g, "/");
+const outputPdfPath = path.join(outputDir, pdfFilename).replace(/\\/g, "/");
+
+ // const outputTexPath = path.join(outputDir, "output_paper.tex").replace(/\\/g, "/");
   fs.writeFileSync(outputTexPath, latexOutput, "utf8");
 
   const command = `pdflatex -interaction=nonstopmode -output-directory "${outputDir}" "${outputTexPath}"`;
@@ -503,21 +558,50 @@ ejs.renderFile(templatePath, content, {}, (err, latexOutput) => {
     console.log("STDOUT:", stdout);
     console.log("STDERR:", stderr);
     
-    const outputPdfPath = path.join(outputDir, "output_paper.pdf");
+  //  const outputPdfPath = path.join(outputDir, "output_paper.pdf");
+    // if (fs.existsSync(outputPdfPath)) {
+    //   // Even if error exists, if the PDF is there, send it.
+    //   return res.download(outputPdfPath, "output_paper.pdf", (err) => {
+    //     if (err) {
+    //       console.error("Error sending PDF file:", err);
+    //       return res.status(500).json({ msg: "Error sending PDF file", error: err });
+    //     }
+
+    //          // ✅ Optionally clean up after sending
+    //   fs.unlink(outputTexPath, () => {});
+    //   fs.unlink(outputPdfPath, () => {});
+    //   });
+    // } 
     if (fs.existsSync(outputPdfPath)) {
-      // Even if error exists, if the PDF is there, send it.
-      return res.download(outputPdfPath, "output_paper.pdf", (err) => {
-        if (err) {
-          console.error("Error sending PDF file:", err);
-          return res.status(500).json({ msg: "Error sending PDF file", error: err });
-        }
-      });
-    } else {
+  try {
+    const pdfBuffer = fs.readFileSync(outputPdfPath);
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': 'attachment; filename="output_paper.pdf"',
+      'Content-Length': pdfBuffer.length,
+    });
+
+    res.send(pdfBuffer);
+
+    // ✅ Clean up after sending
+    fs.unlink(outputTexPath, () => {});
+    fs.unlink(outputPdfPath, () => {});
+  } catch (err) {
+    console.error("Error sending PDF buffer:", err);
+    return res.status(500).json({ msg: "Error sending PDF file", error: err.message });
+  }
+}
+
+    else {
       // If the file does not exist, then return an error.
       console.error(`Error compiling LaTeX: ${error.message}`);
       return res.status(500).json({ msg: "Error compiling LaTeX", error: error.message });
     }
   });
+
+
+  
 });
 
   } catch (err) {
@@ -562,6 +646,56 @@ router.post("/convert-text", async (req, res) => {
     return res.status(500).json({ msg: "Error converting text.", error: error.message });
   }
 });
+
+
+/*---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+
+
+// Dynamically import text-readability since it's ESM
+
+
+
+router.post("/evaluate-pdf", upload.single("file"), async (req, res) => {
+  const readability = await import("text-readability");
+  const filePath = req.file?.path;
+
+  try {
+    if (!req.file || !req.file.originalname.endsWith(".pdf")) {
+      return res.status(400).json({ error: "Only PDF files are supported." });
+    }
+
+    const dataBuffer = fs.readFileSync(filePath);
+    const data = await pdfParse(dataBuffer);
+    const text = data.text;
+
+    const ieeeSections = ["abstract", "introduction", "methodology", "results", "discussion", "conclusion", "references"];
+    const foundSections = ieeeSections.filter(sec => text.toLowerCase().includes(sec));
+
+    const gradeLevel = readability.default.fleschKincaidGrade(text);
+    const readingEase = readability.default.fleschReadingEase(text);
+
+    const result = {
+      pageCount: data.numpages,
+      sectionsFound: foundSections,
+      gradeLevel,
+      readingEase,
+      sampleText: text.slice(0, 1000)
+    };
+
+    res.json(result);
+  } catch (err) {
+    console.error("Evaluation error:", err);
+    res.status(500).json({ error: "Failed to evaluate PDF." });
+  } finally {
+    // ✅ Always delete the file
+    if (filePath && fs.existsSync(filePath)) {
+      fs.unlink(filePath, (err) => {
+        if (err) console.error("Failed to delete uploaded PDF:", err);
+      });
+    }
+  }
+});
+
 
 
 module.exports = router;
