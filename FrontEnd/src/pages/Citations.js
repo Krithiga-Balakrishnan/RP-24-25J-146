@@ -188,7 +188,34 @@ const Citations = () => {
       );
       if (!res.ok) throw new Error(await res.text());
       const { citation } = await res.json();
-      setCitationData(citation || "Citation not available.");
+      console.log("🦄 Received citation from backend:", citation);
+      // 1) Remove any standalone “None”
+      let step1 = citation.replace(/\bNone\b/gi, "");
+      console.log("Step 1 (drop 'None'):", step1);
+
+      // 2) Strip out “doi:” or “URL:” labels that now point to empty
+      let step2 = step1
+        .replace(/doi:\s*/i, "")
+        .replace(/URL:\s*\.?/i, "");
+      console.log("Step 2 (strip empty labels):", step2);
+
+      // 3) Remove any “pp. –” or “p. –” *and* the preceding comma if present
+      let step3 = step2.replace(/,?\s*pp?\.\s*[-–]\s*,?/gi, "");
+      console.log("Step 3 (drop 'pp. -' segments):", step3);
+
+      // 4) Collapse multiple commas into one
+      let step4 = step3.replace(/,+/g, ",");
+      console.log("Step 4 (collapse commas):", step4);
+
+      // 5) Collapse multiple spaces
+      let step5 = step4.replace(/\s{2,}/g, " ");
+      console.log("Step 5 (collapse spaces):", step5);
+
+      // 6) Trim and remove any trailing commas, periods or spaces
+      let cleaned = step5.trim().replace(/[,\.\s]+$/, "");
+      console.log("Step 6 (trim & strip trailing):", cleaned);
+
+      setCitationData(cleaned || "Citation not available.");
     } catch (err) {
       console.error("Manual citation error:", err);
       setCitationData("Error generating manual citation.");
