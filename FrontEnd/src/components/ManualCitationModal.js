@@ -13,6 +13,84 @@ const ReferenceModal = ({
 }) => {
     if (!showReferenceModal) return null;
     const baseApiUrl_Manual_Citation = `${process.env.REACT_APP_BACKEND_API_URL_MANUAL_CITATION}`;
+    // const handleSaveReference = async () => {
+    //     // Compute the next key based on existing references.
+    //     const lastKey = Array.isArray(references)
+    //         ? references.reduce((max, ref) => {
+    //             const numericKey = parseInt(ref.key, 10) || 0;
+    //             return numericKey > max ? numericKey : max;
+    //         }, 0)
+    //         : 0;
+    //     const nextKey = lastKey + 1;
+
+    //     // Build the request body from the manual input.
+    //     const requestBody = {
+    //         authors: newReference.author.split(",").map(a => a.trim()),
+    //         title: newReference.title,
+    //         journal: newReference.journal,
+    //         year: parseInt(newReference.year, 10),
+    //         location: newReference.location,
+    //         pages: newReference.pages,
+    //         doi: newReference.doi,
+    //     };
+
+    //     try {
+    //         const citationResponse = await fetch(
+    //             `${baseApiUrl_Manual_Citation}`,
+    //             {
+    //                 method: "POST",
+    //                 headers: { "Content-Type": "application/json" },
+    //                 body: JSON.stringify(requestBody),
+    //             }
+    //         );
+
+    //         console.log(" Awaiting response from generate_manual_citation API...");
+    //         if (!citationResponse.ok) {
+    //             const errorText = await citationResponse.text();
+    //             throw new Error(`Failed to generate citation: ${errorText}`);
+    //         }
+    //         const citationDataJSON = await citationResponse.json();
+    //         console.log(" Citation generated successfully!", citationDataJSON);
+    //         const generatedCitation = citationDataJSON.citation || "Citation not available.";
+
+    //         // Now, call the API to save the reference in the DB, including the generated citation.
+    //         const saveResponse = await fetch(
+    //             `${process.env.REACT_APP_BACKEND_API_URL}/api/pads/${padId}/save-citation`,
+    //             {
+    //                 method: "POST",
+    //                 headers: { "Content-Type": "application/json" },
+    //                 body: JSON.stringify({
+    //                     padId,
+    //                     key: String(nextKey),
+    //                     citation: generatedCitation,
+    //                     ...requestBody,
+    //                 }),
+    //             }
+    //         );
+
+    //         console.log(" Awaiting response from save-citation API...");
+    //         if (!saveResponse.ok) {
+    //             const errorText = await saveResponse.text();
+    //             throw new Error(`Failed to save citation: ${errorText}`);
+    //         }
+    //         const saveData = await saveResponse.json();
+    //         console.log(" Reference saved successfully!", saveData);
+
+    //         const finalReference = { ...newReference, key: String(nextKey), citation: generatedCitation };
+    //         console.log("Final Reference:", finalReference);
+
+    //         if (typeof onCitationData === "function") {
+    //             onCitationData(finalReference);
+    //         }
+
+    //         // Close the modal.
+    //         setShowReferenceModal(false);
+    //         return finalReference;
+    //     } catch (error) {
+    //       console.error(" Error in handleSaveReference:", error);
+    //     }
+    //   };
+
     const handleSaveReference = async () => {
         // Compute the next key based on existing references.
         const lastKey = Array.isArray(references)
@@ -33,17 +111,14 @@ const ReferenceModal = ({
             pages: newReference.pages,
             doi: newReference.doi,
         };
-      
-        try {
-            const citationResponse = await fetch(
-                `${baseApiUrl_Manual_Citation}`,
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(requestBody),
-                }
-            );
 
+        try {
+            // 1) Generate the raw citation
+            const citationResponse = await fetch(`${baseApiUrl_Manual_Citation}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(requestBody),
+            });
             console.log(" Awaiting response from generate_manual_citation API...");
             if (!citationResponse.ok) {
                 const errorText = await citationResponse.text();
@@ -51,9 +126,40 @@ const ReferenceModal = ({
             }
             const citationDataJSON = await citationResponse.json();
             console.log(" Citation generated successfully!", citationDataJSON);
-            const generatedCitation = citationDataJSON.citation || "Citation not available.";
 
-            // Now, call the API to save the reference in the DB, including the generated citation.
+            // 2) Sanitize the citation string
+            const rawCitation = citationDataJSON.citation || "";
+            console.log("🦄 Raw citation from backend:", rawCitation);
+
+            // Step 1: drop any standalone “None”
+            let step1 = rawCitation.replace(/\bNone\b/gi, "");
+            console.log("Step 1 (drop 'None'):", step1);
+
+            // // Step 2: strip out empty doi: or URL:
+            let step2 = step1
+                .replace(/doi:\s*(None|N\/A|nan|unknown)\b\.?/gi, "")
+                .replace(/\bDOI:/gi, "doi:");
+            console.log("Step 2 (normalize DOI label):", step2);
+
+            // Step 3: remove any “pp. –” or “p. –” (and any surrounding comma)
+            let step3 = step2.replace(/,?\s*pp?\.\s*[-–]\s*,?/gi, "");
+            console.log("Step 3 (drop 'pp. -' segments):", step3);
+
+            // Step 4: collapse multiple commas into one
+            let step4 = step3.replace(/,+/g, ",");
+            console.log("Step 4 (collapse commas):", step4);
+
+            // Step 5: collapse multiple spaces
+            let step5 = step4.replace(/\s{2,}/g, " ");
+            console.log("Step 5 (collapse spaces):", step5);
+
+            // Step 6: trim and remove trailing commas/periods/spaces
+            let cleanedCitation = step5.trim().replace(/[,\.\s]+$/, "");
+            console.log("Step 6 (trim & strip trailing):", cleanedCitation);
+
+            const sanitizedCitation = cleanedCitation || "Citation not available.";
+
+            // 3) Save the sanitized citation to your DB
             const saveResponse = await fetch(
                 `${process.env.REACT_APP_BACKEND_API_URL}/api/pads/${padId}/save-citation`,
                 {
@@ -62,12 +168,11 @@ const ReferenceModal = ({
                     body: JSON.stringify({
                         padId,
                         key: String(nextKey),
-                        citation: generatedCitation,
+                        citation: sanitizedCitation,
                         ...requestBody,
                     }),
                 }
             );
-
             console.log(" Awaiting response from save-citation API...");
             if (!saveResponse.ok) {
                 const errorText = await saveResponse.text();
@@ -76,7 +181,12 @@ const ReferenceModal = ({
             const saveData = await saveResponse.json();
             console.log(" Reference saved successfully!", saveData);
 
-            const finalReference = { ...newReference, key: String(nextKey), citation: generatedCitation };
+            // 4) Propagate it to your parent / UI
+            const finalReference = {
+                ...newReference,
+                key: String(nextKey),
+                citation: sanitizedCitation,
+            };
             console.log("Final Reference:", finalReference);
 
             if (typeof onCitationData === "function") {
