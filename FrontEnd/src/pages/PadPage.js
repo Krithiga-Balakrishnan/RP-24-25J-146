@@ -367,74 +367,103 @@ const PadPage = () => {
               setLastHighlightText={handleLastTextSelection}
             />
 
-            {pad && pad.roles && pad.roles[userId.current] === "pad_owner" && (
-              <div
-                style={{
-                  backgroundColor: "#f9f9f9",
-                  padding: "20px",
-                  borderRadius: "10px",
-                  boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)",
-                  textAlign: "center",
-                  maxWidth: "400px",
-                  margin: "20px auto",
-                }}
-              >
-                <h3 style={{ marginBottom: "15px", color: "#333", fontSize: "20px" }}>Add User</h3>
+            <div className="row mt-5">
+              {/* ─────────────── Active Users ─────────────── */}
+              <div className="col-12 col-md-8 mt-4">
+                <div className="d-flex align-items-center flex-wrap">
+                  <h3 className="me-3 mb-0">Active Users:</h3>
 
-                <input
-                  type="email"
-                  value={userEmail}
-                  onChange={(e) => setUserEmail(e.target.value)}
-                  placeholder="Enter user email"
-                  style={{
-                    width: "100%",
-                    padding: "10px",
-                    borderRadius: "5px",
-                    border: "1px solid #ccc",
-                    marginBottom: "15px",
-                    fontSize: "14px",
-                    textAlign: "center",
-                    outline: "none",
-                  }}
-                />
-
-                <button
-                  onClick={addUserToPad}
-                  style={{
-                    backgroundColor: "#56008a",
-                    color: "#fff",
-                    padding: "10px 15px",
-                    borderRadius: "5px",
-                    border: "none",
-                    cursor: "pointer",
-                    fontSize: "14px",
-                    fontWeight: "bold",
-                    transition: "0.3s ease",
-                  }}
-                  onMouseEnter={(e) => (e.target.style.backgroundColor = "#a287b0")}
-                  onMouseLeave={(e) => (e.target.style.backgroundColor = "#56008a")}
-                >
-                  ➕ Add User as Editor
-                </button>
+                  {users.length > 0 ? (
+                    users.map((user) => (
+                      <span
+                        key={user.userId}
+                        className="badge rounded-pill me-2 px-4 py-2"
+                        style={{
+                          backgroundColor: "var(--fourth-color)",
+                          color: "var(--primary-color)",
+                        }}
+                      >
+                        {user.userName}
+                        {pad?.roles?.[user.userId] === "pad_owner"
+                          ? " (Owner)"
+                          : ""}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-warning">
+                      ⚠️ No active users yet.
+                    </span>
+                  )}
+                </div>
               </div>
 
-            )}
+              {/* ─────────────── Add User (only for owner) ─────────────── */}
+              {pad?.roles?.[userId.current] === "pad_owner" && (
+                <div className="col-12 col-md-4 mt-4">
+                  <div
+                    style={{
+                      backgroundColor: "#f9f9f9",
+                      padding: "20px",
+                      borderRadius: "10px",
+                      boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)",
+                      textAlign: "center",
+                      maxWidth: "400px",
+                      margin: "0 auto", // centers on mobile, but on md+ the col handles centering
+                    }}
+                  >
+                    <h3
+                      style={{
+                        marginBottom: "15px",
+                        color: "#333",
+                        fontSize: "20px",
+                      }}
+                    >
+                      Add User
+                    </h3>
 
-            <h2>Active Users:</h2>
-            {users.length > 0 ? (
-              <ul>
-                {users.map((user) => (
-                  <li key={user.userId}>
-                    {user.userName}{" "}
-                    {pad?.roles && pad.roles[user.userId] === "pad_owner"
-                      ? "(Owner)"
-                      : ""}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p>⚠️ No active users yet.</p>
-            )}
+                    <input
+                      type="email"
+                      value={userEmail}
+                      onChange={(e) => setUserEmail(e.target.value)}
+                      placeholder="Enter user email"
+                      style={{
+                        width: "100%",
+                        padding: "10px",
+                        borderRadius: "5px",
+                        border: "1px solid #ccc",
+                        marginBottom: "15px",
+                        fontSize: "14px",
+                        textAlign: "center",
+                        outline: "none",
+                      }}
+                    />
+
+                    <button
+                      onClick={addUserToPad}
+                      style={{
+                        backgroundColor: "#56008a",
+                        color: "#fff",
+                        padding: "10px 15px",
+                        borderRadius: "5px",
+                        border: "none",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                        fontWeight: "bold",
+                        transition: "0.3s ease",
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.backgroundColor = "#a287b0")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.backgroundColor = "#56008a")
+                      }
+                    >
+                      ➕ Add User as Editor
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Render Mindmap Modal */}
             {showMindmap && (
