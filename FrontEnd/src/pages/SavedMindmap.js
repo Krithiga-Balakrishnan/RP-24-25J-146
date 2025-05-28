@@ -61,6 +61,8 @@ const SavedMindmap = () => {
   const selectedLevelRef = useRef(null);
   const selectedNodeRef = useRef(null);
   const selectedLinkRef = useRef(null);
+  const selectedSourceForRelationRef = useRef(null);
+  const interactiveRelationModeRef = useRef(false);
   const svgRef = useRef(null);
   const zoomGroupRef = useRef(null);
   const linkGroupRef = useRef(null);
@@ -70,8 +72,6 @@ const SavedMindmap = () => {
   let isAddRelationListenerAttached = false;
   let isDeleteListenerAttached = false;
   const zoomBehaviorRef = useRef(null);
-  let interactiveRelationMode = false;
-  let selectedSourceForRelation = null;
   const hasFetchedDatabaseRef = useRef(false);
   const hasGeneratedMindmapRef = useRef(false);
   const baseApiUrl = `${process.env.REACT_APP_BACKEND_API_URL_MINDMAP}`;
@@ -263,6 +263,19 @@ const SavedMindmap = () => {
       return;
     }
 
+    function hydrateLinks(plainLinks, nodes) {
+      const id2node = new Map(nodes.map((n) => [n.id, n]));
+      return plainLinks.map((l) => ({
+        ...l,
+        source: id2node.get(
+          typeof l.source === "object" ? l.source.id : l.source
+        ),
+        target: id2node.get(
+          typeof l.target === "object" ? l.target.id : l.target
+        ),
+      }));
+    }
+
     const userId = localStorage.getItem("userId");
     const userName = localStorage.getItem("userName") || "Anonymous";
 
@@ -274,14 +287,18 @@ const SavedMindmap = () => {
     });
 
     // 2) Listen for changes from other clients
+    const me = localStorage.getItem("userId");
     socketRef.current.on(
       "receive-mindmap-changes",
-      ({ nodes: newNodes, links: newLinks }) => {
-        // Overwrite our persistent arrays with the new data
+      ({ nodes: newNodes, links: newLinks, userId: sender }) => {
+        console.log(
+          `[socket] receive-mindmap-changes from ${sender}:`,
+          newNodes.map((n) => ({ id: n.id, text: n.text }))
+        );
         nodesRef.current = newNodes;
-        linksRef.current = newLinks;
-        // Then re-render the D3 mindmap
-        update();
+        linksRef.current = hydrateLinks(newLinks, newNodes);
+        update(); // ← freeze positions
+        ticked();
       }
     );
 
@@ -408,9 +425,22 @@ const SavedMindmap = () => {
         // === END NEW ===
 
         const token = localStorage.getItem("token");
+        const cleanLinks = updatedLinks.map((l) => ({
+          source: typeof l.source === "object" ? l.source.id : l.source,
+          target: typeof l.target === "object" ? l.target.id : l.target,
+          type: l.type,
+        }));
+
+        const cleanNodes = updatedNodes.map((n) => ({
+          id: n.id,
+          text: n.text,
+          x: n.x,
+          y: n.y,
+        }));
+
         const payload = {
-          nodes: updatedNodes,
-          links: updatedLinks,
+          nodes: cleanNodes,
+          links: cleanLinks,
           image: base64Image,
         };
         console.log("Payload: ", payload);
@@ -438,8 +468,8 @@ const SavedMindmap = () => {
         const userId = localStorage.getItem("userId");
         socketRef.current.emit("update-mindmap", {
           mindmapId: _id,
-          nodes: updatedNodes,
-          links: updatedLinks,
+          nodes: cleanNodes,
+          links: cleanLinks,
           userId,
         });
       } catch (error) {
@@ -726,30 +756,55 @@ const SavedMindmap = () => {
 
     // 9) Re-render node content using D3
     function reRenderNode(d, group) {
+      // (1) clear out anything we drew last time
       group.selectAll("*").remove();
-      console.log("Rerendering nodes");
-      const ellipseRx = Math.max(40, d.text.length * 5);
-      const ellipseRy = 40;
-      const fillColor = window.nodeColorMap.get(d.id);
-      // Check if this node is being edited:
-      const editors = editingNodesRef.current[d.id];
-      const strokeColor = editors && editors.length > 0 ? "#FFD700" : "#333";
-      const strokeWidth = editors && editors.length > 0 ? 3 : 2;
 
+      // (2) compute dimensions
+      const rx = Math.max(40, d.text.length * 5);
+      const ry = 40;
+      const fill = window.nodeColorMap.get(d.id);
+
+      // (3) figure out who’s on this node
+      const editors = editingNodesRef.current[d.id] || [];
+      const me = localStorage.getItem("userName") || "Anonymous";
+      const others = editors.filter((u) => u !== me);
+
+      console.log("reRenderNode", d.id, "others editing:", others);
+
+      // (4) draw exactly one ellipse, stroke orange if anyone else is here
       group
         .append("ellipse")
-        .attr("rx", ellipseRx)
-        .attr("ry", ellipseRy)
-        .attr("fill", fillColor)
-        .attr("stroke", strokeColor)
-        .attr("stroke-width", strokeWidth);
+        .attr("rx", rx)
+        .attr("ry", ry)
+        .attr("fill", fill)
+        .attr("stroke", others.length ? "#ff9800" : "#333")
+        .attr("stroke-width", others.length ? 1 : 1);
 
+      // (5) draw the text
       group
         .append("text")
         .attr("text-anchor", "middle")
         .attr("alignment-baseline", "middle")
         .text(d.text)
+        .attr("stroke-width", 0)
+        .attr("fill", "#000")
+        .attr("stroke", "#none")
+
         .on("click", (event, d) => {
+          // ── tell everyone I’m now editing this node ──
+          const myName = localStorage.getItem("userName") || "Anonymous";
+          socketRef.current.emit("node-selected", {
+            mindmapId: _id,
+            nodeId: d.id,
+            userName: myName,
+          });
+
+          // now do your normal edit‐in‐place logic…
+          if (interactiveRelationModeRef.current) {
+            event.stopPropagation();
+            return;
+          }
+
           const input = document.createElement("input");
           input.type = "text";
           input.value = d.text;
@@ -759,45 +814,98 @@ const SavedMindmap = () => {
           input.style.zIndex = 1000;
           document.body.appendChild(input);
           input.focus();
+          input.addEventListener("mousedown", (e) => e.stopPropagation());
+          input.addEventListener("click", (e) => e.stopPropagation());
+
           input.addEventListener("blur", () => {
             const updatedText = input.value.trim();
-            if (updatedText && updatedText !== d.text) {
-              d.text = updatedText;
-              setLoading(true);
-              const nodeObj = nodesRef.current.find((n) => n.id === d.id);
-              if (nodeObj) {
-                nodeObj.text = updatedText;
-              }
-              update();
-              syncMindmapToDatabase(nodesRef.current, linksRef.current);
-              setLoading(false);
-            }
             document.body.removeChild(input);
+
+            if (!updatedText || updatedText === d.text) {
+              handleDocumentClick();
+              return;
+            }
+
+            // 1) update your D3 datum + local array
+            d.text = updatedText;
+            const nodeObj = nodesRef.current.find((n) => n.id === d.id);
+            if (nodeObj) nodeObj.text = updatedText;
+
+            // 2) immediately re-render your view
+            update();
+
+            // 3) persist first, then broadcast *after* success
+            setLoading(true);
+            syncMindmapToDatabase(nodesRef.current, linksRef.current)
+              .then(() => {
+                // build a “clean” payload of primitives
+                const cleanNodes = nodesRef.current.map((n) => ({
+                  id: n.id,
+                  text: n.text,
+                  x: n.x,
+                  y: n.y,
+                }));
+                const cleanLinks = linksRef.current.map((l) => ({
+                  source: typeof l.source === "object" ? l.source.id : l.source,
+                  target: typeof l.target === "object" ? l.target.id : l.target,
+                  type: l.type,
+                }));
+
+                socketRef.current.emit("update-mindmap", {
+                  mindmapId: _id,
+                  nodes: cleanNodes,
+                  links: cleanLinks,
+                  userId: localStorage.getItem("userId"),
+                });
+              })
+              .finally(() => setLoading(false));
+
+            // clear any selection UI
+            handleDocumentClick();
           });
+
           event.stopPropagation();
-          handleDocumentClick();
+          updateBlinking();
           d.imageDeleted = false;
         });
+
+      // (6) little dot + tooltip if needed
+      if (others.length) {
+        // group
+        //   .append("circle")
+        //   .attr("cx", rx - 6)
+        //   .attr("cy", -ry + 6)
+        //   .attr("r", 6)
+        //   .attr("fill", "#ff9800")
+        //   .style("pointer-events", "none");
+
+        group.append("title").text(`Editing: ${others.join(", ")}`);
+      }
     }
 
     // 10) Update visualization and simulation
-    function update() {
-      if (!linkGroupRef.current || !nodeGroupRef.current) {
-        console.log("No node group or link group found");
+    function update({ restart = true } = {}) {
+      if (!nodeGroupRef.current || !linkGroupRef.current) {
+        console.error("SVG groups not initialized.");
         return;
       }
+      console.log("Updating visualization...");
       if (!window.nodeColorMap) window.nodeColorMap = new Map();
       const nodePositionMap = new Map(
         nodesRef.current.map((node) => [node.id, { x: node.x, y: node.y }])
       );
-      const hierarchyData = buildHierarchy(nodesRef.current, linksRef.current);
 
+      if (!linkGroupRef.current || !nodeGroupRef.current) {
+        console.log("No node group or link group found");
+        return;
+      }
+
+      const hierarchyData = buildHierarchy(nodesRef.current, linksRef.current);
       // If there is no hierarchy data, skip the rest of the update
       if (!hierarchyData) {
         console.warn("Hierarchy is null, skipping update.");
         return;
       }
-
       hierarchyData.each((node) => {
         const dataNode = nodesRef.current.find((n) => n.id === node.data.id);
         if (dataNode && dataNode.depth == null) {
@@ -842,13 +950,14 @@ const SavedMindmap = () => {
           window.nodeColorMap.set(node.id, color);
         }
       });
+      console.log(
+        "Updated Node Depths:",
+        nodesRef.current.map((n) => ({ id: n.id, depth: n.depth }))
+      );
+      console.log("Updated Color Map:", colorMapRef.current);
       const linkSel = linkGroupRef.current
         .selectAll("line")
-        .data(linksRef.current, (d) => {
-          const s = typeof d.source === "object" ? d.source.id : d.source;
-          const t = typeof d.target === "object" ? d.target.id : d.target;
-          return `${s}-${t}`;
-        })
+        .data(linksRef.current, (d) => `${d.source}-${d.target}`)
         .join(
           (enter) =>
             enter
@@ -879,10 +988,10 @@ const SavedMindmap = () => {
                   .on("end", dragended)
               )
               .on("click", (event, d) => {
-                if (interactiveRelationMode) {
+                if (interactiveRelationModeRef.current) {
                   if (
-                    selectedSourceForRelation &&
-                    selectedSourceForRelation.id === d.id
+                    selectedSourceForRelationRef.current &&
+                    selectedSourceForRelationRef.current.id === d.id
                   ) {
                     alert(
                       "Source and target nodes cannot be the same. Please select a different target node."
@@ -891,14 +1000,14 @@ const SavedMindmap = () => {
                     return;
                   }
                   linksRef.current.push({
-                    source: selectedSourceForRelation.id,
+                    source: selectedSourceForRelationRef.current.id,
                     target: d.id,
                     type: "HAS_SUBNODE",
                   });
                   const nodeMap = new Map(
                     nodesRef.current.map((node) => [node.id, node])
                   );
-                  d.depth = selectedSourceForRelation.depth + 1;
+                  d.depth = selectedSourceForRelationRef.current.depth + 1;
                   updateDepthsRecursively(d, nodeMap, linksRef.current);
                   nodesRef.current.forEach((node) => {
                     if (!colorMapRef.current[node.depth]) {
@@ -911,11 +1020,10 @@ const SavedMindmap = () => {
                       colorMapRef.current[node.depth]
                     );
                   });
-                  interactiveRelationMode = false;
-                  selectedSourceForRelation = null;
-                  if (document.querySelector(".add-relation-text")) {
-                    document.querySelector(".add-relation-text").style.display =
-                      "inline-block";
+                  interactiveRelationModeRef.current = false;
+                  selectedSourceForRelationRef.current = null;
+                  if (addRelationInteractiveSpan) {
+                    addRelationInteractiveSpan.style.display = "inline-block";
                   }
                   if (selectRelationFeedbackRef.current) {
                     selectRelationFeedbackRef.current.style.display = "none";
@@ -926,41 +1034,27 @@ const SavedMindmap = () => {
                   return;
                 }
                 selectedLevelRef.current = d.depth;
-                const colorPickerContainer = colorPickerContainerRef.current;
-                const colorPicker = colorPickerRef.current;
-                if (colorPickerContainer)
-                  colorPickerContainer.style.display = "block";
-                colorPicker.value =
+                if (colorPickerContainerRef.current)
+                  colorPickerContainerRef.current.style.display = "block";
+                // Set the color picker’s value based on the selected level
+                colorPickerRef.current.value =
                   colorMapRef.current[selectedLevelRef.current] ||
                   defaultColorScale(d.depth || 0);
                 selectedNodeRef.current = d;
                 selectedLinkRef.current = null;
                 updateBlinking();
-                event.stopPropagation();
 
-                // After you set selectedNodeRef.current, emit "node-selected"
-                const userId = localStorage.getItem("userId");
-                const userName =
-                  localStorage.getItem("userName") || "Anonymous";
-                // Remove current user from editing state on all nodes except the one clicked
-                for (const nodeId in editingNodesRef.current) {
-                  if (nodeId !== d.id) {
-                    editingNodesRef.current[nodeId] = editingNodesRef.current[
-                      nodeId
-                    ].filter((u) => u !== userName);
-                  }
-                }
+                // ⇢ tell the backend / other clients who is editing what
+                const myName = localStorage.getItem("userName") || "Anonymous";
                 socketRef.current.emit("node-selected", {
                   mindmapId: _id,
                   nodeId: d.id,
-                  userName,
+                  userName: myName,
                 });
+
+                event.stopPropagation();
               })
               .on("dblclick", (event, d) => {});
-
-            nodeGroupRef.current.selectAll("g").each(function (d) {
-              reRenderNode(d, d3.select(this));
-            });
             return nodeEnter;
           },
           (update) =>
@@ -974,34 +1068,36 @@ const SavedMindmap = () => {
                 }
                 return `translate(${d.x},${d.y})`;
               })
-              .select("ellipse")
-              .attr("fill", (d) => window.nodeColorMap.get(d.id)),
+              .attr("fill", (d) => window.nodeColorMap.get(d.id))
+              .attr("stroke", (d) => {
+                const editors = editingNodesRef.current[d.id] || [];
+                const me = localStorage.getItem("userName") || "Anonymous";
+                const others = editors.filter((u) => u !== me);
+                return others.length ? "#ff9800" : "#333";
+              })
+              .attr("stroke-width", (d) => {
+                const editors = editingNodesRef.current[d.id] || [];
+                const me = localStorage.getItem("userName") || "Anonymous";
+                const others = editors.filter((u) => u !== me);
+                return others.length ? 1 : 1;
+              }),
+
           (exit) => exit.remove()
         );
-
-      // AFTER the join block, we apply highlight logic:
       nodeSel.each(function (d) {
-        const nodeGroup = d3.select(this);
-
-        // 1) Base color
-        let fillColor = window.nodeColorMap.get(d.id);
-
-        // 2) If 'editingNodesRef.current[d.id]' has any user, use highlight
-        const editors = editingNodesRef.current[d.id];
-
-        // 3) Add or update a <title> for tooltip
-        nodeGroup.selectAll("title").remove();
-        if (editors && editors.length > 0) {
-          nodeGroup
-            .append("title")
-            .text(`Being edited by: ${editors.join(", ")}`);
-        }
+        reRenderNode(d, d3.select(this));
       });
-
       simulationRef.current.nodes(nodesRef.current);
       simulationRef.current.force("link").links(linksRef.current);
-      simulationRef.current.alpha(0).restart();
+      if (restart) {
+        simulationRef.current.alpha(1).restart();
+      } else {
+        simulationRef.current.stop();
+      }
+      console.log("Nodes:", nodesRef.current);
+      console.log("Links:", linksRef.current);
       window.requestAnimationFrame(() => fitToScreen());
+      updateBlinking();
     }
 
     // Zoom behaviour function
@@ -1052,7 +1148,11 @@ const SavedMindmap = () => {
 
         const mindmapData = await response.json();
         // Use nodes and links from the database directly
-        nodesRef.current = mindmapData.nodes || [];
+        nodesRef.current = mindmapData.nodes.map((n) => ({
+          ...n,
+          fx: n.x,
+          fy: n.y,
+        }));
         linksRef.current = mindmapData.links || [];
 
         // Update title if available
@@ -1105,88 +1205,6 @@ const SavedMindmap = () => {
       } catch (error) {
         console.error("Error fetching mindmap by ID:", error);
         setLoading(false);
-      }
-    }
-
-    function calculateEdgePosition(source, target) {
-      const sourceRx = Math.max(30, source.text.length * 5);
-      const sourceRy = 30;
-      const targetRx = Math.max(30, target.text.length * 5);
-      const targetRy = 30;
-      const sourceX = source.x;
-      const sourceY = source.y + sourceRy;
-      const targetX = target.x;
-      const targetY = target.y - targetRy;
-      return { x1: sourceX, y1: sourceY, x2: targetX, y2: targetY };
-    }
-
-    function dragged(event, d) {
-      d.fx = event.x;
-      d.fy = event.y;
-      nodesRef.current.forEach((node) => {
-        if (node.id === d.id) {
-          node.x = d.fx;
-          node.y = d.fy;
-        }
-      });
-      nodeGroupRef.current
-        .selectAll("g")
-        .filter((node) => node.id === d.id)
-        .attr("transform", `translate(${d.fx},${d.fy})`);
-      linkGroupRef.current
-        .selectAll("line")
-        .filter((line) => line.source.id === d.id || line.target.id === d.id)
-        .attr("x1", (line) => (line.source.id === d.id ? d.fx : line.source.x))
-        .attr("y1", (line) => (line.source.id === d.id ? d.fy : line.source.y))
-        .attr("x2", (line) => (line.target.id === d.id ? d.fx : line.target.x))
-        .attr("y2", (line) => (line.target.id === d.id ? d.fy : line.target.y));
-    }
-
-    function dragended(event, d) {
-      d.fx = null;
-      d.fy = null;
-    }
-
-    function updateBlinking() {
-      if (!nodeGroupRef.current || !linkGroupRef.current) return;
-      linkGroupRef.current.selectAll("ellipse").classed("blinking", false);
-      linkGroupRef.current.selectAll("line").classed("blinking", false);
-      if (selectedNodeRef.current) {
-        nodeGroupRef.current
-          .selectAll("g")
-          .filter((node) => node.id === selectedNodeRef.current.id)
-          .select("ellipse")
-          .classed("blinking", true);
-      }
-      if (selectedLinkRef.current) {
-        linkGroupRef.current
-          .selectAll("line")
-          .filter(
-            (link) =>
-              link.source.id === selectedLinkRef.current.source.id &&
-              link.target.id === selectedLinkRef.current.target.id
-          )
-          .classed("blinking", true);
-      }
-    }
-
-    function updateDepthsRecursively(node, nodeMap, links) {
-      let queue = [{ node, depth: node.depth }];
-      while (queue.length > 0) {
-        let { node, depth } = queue.shift();
-        node.depth = depth;
-        let children = links
-          .filter((l) =>
-            typeof l.source === "object"
-              ? l.source.id === node.id
-              : l.source === node.id
-          )
-          .map((l) =>
-            nodeMap.get(typeof l.target === "object" ? l.target.id : l.target)
-          );
-        children.forEach((child) => {
-          if (child) queue.push({ node: child, depth: depth + 1 });
-        });
       }
     }
 
@@ -1277,10 +1295,10 @@ const SavedMindmap = () => {
     if (addRelationInteractiveSpan) {
       addRelationInteractiveSpan.addEventListener("click", (event) => {
         // Prevent duplicate activation
-        if (!interactiveRelationMode) {
+        if (!interactiveRelationModeRef.current) {
           if (selectedNodeRef.current) {
-            interactiveRelationMode = true;
-            selectedSourceForRelation = selectedNodeRef.current;
+            interactiveRelationModeRef.current = true;
+            selectedSourceForRelationRef.current = selectedNodeRef.current;
             // Instead of an alert, update visual feedback:
             addRelationInteractiveSpan.style.display = "none";
             if (selectRelationFeedbackRef.current) {
@@ -1295,9 +1313,9 @@ const SavedMindmap = () => {
     }
 
     const handleDocumentClick = () => {
-      if (interactiveRelationMode) {
-        interactiveRelationMode = false;
-        selectedSourceForRelation = null;
+      if (interactiveRelationModeRef.current) {
+        interactiveRelationModeRef.current = false;
+        selectedSourceForRelationRef.current = null;
         if (document.querySelector(".add-relation-text")) {
           document.querySelector(".add-relation-text").style.display =
             "inline-block";
@@ -1313,13 +1331,17 @@ const SavedMindmap = () => {
       selectedLinkRef.current = null;
       selectedNodeRef.current = null;
 
-      // Optionally remove the user from any node they were editing
       const userName = localStorage.getItem("userName") || "Anonymous";
       for (const nodeId in editingNodesRef.current) {
         editingNodesRef.current[nodeId] = editingNodesRef.current[
           nodeId
         ].filter((u) => u !== userName);
       }
+      socketRef.current.emit("node-selected", {
+        mindmapId: _id,
+        nodeId: null,
+        userName,
+      }); 
       update();
 
       if (!nodeGroupRef.current || !linkGroupRef.current) return;
@@ -1591,36 +1613,35 @@ const SavedMindmap = () => {
     }
 
     function dragstarted(event, d) {
-      simulationRef.current.alpha(0).stop();
-      d.fx = d.x;
-      d.fy = d.y;
+      // Pause the force so it won’t “fight” our manual moves
+      simulationRef.current.stop();
     }
 
     function dragged(event, d) {
-      d.fx = event.x;
-      d.fy = event.y;
-      nodesRef.current.forEach((node) => {
-        if (node.id === d.id) {
-          node.x = d.fx;
-          node.y = d.fy;
-        }
-      });
-      nodeGroupRef.current
-        .selectAll("g")
-        .filter((node) => node.id === d.id)
-        .attr("transform", `translate(${d.fx},${d.fy})`);
-      linkGroupRef.current
-        .selectAll("line")
-        .filter((line) => line.source.id === d.id || line.target.id === d.id)
-        .attr("x1", (line) => (line.source.id === d.id ? d.fx : line.source.x))
-        .attr("y1", (line) => (line.source.id === d.id ? d.fy : line.source.y))
-        .attr("x2", (line) => (line.target.id === d.id ? d.fx : line.target.x))
-        .attr("y2", (line) => (line.target.id === d.id ? d.fy : line.target.y));
+      // Manually set the node’s position
+      d.x = event.x;
+      d.y = event.y;
+      // Also pin it for persistence
+      d.fx = d.x;
+      d.fy = d.y;
+      // And redraw everything right now
+      ticked();
     }
 
     function dragended(event, d) {
-      d.fx = null;
-      d.fy = null;
+      // Final manual redraw (probably redundant if you just called ticked() in dragged)
+      ticked();
+
+      // Now persist & broadcast your locked coordinates
+      syncMindmapToDatabase(nodesRef.current, linksRef.current).then(() => {
+        socketRef.current.emit("update-mindmap", {
+          mindmapId: _id,
+          nodes: nodesRef.current,
+          links: linksRef.current,
+          userId: localStorage.getItem("userId"),
+        });
+        simulationRef.current.alpha(0.3).restart();
+      });
     }
 
     function updateBlinking() {
@@ -1942,7 +1963,7 @@ const SavedMindmap = () => {
                               marginTop: "5px",
                               marginBottom: "5px",
                               paddingLeft: "40px",
-                              paddingRight: "40px", 
+                              paddingRight: "40px",
                             }}
                           >
                             PNG
@@ -1953,11 +1974,12 @@ const SavedMindmap = () => {
                               setDownloadDropdownVisible(false);
                               downloadAsSVG();
                             }}
-                            style={{ 
-                              display: "block", 
+                            style={{
+                              display: "block",
                               marginBottom: "5px",
                               paddingLeft: "40px",
-                              paddingRight: "40px",  }}
+                              paddingRight: "40px",
+                            }}
                           >
                             SVG
                           </button>
@@ -2047,36 +2069,36 @@ const SavedMindmap = () => {
                 ></div>
               </div>
               {loading && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      width: "100%",
-                      height: "100%",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: "rgba(255, 255, 255, 0.8)",
-                      zIndex: 1000,
-                    }}
-                  >
-                    <Lottie
-                      loop
-                      animationData={Loading}
-                      play
-                      style={{ width: 150, height: 150 }}
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "rgba(255, 255, 255, 0.8)",
+                    zIndex: 1000,
+                  }}
+                >
+                  <Lottie
+                    loop
+                    animationData={Loading}
+                    play
+                    style={{ width: 150, height: 150 }}
+                  />
+                  <div className="mindmap-loading-container">
+                    <Wave
+                      text="Loading Your Mind Map..."
+                      effect="fadeOut"
+                      effectChange={3.0}
                     />
-                    <div className="mindmap-loading-container">
-                      <Wave
-                        text="Loading Your Mind Map..."
-                        effect="fadeOut"
-                        effectChange={3.0}
-                      />
-                    </div>
                   </div>
-                )}
+                </div>
+              )}
             </div>
 
             {fullScreenImageUrl && (

@@ -362,11 +362,28 @@ const Mindmap = () => {
                     {files.map((file) => (
                       <li
                         key={file._id}
-                        className="d-flex justify-content-between align-items-center py-1"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          padding: "0.25rem 0",
+                        }}
                       >
-                        <span>{file.name}</span>
+                        <span
+                          style={{
+                            flex: "1 1 auto",
+                            marginRight: "0.5rem",
+                            overflow: "hidden",
+                            whiteSpace: "nowrap",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {file.name}
+                        </span>
                         <button
                           className="btn btn-sm primary-button"
+                          style={{
+                            flex: "0 0 auto",
+                          }}
                           onClick={() => handleFileSelect(file)}
                         >
                           Generate
