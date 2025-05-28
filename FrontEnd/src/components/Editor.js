@@ -805,9 +805,12 @@ const Editor = forwardRef(function Editor(
       }}
       className="sub-section"
     >
-      <div style={{ display: "flex", alignItems: "center" }} >
-        <input
-          style={{ fontSize: "1.2rem", fontWeight: "bold", flexGrow: 1 }}
+      <div className="row align-items-center mb-3">
+  {/* INPUT: full-width on xs, flex-fill on md+ */}
+  <div className="col-12 col-md mb-2 mb-md-0">
+    <input
+      className="form-control w-100"
+          style={{ fontSize: "1.2rem", fontWeight: "700", flexGrow: 1, padding: "6px 15px" }}
           value={node.title}
           onChange={(e) => {
             const newTitle = e.target.value;
@@ -826,7 +829,7 @@ const Editor = forwardRef(function Editor(
             })
           }
         />
-
+</div>
 {/* <label style={{ marginLeft: 10 }}>
 <input
   type="checkbox"
@@ -849,14 +852,8 @@ const Editor = forwardRef(function Editor(
 
         {" AI?"}
       </label> */}
-        <div
-          className="form-check form-switch"
-          style={{
-            display: "inline-block",
-            marginRight: "1rem",
-            verticalAlign: "middle",
-          }}
-        >
+      <div className="col-12 col-md-auto d-flex justify-content-end align-items-center">
+    <div className="form-check form-switch me-3 mb-2 mb-md-0">
           <input
             className="form-check-input"
             type="checkbox"
@@ -888,9 +885,10 @@ const Editor = forwardRef(function Editor(
           🗑️
         </button>
       </div>
+      </div>
       <div
         id={`editor-${node.contentId}`}
-        style={{ height: 200, border: "1px solid #ccc", marginBottom: 10 }}
+        // style={{ height: 200, border: "1px solid #ccc", marginBottom: 10 }}
         className="editor-container"
       />
       <button onClick={() => addSubsection(node.id)} style={{ marginBottom: 5 }} className="custom-button">
@@ -1488,8 +1486,16 @@ const Editor = forwardRef(function Editor(
 
       {/* Authors Section */}
       <div className="authors-section">
-        <h2 className="section-subtitle">Authors</h2>
-        <button className="custom-button" onClick={() => {
+      <div className="
+    d-flex
+    flex-column flex-md-row
+    align-items-start align-items-md-center
+    justify-content-start justify-content-md-between
+    mb-3
+  "
+>
+    <h2 className="section-subtitle mb-2 mb-md-0">Authors</h2>
+        <button className="custom-button mb-0 me-0" onClick={() => {
           const newAuthor = {
             id: `author-${Date.now()}`,
             name: "New Author",
@@ -1511,7 +1517,8 @@ const Editor = forwardRef(function Editor(
         }}>
           ➕ Add Author
         </button>
-        <ul className="author-list">
+        </div>
+        <ul className="author-list ps-0">
           {authors.map((author) => (
             <li key={author.id} className="list-item">
               <input
@@ -1566,7 +1573,11 @@ const Editor = forwardRef(function Editor(
                 }}
                 onBlur={handleNodeTitleBlur}
               />
-              <button className="remove-button" onClick={() => {
+               <div className="d-flex justify-content-end">
+              <button 
+                    className="btn btn-sm btn-danger"
+              style={{ minWidth: "100px" }}
+              onClick={() => {
                 const updatedAuthors = authors.filter((a) => a.id !== author.id);
                 setAuthors(updatedAuthors);
                 socket.emit("update-pad", {
@@ -1581,6 +1592,7 @@ const Editor = forwardRef(function Editor(
               }}>
                 🗑️ Remove Author
               </button>
+              </div>
             </li>
           ))}
         </ul>
@@ -1588,8 +1600,17 @@ const Editor = forwardRef(function Editor(
 
       {/* References Section */}
       <div className="references-section">
-        <h2 className="section-subtitle">References</h2>
-        <button className="custom-button"
+      <div
+    className="
+      d-flex
+      flex-column flex-md-row
+      align-items-start align-items-md-center
+      justify-content-start justify-content-md-between
+      mb-3
+    "
+  >
+    <h2 className="section-subtitle mb-2 mb-md-0">References</h2>
+        <button className="custom-button mb-0 me-0"
           onClick={() => {
             // Prepare a new reference object (you can also reset fields here if needed)
             setNewReference({
@@ -1633,6 +1654,7 @@ const Editor = forwardRef(function Editor(
         >
           ➕ Add Reference
         </button>
+        </div>
         <ReferenceModal
           showReferenceModal={showReferenceModal}
           padId={padId}
@@ -1917,24 +1939,33 @@ const Editor = forwardRef(function Editor(
     </li>
   ))}
 </ul> */}
-        <ul className="reference-list">
+         <ul className="reference-list list-unstyled">
           {references.map((reference) => (
-            <li key={reference.id} className="list-item" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.5rem", borderBottom: "1px solid #ddd" }}>
-              {/* Small div for the Key */}
-              <div style={{ flex: "0 0 50px", textAlign: "center", fontWeight: "bold" }}>
+            <li
+        key={reference.id}
+        className="
+          d-flex flex-column flex-md-row
+          align-items-start align-items-md-center
+          justify-content-between
+          py-2 border-bottom
+        "
+        style={{ backgroundColor: '#fafafa' }}
+      >              
+      {/* Small div for the Key */}
+        <div className="me-md-3 mb-2 mb-md-0 ms-3 me-3" style={{ fontWeight: "bold" }}>
                 [{reference.key}]
               </div>
 
               {/* Citation div (flexible width) */}
-              <div style={{ flex: "1", padding: "0 10px", textAlign: "left" }}>
+              <div className="flex-grow-1 mb-2 mb-md-0 ms-3 me-3">
                 {/* <strong>Citation:</strong> */}
                 {reference.citation}
               </div>
 
               {/* Remove Button on the right */}
               <button
-                className="remove-button"
-                style={{ flex: "0 0 100px", textAlign: "center", backgroundColor: "#ff4d4d", color: "white", border: "none", padding: "5px 10px", cursor: "pointer", borderRadius: "5px" }}
+                className="btn btn-sm btn-danger ms-3 me-3 align-self-end align-self-md-center"
+                style={{ minWidth: "100px" }}
                 onClick={() => {
                   const mapping = {};
                   let newNumber = 1;
