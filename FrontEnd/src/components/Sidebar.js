@@ -20,7 +20,7 @@ const Sidebar = ({
   const menuData = [
     { type: "link", label: "Home", icon: "🏠", route: "/" },
     { type: "header", label: "WRITEWIZARD FOR WRITING" },
-    { type: "link", label: "Chat PDF", icon: "💬", route: "/chat-pdf" },
+    { type: "link", label: "Chat PDF", icon: "💬", route: "/pdfchat" },
     {
       type: "link",
       label: "New Web Document",
