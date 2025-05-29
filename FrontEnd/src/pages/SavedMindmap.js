@@ -603,7 +603,7 @@ const SavedMindmap = () => {
       const email = newUserValue.trim();
       console.log("Email entered is ", newUserValue);
       if (!email) {
-        alert("Please enter a valid user email");
+        toast.error("Please enter a valid user email");
         return;
       }
       // Validate email format (simple regex)
@@ -993,9 +993,7 @@ const SavedMindmap = () => {
                     selectedSourceForRelationRef.current &&
                     selectedSourceForRelationRef.current.id === d.id
                   ) {
-                    alert(
-                      "Source and target nodes cannot be the same. Please select a different target node."
-                    );
+                    toast.error("Source and target nodes cannot be the same. Please select a different target node.");
                     event.stopPropagation();
                     return;
                   }
@@ -1211,7 +1209,7 @@ const SavedMindmap = () => {
     const handleAddNode = () => {
       const newNodeName = newNodeNameRef.current.value.trim();
       if (!newNodeName) {
-        alert("Please enter a valid node name.");
+        toast.error("Please enter a valid node name.");
         return;
       }
       addNodeBtnRef.current.disabled = true;
@@ -1305,7 +1303,7 @@ const SavedMindmap = () => {
               selectRelationFeedbackRef.current.style.display = "inline-block";
             }
           } else {
-            alert("Please click on a node first to set it as the source.");
+            toast.error("Please click on a node first to set it as the source.");
           }
         }
         event.stopPropagation();

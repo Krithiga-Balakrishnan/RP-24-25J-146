@@ -881,9 +881,7 @@ const downloadAsPNG = () => {
                     selectedSourceForRelation &&
                     selectedSourceForRelation.id === d.id
                   ) {
-                    alert(
-                      "Source and target nodes cannot be the same. Please select a different target node."
-                    );
+                    toast.error("Source and target nodes cannot be the same. Please select a different target node.");
                     event.stopPropagation();
                     return;
                   }
@@ -1222,7 +1220,7 @@ const downloadAsPNG = () => {
     const handleAddNode = () => {
       const newNodeName = newNodeNameRef.current.value.trim();
       if (!newNodeName) {
-        alert("Please enter a valid node name.");
+        toast.error("Please enter a valid node name.");
         return;
       }
       addNodeBtn.disabled = true;
@@ -1286,7 +1284,7 @@ const downloadAsPNG = () => {
               selectRelationFeedbackRef.current.style.display = "inline-block";
             }
           } else {
-            alert("Please click on a node first to set it as the source.");
+            toast.error("Please click on a node first to set it as the source.");
           }
         }
         event.stopPropagation();

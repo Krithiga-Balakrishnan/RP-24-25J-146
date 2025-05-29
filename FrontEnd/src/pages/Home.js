@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const Home = () => {
   const [pads, setPads] = useState([]);
@@ -68,10 +70,10 @@ const Home = () => {
 
   // Create Pad
   const createPad = async () => {
-    if (!padName.trim()) return alert("Pad name is required!");
+    if (!padName.trim()) return toast.error("Pad name is required!");
 
     const token = localStorage.getItem("token");
-    if (!token) return alert("You must be logged in!");
+    if (!token) return toast.error("You must be logged in!");
 
     const res = await fetch(
       `${process.env.REACT_APP_BACKEND_API_URL}/api/pads/create`,
@@ -98,7 +100,7 @@ const Home = () => {
       ]);
       setPadName("");
     } else {
-      alert("Failed to create pad.");
+      toast.error("Failed to create pad.");
     }
   };
 
@@ -326,6 +328,7 @@ const Home = () => {
           );
         })}
       </div>
+      <ToastContainer />
     </div>
   );
 };
