@@ -76,6 +76,28 @@ const handleUploadAndEvaluate = async () => {
 
   return (
     <div className="container py-3">
+      {/* 1) Top-right plan info */}
+      <div className="row mb-3">
+        <div className="col text-end">
+          <span className="me-2 text-muted">
+            You are currently on free plan.
+          </span>
+          <a
+            href="#"
+            className="fw-bold header-font text-decoration-none"
+            style={{ color: "var(--primary-color)" }}
+          >
+            Go Premium
+          </a>
+        </div>
+      </div>
+      
+      {/* 2) "My documents" heading */}
+      <div className="row mb-3">
+        <div className="col">
+          <h2 className="mb-4">IEEE Converter</h2>
+        </div>
+      </div>
       {/* Banner */}
       <div className="row mb-3">
         <div className="col">
