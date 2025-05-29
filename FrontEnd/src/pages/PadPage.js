@@ -9,6 +9,8 @@ import PadSidebar from "../components/PadSidebar";
 import CiteSidebar from "../components/CiteSideBar";
 import AcademicTextModal from "../components/AcademicTextModal";
 import LoadingScreen from "../animation/documentLoading"
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 // const socket = io(`${process.env.REACT_APP_BACKEND_API_URL}`);
 
 const socket = io("http://98.70.36.206", {
@@ -181,10 +183,10 @@ const PadPage = () => {
 
   // Add user to pad (only if current user is pad_owner)
   const addUserToPad = async () => {
-    if (!userEmail.trim()) return alert("Enter a valid email!");
+    if (!userEmail.trim()) return toast.error("Enter a valid email!");
 
     const token = localStorage.getItem("token");
-    if (!token) return alert("You must be logged in!");
+    if (!token) return toast.error("You must be logged in!");
 
     const res = await fetch(
       `${process.env.REACT_APP_BACKEND_API_URL}/api/pads/add-user`,
@@ -200,14 +202,14 @@ const PadPage = () => {
 
     const data = await res.json();
     if (res.ok) {
-      alert("✅ User added as editor!");
+      toast.success("User added as editor!");
       setPad((prev) => ({
         ...prev,
         users: [...prev.users, userEmail],
       }));
       setUserEmail("");
     } else {
-      alert(data.msg);
+      toast.error(data.msg);
     }
   };
 
@@ -216,7 +218,7 @@ const PadPage = () => {
     const textToConvert = lastSelectedText || selectedText;
 
     if (!textToConvert.trim()) {
-      alert("No text selected for conversion.");
+      toast.error("No text selected for conversion.");
       return;
     }
 
@@ -256,7 +258,7 @@ const PadPage = () => {
     console.log("authors",authors)
 
      if (!authors || authors.length === 0) {
-    alert("At least one author must be added before generating the paper.");
+    toast.error("At least one author must be added before generating the paper.");
     return;
   }
 
@@ -304,7 +306,7 @@ const PadPage = () => {
 
   const handleReplaceText = () => {
     if (!convertedText.trim()) {
-      alert("No converted text to insert!");
+      toast.error("No converted text to insert!");
       return;
     }
 
@@ -502,7 +504,7 @@ const PadPage = () => {
         convertedText={convertedText}
         onReplaceText={handleReplaceText}
       />
-
+      <ToastContainer />
     </>
   );
 };

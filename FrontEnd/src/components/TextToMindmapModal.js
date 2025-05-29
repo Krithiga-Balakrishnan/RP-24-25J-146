@@ -374,7 +374,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
     const handleAddNode = () => {
       const newNodeName = newNodeNameRef.current.value.trim();
       if (!newNodeName) {
-        alert("Please enter a valid node name.");
+        toast.error("Please enter a valid node name.");
         return;
       }
       addNodeBtn.disabled = true;
@@ -426,7 +426,7 @@ const MindmapModal = ({ show, onClose, selectedText }) => {
             }
           } else {
             if (!window._relationAlertShown) {
-              alert("Please click on a node first to set it as the source.");
+              toast.error("Please click on a node first to set it as the source.");
               window._relationAlertShown = true;
               setTimeout(() => {
                 window._relationAlertShown = false;
