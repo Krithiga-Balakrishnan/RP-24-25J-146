@@ -38,7 +38,8 @@ router.post("/create", auth, async (req, res) => {
     res.json({
       padId: pad._id.toString(),
       padName: pad.name,
-      roles: pad.roles
+      roles: pad.roles,
+      createdAt: pad.createdAt
     });
   } catch (error) {
     console.error(error);
@@ -49,13 +50,41 @@ router.post("/create", auth, async (req, res) => {
 // Get all pads of the authenticated user
 router.get("/user-pads", auth, async (req, res) => {
   try {
-    const pads = await Pad.find({ users: req.userId });
-    res.json(pads);
+    // const pads = await Pad.find({ users: req.userId });
+    // res.json(pads);
+    
+    // Pull back plain JS objects so we can tweak them
+    const pads = await Pad.find({ users: req.userId }).lean();
+
+    const normalized = pads.map((pad) => {
+      // If there's no createdAt at all, set null
+      if (pad.createdAt === undefined) {
+        pad.createdAt = null;
+      }
+      // Otherwise leave string or Date in place
+      return pad;
+    });
+
+    res.json(normalized);
   } catch (error) {
     console.error(error);
     res.status(500).json({ msg: "Server error" });
   }
 });
+
+// GET /api/pads/published
+router.get("/published",
+  auth,
+  async (req, res) => {
+    try {
+      const pads = await Pad.find({ published: true }).lean();
+      return res.json(pads);
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ msg: "Server error" });
+    }
+  }
+);
 
 // Add user to a pad with "editor" role
 router.post("/add-user", auth, async (req, res) => {
@@ -96,6 +125,7 @@ router.get("/:padId", async (req, res) => {
       title: pad.title || "",
       abstract: pad.abstract || "",
       keyword: pad.keyword || "",
+      published: pad.published
     });
   } catch (err) {
     res.status(500).json({ msg: "Server Error", error: err });
@@ -341,5 +371,21 @@ router.patch("/:padId/publish", auth, async (req, res) => {
     res.status(500).json({ msg: "Server error" });
   }
 });
+
+// GET /api/pads/user/:id/published
+router.get("/user/:id/published", auth, async (req, res) => {
+  try {
+    // “owner OR editor”: the user appears in the pad.users array
+    const pads = await Pad.find({
+      users: req.params.id,
+      published: true,
+    }).lean();
+    res.json(pads);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: "Server error" });
+  }
+});
+
 
 module.exports = router;
