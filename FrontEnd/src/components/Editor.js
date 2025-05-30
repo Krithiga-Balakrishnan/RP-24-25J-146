@@ -363,7 +363,7 @@ const Editor = forwardRef(function Editor(
   
       // Call the citation generation API.
       const citationResponse = await fetch(
-        "https://a37d-35-236-196-197.ngrok-free.app/generate_manual_citation/",
+         `${process.env.REACT_APP_BACKEND_API_URL_MANUAL_CITATION}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
