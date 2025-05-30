@@ -25,6 +25,9 @@ import SavedMindmap from "./pages/SavedMindmap";
 import PdfChat from "./pages/PdfChat";
 import NewDocument from "./pages/NewDocument";
 import AccountPage from "./pages/AccountPage";
+import PublishedPage from "./pages/PublishedPage";
+import UserAccountPage from "./pages/UserAccountPage";
+import Plans from "./pages/Plans";
 
 import { UserProvider } from "./context/UserContext";
 
@@ -60,6 +63,10 @@ function App() {
             <Route path="/pdfchat" element={<PdfChat />} />
             <Route path="/newdocument" element={<NewDocument />} />
             <Route path="/account" element={<AccountPage />} />
+            <Route path="/published" element={<PublishedPage />} />
+            <Route path="/user/:id" element={<UserAccountPage />} />
+            <Route path="/plans" element={<Plans />} />
+
           </Route>
 
           {/* Catch-all → login */}
