@@ -23,6 +23,8 @@ import LoadingScreen from "./pages/LoadingScreen";
 import DocumentMindmap from "./pages/DocumentMindmap";
 import SavedMindmap from "./pages/SavedMindmap";
 import PdfChat from "./pages/PdfChat";
+import NewDocument from "./pages/NewDocument";
+import AccountPage from "./pages/AccountPage";
 
 import { UserProvider } from "./context/UserContext";
 
@@ -56,6 +58,8 @@ function App() {
             <Route path="/contributor" element={<Contributor />} />
             <Route path="/pad/results/" element={<Results />} />
             <Route path="/pdfchat" element={<PdfChat />} />
+            <Route path="/newdocument" element={<NewDocument />} />
+            <Route path="/account" element={<AccountPage />} />
           </Route>
 
           {/* Catch-all → login */}

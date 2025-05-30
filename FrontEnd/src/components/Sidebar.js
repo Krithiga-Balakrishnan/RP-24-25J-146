@@ -25,7 +25,7 @@ const Sidebar = ({
       type: "link",
       label: "New Web Document",
       icon: "📝",
-      route: "/new-web-doc",
+      route: "/newdocument",
     },
     { type: "link", label: "Mindmap", icon: "✍️", route: "/mindmap" },
     { type: "link", label: "Citations", icon: "🔬", route: "/citations" },
