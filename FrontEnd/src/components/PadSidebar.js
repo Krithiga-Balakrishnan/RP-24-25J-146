@@ -8,11 +8,11 @@ const menuData = [
   { label: "Contributor", icon: "✏️", route: "#" },
   { label: "Write", icon: "📝", route: "#" },
   { label: "Cite", icon: "🔬", route: "#" },
-  { label: "Translate", icon: "🌐", route: "#" },
+  { label: "Publish", icon: "🌐", route: "#" },
   { label: "Checks", icon: "✔️", route: "#" },
 ];
 
-const PadSidebar = ({ sidebarOpen, toggleSidebar, onGenerateMindmap, onGenerateIEEE, onGenerateReference, padName, padId, }) => {
+const PadSidebar = ({ sidebarOpen, toggleSidebar, onGenerateMindmap, onGenerateIEEE, onGenerateReference, onPublish, padName, padId, }) => {
   const navigate = useNavigate();
   const [isLaptop, setIsLaptop] = useState(window.innerWidth >= 992);
   
@@ -109,6 +109,8 @@ const PadSidebar = ({ sidebarOpen, toggleSidebar, onGenerateMindmap, onGenerateI
       onGenerateIEEE();
     } else if (item.label === "Cite") {
       onGenerateReference();  // Corrected this line
+    } else if (item.label === "Publish") {
+      onPublish();  // Corrected this line
     } else {
       navigate(item.route);
     }
