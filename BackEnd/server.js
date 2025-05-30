@@ -21,6 +21,7 @@ app.use(express.json({ limit: "10mb" }));
 
 // Serve static files (uploaded images)
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/uploads/avatars", express.static(path.join(__dirname, "uploads", "avatars")));
 
 app.get("/", (req, res) => {
   res.json({ success: true, message: "API is running successfully!" });

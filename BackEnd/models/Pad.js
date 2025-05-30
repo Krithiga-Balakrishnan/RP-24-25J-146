@@ -59,7 +59,8 @@ const PadSchema = new mongoose.Schema({
     email: String,
     bio: String,
   }],
-  references: [ReferenceSchema]
+  references: [ReferenceSchema],
+  published: { type: Boolean, default: false }
 }, {
   versionKey: false,             // disable __v
   optimisticConcurrency: false   // disable version checks

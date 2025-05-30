@@ -46,7 +46,7 @@ const Home = () => {
         console.error("❌ Error fetching pads:", error);
       }
     };
-    
+
     fetchPads();
   }, [navigate]);
 
@@ -104,6 +104,14 @@ const Home = () => {
     }
   };
 
+  const goToNewDocument = () => {
+    if (!padName.trim()) {
+      return toast.error("Pad name is required!");
+    }
+    // encodeURIComponent in case of spaces, etc
+    navigate(`/newdocument?padName=${encodeURIComponent(padName)}`);
+  };
+
   // Create a quick map of userId -> user object
   const userMap = useMemo(() => {
     const map = {};
@@ -158,7 +166,7 @@ const Home = () => {
       <div className="row mb-4">
         <div className="col-12 col-md-6 mb-2 mb-md-0">
           {/* Create pad input + button */}
-          <div className="input-group">
+          {/* <div className="input-group">
             <input
               type="text"
               value={padName}
@@ -172,6 +180,23 @@ const Home = () => {
               className="form-control custom-focus"
             />
             <button onClick={createPad} className="btn primary-button">
+              Create Pad
+            </button>
+          </div> */}
+          <div className="input-group">
+            <input
+              type="text"
+              value={padName}
+              onChange={(e) => setPadName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  goToNewDocument();
+                }
+              }}
+              placeholder="Pad Name"
+              className="form-control custom-focus"
+            />
+            <button onClick={goToNewDocument} className="btn primary-button">
               Create Pad
             </button>
           </div>

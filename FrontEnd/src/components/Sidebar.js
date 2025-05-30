@@ -20,12 +20,12 @@ const Sidebar = ({
   const menuData = [
     { type: "link", label: "Home", icon: "🏠", route: "/" },
     { type: "header", label: "WRITEWIZARD FOR WRITING" },
-    { type: "link", label: "Chat PDF", icon: "💬", route: "/chat-pdf" },
+    { type: "link", label: "Chat PDF", icon: "💬", route: "/pdfchat" },
     {
       type: "link",
       label: "New Web Document",
       icon: "📝",
-      route: "/new-web-doc",
+      route: "/newdocument",
     },
     { type: "link", label: "Mindmap", icon: "✍️", route: "/mindmap" },
     { type: "link", label: "Citations", icon: "🔬", route: "/citations" },
