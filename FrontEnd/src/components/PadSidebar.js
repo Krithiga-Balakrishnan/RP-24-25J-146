@@ -13,7 +13,7 @@ const menuData = [
 ];
 
 
-const PadSidebar = ({ sidebarOpen, toggleSidebar, onGenerateMindmap, onGenerateIEEE, onGenerateReference,onCheckPDF, padName, padId, }) => {
+const PadSidebar = ({ sidebarOpen, toggleSidebar, onGenerateMindmap, onGenerateIEEE, onGenerateReference,onCheckPDF,onPublish, padName, padId, }) => {
   const navigate = useNavigate();
   const [isLaptop, setIsLaptop] = useState(window.innerWidth >= 992);
   
