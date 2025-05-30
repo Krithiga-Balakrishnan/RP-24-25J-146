@@ -1,4 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
+import "react-toastify/dist/ReactToastify.css";
+import { ToastContainer, toast } from "react-toastify";
 
 const ReferenceModal = ({
     showReferenceModal,
@@ -11,166 +13,126 @@ const ReferenceModal = ({
     onCitationData,
     onSaveReference,
 }) => {
+    const [formErrors, setFormErrors] = useState({});
+    const [sourceType, setSourceType] = useState("journal"); // or "conference"
+    const [isSaving, setIsSaving] = useState(false);
+
+
     if (!showReferenceModal) return null;
     const baseApiUrl_Manual_Citation = `${process.env.REACT_APP_BACKEND_API_URL_MANUAL_CITATION}`;
-    // const handleSaveReference = async () => {
-    //     // Compute the next key based on existing references.
-    //     const lastKey = Array.isArray(references)
-    //         ? references.reduce((max, ref) => {
-    //             const numericKey = parseInt(ref.key, 10) || 0;
-    //             return numericKey > max ? numericKey : max;
-    //         }, 0)
-    //         : 0;
-    //     const nextKey = lastKey + 1;
 
-    //     // Build the request body from the manual input.
-    //     const requestBody = {
-    //         authors: newReference.author.split(",").map(a => a.trim()),
-    //         title: newReference.title,
-    //         journal: newReference.journal,
-    //         year: parseInt(newReference.year, 10),
-    //         location: newReference.location,
-    //         pages: newReference.pages,
-    //         doi: newReference.doi,
-    //     };
+    const handleFieldChange = (field, value) => {
+        setNewReference(prev => ({ ...prev, [field]: value }));
+        if (formErrors[field] && value.trim()) {
+            setFormErrors(prev => {
+                const { [field]: _, ...rest } = prev;
+                return rest;
+            });
+        }
+    };
 
-    //     try {
-    //         const citationResponse = await fetch(
-    //             `${baseApiUrl_Manual_Citation}`,
-    //             {
-    //                 method: "POST",
-    //                 headers: { "Content-Type": "application/json" },
-    //                 body: JSON.stringify(requestBody),
-    //             }
-    //         );
-
-    //         console.log(" Awaiting response from generate_manual_citation API...");
-    //         if (!citationResponse.ok) {
-    //             const errorText = await citationResponse.text();
-    //             throw new Error(`Failed to generate citation: ${errorText}`);
-    //         }
-    //         const citationDataJSON = await citationResponse.json();
-    //         console.log(" Citation generated successfully!", citationDataJSON);
-    //         const generatedCitation = citationDataJSON.citation || "Citation not available.";
-
-    //         // Now, call the API to save the reference in the DB, including the generated citation.
-    //         const saveResponse = await fetch(
-    //             `${process.env.REACT_APP_BACKEND_API_URL}/api/pads/${padId}/save-citation`,
-    //             {
-    //                 method: "POST",
-    //                 headers: { "Content-Type": "application/json" },
-    //                 body: JSON.stringify({
-    //                     padId,
-    //                     key: String(nextKey),
-    //                     citation: generatedCitation,
-    //                     ...requestBody,
-    //                 }),
-    //             }
-    //         );
-
-    //         console.log(" Awaiting response from save-citation API...");
-    //         if (!saveResponse.ok) {
-    //             const errorText = await saveResponse.text();
-    //             throw new Error(`Failed to save citation: ${errorText}`);
-    //         }
-    //         const saveData = await saveResponse.json();
-    //         console.log(" Reference saved successfully!", saveData);
-
-    //         const finalReference = { ...newReference, key: String(nextKey), citation: generatedCitation };
-    //         console.log("Final Reference:", finalReference);
-
-    //         if (typeof onCitationData === "function") {
-    //             onCitationData(finalReference);
-    //         }
-
-    //         // Close the modal.
-    //         setShowReferenceModal(false);
-    //         return finalReference;
-    //     } catch (error) {
-    //       console.error(" Error in handleSaveReference:", error);
-    //     }
-    //   };
+    const handleFieldBlur = (field, value) => {
+        if (!value.trim()) {
+            setFormErrors(prev => ({ ...prev, [field]: "This field is required." }));
+        }
+    };
+    const validateForm = () => {
+        const requiredFields = ["author", "title", "journal", "year", "pages"];
+        const errors = {};
+        requiredFields.forEach(field => {
+            if (!newReference[field] || newReference[field].trim() === "") {
+                errors[field] = "This field is required.";
+            }
+        });
+        setFormErrors(errors);
+        return Object.keys(errors).length === 0;
+    };
 
     const handleSaveReference = async () => {
-        // Compute the next key based on existing references.
-        const lastKey = Array.isArray(references)
-            ? references.reduce((max, ref) => {
-                const numericKey = parseInt(ref.key, 10) || 0;
-                return numericKey > max ? numericKey : max;
-            }, 0)
-            : 0;
-        const nextKey = lastKey + 1;
+        if (!validateForm()) return;
 
-        // Build the request body from the manual input.
-        const requestBody = {
-            authors: newReference.author.split(",").map(a => a.trim()),
-            title: newReference.title,
-            journal: newReference.journal,
-            year: parseInt(newReference.year, 10),
-            location: newReference.location,
-            pages: newReference.pages,
-            doi: newReference.doi,
-        };
+        setIsSaving(true);
+        setFormErrors({});
+        let errorMessage = "";
 
         try {
-            // 1) Generate the raw citation
+            // Generate unique key
+            const existingKeys = new Set(references.map(ref => ref.key));
+            let lastKey = 0;
+            references.forEach(ref => {
+                const num = parseInt(ref.key, 10);
+                if (!isNaN(num)) lastKey = Math.max(lastKey, num);
+            });
+
+            let nextKey = lastKey + 1;
+            while (existingKeys.has(String(nextKey))) {
+                nextKey += 1;
+            }
+
+            // Prepare author values
+            const authorsArray = newReference.author.split(",").map(a => a.trim()); // for citation API
+            const authorsString = authorsArray.join(", "); // for DB
+
+            // Build request for citation API
+            const citationRequestBody = {
+                type: sourceType,
+                authors: authorsArray,
+                title: newReference.title,
+                journal: newReference.journal,
+                year: parseInt(newReference.year, 10),
+                pages: newReference.pages,
+                doi: newReference.doi,
+                location: sourceType === "conference" ? newReference.location : undefined,
+                volume: sourceType === "journal" ? newReference.volume : undefined,
+                issue: sourceType === "journal" ? newReference.issue : undefined,
+            };
+
+            // 1. Generate citation
             const citationResponse = await fetch(`${baseApiUrl_Manual_Citation}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(requestBody),
+                body: JSON.stringify(citationRequestBody),
             });
-            console.log(" Awaiting response from generate_manual_citation API...");
             if (!citationResponse.ok) {
                 const errorText = await citationResponse.text();
                 throw new Error(`Failed to generate citation: ${errorText}`);
             }
-            const citationDataJSON = await citationResponse.json();
-            console.log(" Citation generated successfully!", citationDataJSON);
 
-            // 2) Sanitize the citation string
-            const rawCitation = citationDataJSON.citation || "";
-            console.log("🦄 Raw citation from backend:", rawCitation);
+            let citation = (await citationResponse.json()).citation || "";
 
-            // Step 1: drop any standalone “None”
-            let step1 = rawCitation.replace(/\bNone\b/gi, "");
-            console.log("Step 1 (drop 'None'):", step1);
-
-            // // Step 2: strip out empty doi: or URL:
-            let step2 = step1
+            // 2. Clean citation
+            citation = citation
+                .replace(/\bNone\b/gi, "")
                 .replace(/doi:\s*(None|N\/A|nan|unknown)\b\.?/gi, "")
-                .replace(/\bDOI:/gi, "doi:");
-            console.log("Step 2 (normalize DOI label):", step2);
+                .replace(/\bDOI:/gi, "doi:")
+                .replace(/,?\s*pp?\.\s*[-–]\s*,?/gi, "")
+                .replace(/,+/g, ",")
+                .replace(/\s{2,}/g, " ")
+                .trim()
+                .replace(/[,\.\s]+$/, "");
 
-            // Step 3: remove any “pp. –” or “p. –” (and any surrounding comma)
-            let step3 = step2.replace(/,?\s*pp?\.\s*[-–]\s*,?/gi, "");
-            console.log("Step 3 (drop 'pp. -' segments):", step3);
+            // 3. Save to DB with string author
+            const saveRequestBody = {
+                padId,
+                key: String(nextKey),
+                citation: citation,
+                author: authorsString,
+                title: newReference.title,
+                journal: newReference.journal,
+                year: parseInt(newReference.year, 10),
+                pages: newReference.pages,
+                doi: newReference.doi,
+                location: sourceType === "conference" ? newReference.location : undefined,
+                volume: sourceType === "journal" ? newReference.volume : undefined,
+                number: sourceType === "journal" ? newReference.issue : undefined,
+            };
 
-            // Step 4: collapse multiple commas into one
-            let step4 = step3.replace(/,+/g, ",");
-            console.log("Step 4 (collapse commas):", step4);
-
-            // Step 5: collapse multiple spaces
-            let step5 = step4.replace(/\s{2,}/g, " ");
-            console.log("Step 5 (collapse spaces):", step5);
-
-            // Step 6: trim and remove trailing commas/periods/spaces
-            let cleanedCitation = step5.trim().replace(/[,\.\s]+$/, "");
-            console.log("Step 6 (trim & strip trailing):", cleanedCitation);
-
-            const sanitizedCitation = cleanedCitation || "Citation not available.";
-
-            // 3) Save the sanitized citation to your DB
             const saveResponse = await fetch(
                 `${process.env.REACT_APP_BACKEND_API_URL}/api/pads/${padId}/save-citation`,
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        padId,
-                        key: String(nextKey),
-                        citation: sanitizedCitation,
-                        ...requestBody,
-                    }),
+                    body: JSON.stringify(saveRequestBody),
                 }
             );
             console.log(" Awaiting response from save-citation API...");
@@ -181,27 +143,27 @@ const ReferenceModal = ({
             const saveData = await saveResponse.json();
             console.log(" Reference saved successfully!", saveData);
 
-            // 4) Propagate it to your parent / UI
             const finalReference = {
                 ...newReference,
                 key: String(nextKey),
-                citation: sanitizedCitation,
+                citation: citation,
             };
             console.log("Final Reference:", finalReference);
 
             if (typeof onCitationData === "function") {
                 onCitationData(finalReference);
             }
-
-            // Close the modal.
+            toast.success("📚 Reference saved successfully!");
             setShowReferenceModal(false);
             return finalReference;
         } catch (error) {
-          console.error(" Error in handleSaveReference:", error);
+            errorMessage = error.message || "An unknown error occurred.";
+            toast.error(errorMessage);
+            console.error("Error saving reference:", errorMessage);
+        } finally {
+            setIsSaving(false);
         }
-      };
-      
-      
+    };
 
 
     return (
@@ -220,6 +182,35 @@ const ReferenceModal = ({
             }}
         >
             <h3>Add Reference</h3>
+            <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
+                <button
+                    onClick={() => setSourceType("journal")}
+                    style={{
+                        backgroundColor: sourceType === "journal" ? "#56008a" : "#eee",
+                        color: sourceType === "journal" ? "#fff" : "#000",
+                        padding: "6px 12px",
+                        border: "1px solid #ccc",
+                        borderRadius: "5px",
+                        cursor: "pointer",
+                    }}
+                >
+                    Journal
+                </button>
+                <button
+                    onClick={() => setSourceType("conference")}
+                    style={{
+                        backgroundColor: sourceType === "conference" ? "#56008a" : "#eee",
+                        color: sourceType === "conference" ? "#fff" : "#000",
+                        padding: "6px 12px",
+                        border: "1px solid #ccc",
+                        borderRadius: "5px",
+                        cursor: "pointer",
+                    }}
+                >
+                    Conference
+                </button>
+            </div>
+
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                 <input
                     className="input-small reference-key"
@@ -235,64 +226,111 @@ const ReferenceModal = ({
                     type="text"
                     value={newReference.author}
                     placeholder="Author(s)"
-                    onChange={(e) =>
-                        setNewReference({ ...newReference, author: e.target.value })
-                    }
+                    onChange={(e) => handleFieldChange("author", e.target.value)}
+                    onBlur={(e) => handleFieldBlur("author", e.target.value)}
+                    style={{
+                        borderColor: formErrors.author ? "#dc3545" : "#ced4da",
+                        backgroundColor: formErrors.author ? "#fff5f5" : "white",
+                    }}
                 />
                 <input
                     className="input-small reference-title"
                     type="text"
                     value={newReference.title}
                     placeholder="Title"
-                    onChange={(e) =>
-                        setNewReference({ ...newReference, title: e.target.value })
-                    }
+                    onChange={(e) => handleFieldChange("title", e.target.value)}
+                    onBlur={(e) => handleFieldBlur("title", e.target.value)}
+                    style={{
+                        borderColor: formErrors.title ? "#dc3545" : "#ced4da",
+                        backgroundColor: formErrors.title ? "#fff5f5" : "white",
+                    }}
                 />
                 <input
                     className="input-small reference-journal"
                     type="text"
                     value={newReference.journal}
-                    placeholder="Conference"
-                    onChange={(e) =>
-                        setNewReference({ ...newReference, journal: e.target.value })
-                    }
+                    placeholder={sourceType === "journal" ? "Journal Name" : "Conference Name"}
+                    onChange={(e) => handleFieldChange("journal", e.target.value)}
+                    onBlur={(e) => handleFieldBlur("journal", e.target.value)}
+                    style={{
+                        borderColor: formErrors.journal ? "#dc3545" : "#ced4da",
+                        backgroundColor: formErrors.journal ? "#fff5f5" : "white",
+                    }}
                 />
+
                 <input
                     className="input-small reference-year"
                     type="text"
                     value={newReference.year}
                     placeholder="Year"
-                    onChange={(e) =>
-                        setNewReference({ ...newReference, year: e.target.value })
-                    }
-                />
-                <input
-                    className="input-small reference-volume"
-                    type="text"
-                    value={newReference.location}
-                    placeholder="Conference Location"
-                    onChange={(e) =>
-                        setNewReference({ ...newReference, location: e.target.value })
-                    }
-                />
-                <input
-                    className="input-small reference-number"
-                    type="text"
-                    value={newReference.doi}
-                    placeholder="doi"
-                    onChange={(e) =>
-                        setNewReference({ ...newReference, doi: e.target.value })
-                    }
+                    onChange={(e) => handleFieldChange("year", e.target.value)}
+                    onBlur={(e) => handleFieldBlur("year", e.target.value)}
+                    style={{
+                        borderColor: formErrors.year ? "#dc3545" : "#ced4da",
+                        backgroundColor: formErrors.year ? "#fff5f5" : "white",
+                    }}
                 />
                 <input
                     className="input-small reference-pages"
                     type="text"
                     value={newReference.pages}
                     placeholder="Pages"
+                    onChange={(e) => handleFieldChange("pages", e.target.value)}
+                    onBlur={(e) => handleFieldBlur("pages", e.target.value)}
+                    style={{
+                        borderColor: formErrors.pages ? "#dc3545" : "#ced4da",
+                        backgroundColor: formErrors.pages ? "#fff5f5" : "white",
+                    }}
+                />
+                {sourceType === "journal" ? (
+                    <>
+                        <input
+                            type="text"
+                            className="input-small reference-volume"
+                            value={newReference.volume || ""}
+                            placeholder="Volume"
+                            onChange={(e) => handleFieldChange("volume", e.target.value)}
+                            style={{
+                                borderColor: formErrors.volume ? "#dc3545" : "#ced4da",
+                                backgroundColor: formErrors.volume ? "#fff5f5" : "white",
+                            }}
+                        />
+                        <input
+                            type="text"
+                            className="input-small reference-issue"
+                            value={newReference.issue || ""}
+                            placeholder="Issue"
+                            onChange={(e) => handleFieldChange("issue", e.target.value)}
+                            style={{
+                                borderColor: formErrors.issue ? "#dc3545" : "#ced4da",
+                                backgroundColor: formErrors.issue ? "#fff5f5" : "white",
+                            }}
+                        />
+                    </>
+                ) : (
+                    <input
+                        className="input-small reference-volume"
+                        type="text"
+                        value={newReference.location}
+                        placeholder="Conference Location"
+                        onChange={(e) => handleFieldChange("location", e.target.value)}
+                        onBlur={(e) => handleFieldBlur("location", e.target.value)}
+                        style={{
+                            borderColor: formErrors.location ? "#dc3545" : "#ced4da",
+                            backgroundColor: formErrors.location ? "#fff5f5" : "white",
+                        }}
+                    />
+                )}
+                <input
+                    className="input-small reference-doi"
+                    type="text"
+                    value={newReference.doi}
+                    placeholder="DOI (optional)"
                     onChange={(e) =>
-                        setNewReference({ ...newReference, pages: e.target.value })
+                        setNewReference({ ...newReference, doi: e.target.value })
                     }
                 />
+
             </div>
             <div
                 style={{
@@ -305,7 +343,8 @@ const ReferenceModal = ({
                 <button
                     className="custom-button"
                     onClick={async () => {
-                        await onSaveReference(newReference);
+                        setFormErrors({});
+                        // await onSaveReference(newReference);
                         setShowReferenceModal(false);
                     }}
                     style={{
@@ -330,8 +369,9 @@ const ReferenceModal = ({
                         borderRadius: "5px",
                         cursor: "pointer",
                     }}
+                    disabled={isSaving}
                 >
-                    Save Reference
+                    {isSaving ? "Saving..." : "Save Reference"}
                 </button>
             </div>
         </div>

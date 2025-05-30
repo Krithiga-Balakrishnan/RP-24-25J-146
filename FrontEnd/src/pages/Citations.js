@@ -2,9 +2,11 @@
 import React, { useState, useRef, useEffect } from "react";
 import IconX from "../Icons/IconX";
 import Lottie from "react-lottie-player";
+import { ToastContainer, toast } from "react-toastify";
 import LoadinginSideBar from "../animation/document-search.json";
 import LoadinginCitation from "../animation/citation-loading.json";
 import Marquee from "react-fast-marquee";
+import "react-toastify/dist/ReactToastify.css";
 import { FileText } from "lucide-react";
 
 const Citations = () => {
@@ -40,17 +42,28 @@ const Citations = () => {
     journal: initialJournal,
     conference: initialConference,
   });
+  const [formErrors, setFormErrors] = useState({});
 
-  // const [newReference, setNewReference] = useState({
-  //   key: "",
-  //   author: "",
-  //   title: "",
-  //   journal: "",
-  //   year: "",
-  //   location: "",
-  //   doi: "",
-  //   pages: ""
-  // });
+  const validateForm = () => {
+    const active = formData[sourceType];
+    const errors = {};
+    const requiredFields = {
+      journal: ["title", "journal", "authors", "volume", "issue", "year", "pageStart", "pageEnd"],
+      conference: ["title", "conference", "authors", "location", "year", "pages"]
+    };
+
+    requiredFields[sourceType].forEach(field => {
+      const val = active[field];
+      if (!val || val.trim() === "") {
+        errors[field] = "This field is required.";
+      }
+    });
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+
   const [textValue, setTextValue] = useState("");
   const [inputText, setInputText] = useState("");
   const [papers, setPapers] = useState([]);
@@ -121,60 +134,17 @@ const Citations = () => {
 
     return Array.isArray(authors) ? authors : [];
   }
-  // // 1) Save & generate manual citation
-  // const handleSaveReference = async () => {
-  //   // 2) pick the right sub‐object based on the toggle
-  //   const active = formData[sourceType];
 
-  //   // 3) split authors
-  //   const authorsArray = (active.authors || "")
-  //     .split(",")
-  //     .map(a => a.trim())
-  //     .filter(a => a);
-
-  //   // 4) build the payload
-  //   const requestBody = {
-  //     type: sourceType,
-  //     authors: authorsArray,
-  //     title: active.title,
-  //     // either journal (for journal) or conference (for conference)
-  //     journal: sourceType === "journal"
-  //       ? active.journal
-  //       : active.conference,
-  //     year: parseInt(active.year, 10) || undefined,
-  //     location: active.location,
-  //     pages: sourceType === "journal"
-  //       ? `${active.pageStart}-${active.pageEnd}`
-  //       : active.pages,
-  //     doi: active.doi,
-  //     url: active.url
-  //   };
-
-  //   // 5) the rest of your modal + fetch logic stays exactly the same
-  //   setCitationData("");
-  //   setLoadingCitation(true);
-  //   setShowCitationModal(true);
-
-  //   try {
-  //     const res = await fetch(
-  //       `${baseApiUrl_manualApi}/generate_manual_citation/`,
-  //       {
-  //         method: "POST",
-  //         headers: { "Content-Type": "application/json" },
-  //         body: JSON.stringify(requestBody),
-  //       }
-  //     );
-  //     if (!res.ok) throw new Error(await res.text());
-  //     const { citation } = await res.json();
-  //     setCitationData(citation || "Citation not available.");
-  //   } catch (err) {
-  //     console.error("Manual citation error:", err);
-  //     setCitationData("Error generating manual citation.");
-  //   } finally {
-  //     setLoadingCitation(false);
-  //   }
-  // };
   const handleSaveReference = async () => {
+    const isValid = validateForm();
+    if (!isValid) {
+      toast.error("Please fill all required fields.", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      return;
+    }
+
     const active = formData[sourceType];
     const authorsArray = (active.authors || "")
       .split(",")
@@ -344,7 +314,7 @@ const Citations = () => {
       {/* 2) "My documents" heading */}
       <div className="row mb-3">
         <div className="col">
-          <h2 className="mb-4">Reference and Citation Dashboard</h2>
+          <h2 className="mb-4">Reference Suggestor</h2>
         </div>
       </div>
 
@@ -672,30 +642,67 @@ const Citations = () => {
                   className="form-control mb-2"
                   placeholder="Article title"
                   value={formData.journal.title}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const value = e.target.value;
                     setFormData({
                       ...formData,
-                      journal: { ...formData.journal, title: e.target.value },
-                    })
-                  }
+                      journal: { ...formData.journal, title: value }
+                    });
+                    if (formErrors.title && value.trim()) {
+                      setFormErrors((prev) => {
+                        const { title, ...rest } = prev;
+                        return rest;
+                      });
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const value = e.target.value;
+                    if (!value.trim()) {
+                      setFormErrors((prev) => ({ ...prev, title: "This field is required." }));
+                    }
+                  }}
+                  style={{
+                    borderColor: formErrors.title ? "#dc3545" : "#ced4da",
+                    backgroundColor: formErrors.title ? "#fff5f5" : "white"
+                  }}
                 />
 
-                <label className="form-label">
-                  Journal name <span className="text-danger">*</span>
-                </label>
+
+                <label className="form-label">Journal name <span className="text-danger">*</span></label>
                 <input
                   type="text"
                   className="form-control mb-2"
                   placeholder="Journal name"
                   value={formData.journal.journal}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const value = e.target.value;
                     setFormData({
                       ...formData,
-                      journal: { ...formData.journal, journal: e.target.value },
-                    })
-                  }
+                      journal: { ...formData.journal, journal: value }
+                    });
+                    if (formErrors.journal && value.trim()) {
+                      setFormErrors((prev) => {
+                        const { journal, ...rest } = prev;
+                        return rest;
+                      });
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const value = e.target.value;
+                    if (!value.trim()) {
+                      setFormErrors((prev) => ({ ...prev, journal: "This field is required." }));
+                    }
+                  }}
+                  style={{
+                    borderColor: formErrors.journal ? "#dc3545" : "#ced4da",
+                    backgroundColor: formErrors.journal ? "#fff5f5" : "white"
+                  }}
                 />
-
+                {formErrors.journal && (
+                  <div style={{ color: "#dc3545", fontSize: "0.85em" }}>
+                    {formErrors.journal}
+                  </div>
+                )}
                 {/* Contributors (you’d wire up an “Add contributor” UI here) */}
                 <label className="form-label">
                   Author Name <span className="text-danger">*</span>
@@ -705,107 +712,188 @@ const Citations = () => {
                   className="form-control mb-2"
                   placeholder="Enter Author Name -e.g, John Doe, Jane Smith"
                   value={formData.journal.authors}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const value = e.target.value;
                     setFormData({
                       ...formData,
-                      journal: { ...formData.journal, authors: e.target.value },
-                    })
-                  }
+                      journal: { ...formData.journal, authors: value }
+                    });
+                    if (formErrors.authors && value.trim()) {
+                      setFormErrors(prev => {
+                        const { authors, ...rest } = prev;
+                        return rest;
+                      });
+                    }
+                  }}
+                  onBlur={(e) => {
+                    if (!e.target.value.trim()) {
+                      setFormErrors(prev => ({ ...prev, authors: "This field is required." }));
+                    }
+                  }}
+                  style={{
+                    borderColor: formErrors.authors ? "#dc3545" : "#ced4da",
+                    backgroundColor: formErrors.authors ? "#fff5f5" : "white"
+                  }}
                 />
                 <div className="row mb-2">
                   <div className="col">
-                    <label className="form-label">Volume</label>
+                    <label className="form-label">Volume <span className="text-danger">*</span></label>
                     <input
                       type="text"
                       className="form-control"
                       placeholder="e.g. 12"
                       value={formData.journal.volume || ""}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const value = e.target.value;
                         setFormData({
                           ...formData,
-                          journal: {
-                            ...formData.journal,
-                            volume: e.target.value,
-                          },
-                        })
-                      }
+                          journal: { ...formData.journal, volume: value }
+                        });
+                        if (formErrors.volume && value.trim()) {
+                          setFormErrors(prev => {
+                            const { volume, ...rest } = prev;
+                            return rest;
+                          });
+                        }
+                      }}
+                      onBlur={(e) => {
+                        if (!e.target.value.trim()) {
+                          setFormErrors(prev => ({ ...prev, volume: "This field is required." }));
+                        }
+                      }}
+                      style={{
+                        borderColor: formErrors.volume ? "#dc3545" : "#ced4da",
+                        backgroundColor: formErrors.volume ? "#fff5f5" : "white"
+                      }}
                     />
                   </div>
                   <div className="col">
-                    <label className="form-label">Issue</label>
+                    <label className="form-label">Issue <span className="text-danger">*</span></label>
                     <input
                       type="text"
                       className="form-control"
                       placeholder="e.g. 3"
                       value={formData.journal.issue || ""}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const value = e.target.value;
                         setFormData({
                           ...formData,
-                          journal: {
-                            ...formData.journal,
-                            issue: e.target.value,
-                          },
-                        })
-                      }
+                          journal: { ...formData.journal, issue: value }
+                        });
+                        if (formErrors.issue && value.trim()) {
+                          setFormErrors(prev => {
+                            const { issue, ...rest } = prev;
+                            return rest;
+                          });
+                        }
+                      }}
+                      onBlur={(e) => {
+                        if (!e.target.value.trim()) {
+                          setFormErrors(prev => ({ ...prev, issue: "This field is required." }));
+                        }
+                      }}
+                      style={{
+                        borderColor: formErrors.issue ? "#dc3545" : "#ced4da",
+                        backgroundColor: formErrors.issue ? "#fff5f5" : "white"
+                      }}
                     />
                   </div>
                 </div>
                 <div className="row mb-2">
                   <div className="col">
-                    <label className="form-label">Year</label>
+                    <label className="form-label">Year <span className="text-danger">*</span></label>
                     <input
                       type="text"
                       className="form-control"
                       placeholder="YYYY"
                       value={formData.journal.year}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const value = e.target.value;
                         setFormData({
                           ...formData,
-                          journal: {
-                            ...formData.journal,
-                            year: e.target.value,
-                          },
-                        })
-                      }
+                          journal: { ...formData.journal, year: value }
+                        });
+                        if (formErrors.year && value.trim()) {
+                          setFormErrors(prev => {
+                            const { year, ...rest } = prev;
+                            return rest;
+                          });
+                        }
+                      }}
+                      onBlur={(e) => {
+                        if (!e.target.value.trim()) {
+                          setFormErrors(prev => ({ ...prev, year: "This field is required." }));
+                        }
+                      }}
+                      style={{
+                        borderColor: formErrors.year ? "#dc3545" : "#ced4da",
+                        backgroundColor: formErrors.year ? "#fff5f5" : "white"
+                      }}
                     />
                   </div>
                 </div>
 
                 <div className="row mb-2">
                   <div className="col">
-                    <label className="form-label">Page(s) First</label>
+                    <label className="form-label">Page(s) First <span className="text-danger">*</span></label>
                     <input
                       type="text"
                       className="form-control"
                       placeholder="1"
                       value={formData.journal.pageStart}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const value = e.target.value;
                         setFormData({
                           ...formData,
-                          journal: {
-                            ...formData.journal,
-                            pageStart: e.target.value,
-                          },
-                        })
-                      }
+                          journal: { ...formData.journal, pageStart: value }
+                        });
+                        if (formErrors.pageStart && value.trim()) {
+                          setFormErrors(prev => {
+                            const { pageStart, ...rest } = prev;
+                            return rest;
+                          });
+                        }
+                      }}
+                      onBlur={(e) => {
+                        if (!e.target.value.trim()) {
+                          setFormErrors(prev => ({ ...prev, pageStart: "This field is required." }));
+                        }
+                      }}
+                      style={{
+                        borderColor: formErrors.pageStart ? "#dc3545" : "#ced4da",
+                        backgroundColor: formErrors.pageStart ? "#fff5f5" : "white"
+                      }}
                     />
                   </div>
                   <div className="col">
-                    <label className="form-label">Page(s) Last</label>
+                    <label className="form-label">Page(s) Last <span className="text-danger">*</span></label>
                     <input
                       type="text"
                       className="form-control"
                       placeholder="10"
                       value={formData.journal.pageEnd}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const value = e.target.value;
                         setFormData({
                           ...formData,
-                          journal: {
-                            ...formData.journal,
-                            pageEnd: e.target.value,
-                          },
-                        })
-                      }
+                          journal: { ...formData.journal, pageEnd: value }
+                        });
+                        if (formErrors.pageEnd && value.trim()) {
+                          setFormErrors(prev => {
+                            const { pageEnd, ...rest } = prev;
+                            return rest;
+                          });
+                        }
+                      }}
+                      onBlur={(e) => {
+                        if (!e.target.value.trim()) {
+                          setFormErrors(prev => ({ ...prev, pageEnd: "This field is required." }));
+                        }
+                      }}
+                      style={{
+                        borderColor: formErrors.pageEnd ? "#dc3545" : "#ced4da",
+                        backgroundColor: formErrors.pageEnd ? "#fff5f5" : "white"
+                      }}
                     />
                   </div>
                 </div>
@@ -852,15 +940,23 @@ const Citations = () => {
                   className="form-control mb-2"
                   placeholder="Paper title"
                   value={formData.conference.title}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      conference: {
-                        ...formData.conference,
-                        title: e.target.value,
-                      },
-                    })
-                  }
+                  onChange={e => {
+                    const val = e.target.value;
+                    setFormData({ ...formData, conference: { ...formData.conference, title: val } });
+                    if (formErrors.title && val.trim()) {
+                      const { title, ...rest } = formErrors;
+                      setFormErrors(rest);
+                    }
+                  }}
+                  onBlur={e => {
+                    if (!e.target.value.trim()) {
+                      setFormErrors(prev => ({ ...prev, title: "This field is required." }));
+                    }
+                  }}
+                  style={{
+                    borderColor: formErrors.title ? "#dc3545" : "#ced4da",
+                    backgroundColor: formErrors.title ? "#fff5f5" : "white"
+                  }}
                 />
                 <label className="form-label">
                   Author Name <span className="text-danger">*</span>
@@ -870,15 +966,23 @@ const Citations = () => {
                   className="form-control mb-2"
                   placeholder="Enter Author Name -e.g, John Doe, Jane Smith"
                   value={formData.conference.authors}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      conference: {
-                        ...formData.conference,
-                        authors: e.target.value,
-                      },
-                    })
-                  }
+                  onChange={e => {
+                    const val = e.target.value;
+                    setFormData({ ...formData, conference: { ...formData.conference, authors: val } });
+                    if (formErrors.authors && val.trim()) {
+                      const { authors, ...rest } = formErrors;
+                      setFormErrors(rest);
+                    }
+                  }}
+                  onBlur={e => {
+                    if (!e.target.value.trim()) {
+                      setFormErrors(prev => ({ ...prev, authors: "This field is required." }));
+                    }
+                  }}
+                  style={{
+                    borderColor: formErrors.authors ? "#dc3545" : "#ced4da",
+                    backgroundColor: formErrors.authors ? "#fff5f5" : "white"
+                  }}
                 />
                 <label className="form-label">Conference name</label>
                 <input
@@ -886,15 +990,23 @@ const Citations = () => {
                   className="form-control mb-2"
                   placeholder="e.g. SIGGRAPH 2025"
                   value={formData.conference.conference}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      conference: {
-                        ...formData.conference,
-                        conference: e.target.value,
-                      },
-                    })
-                  }
+                  onChange={e => {
+                    const val = e.target.value;
+                    setFormData({ ...formData, conference: { ...formData.conference, conference: val } });
+                    if (formErrors.conference && val.trim()) {
+                      const { conference, ...rest } = formErrors;
+                      setFormErrors(rest);
+                    }
+                  }}
+                  onBlur={e => {
+                    if (!e.target.value.trim()) {
+                      setFormErrors(prev => ({ ...prev, conference: "This field is required." }));
+                    }
+                  }}
+                  style={{
+                    borderColor: formErrors.conference ? "#dc3545" : "#ced4da",
+                    backgroundColor: formErrors.conference ? "#fff5f5" : "white"
+                  }}
                 />
 
                 <div className="row mb-2">
@@ -905,15 +1017,23 @@ const Citations = () => {
                       className="form-control"
                       placeholder="City, Country"
                       value={formData.conference.location}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          conference: {
-                            ...formData.conference,
-                            location: e.target.value,
-                          },
-                        })
-                      }
+                      onChange={e => {
+                        const val = e.target.value;
+                        setFormData({ ...formData, conference: { ...formData.conference, location: val } });
+                        if (formErrors.location && val.trim()) {
+                          const { location, ...rest } = formErrors;
+                          setFormErrors(rest);
+                        }
+                      }}
+                      onBlur={e => {
+                        if (!e.target.value.trim()) {
+                          setFormErrors(prev => ({ ...prev, location: "This field is required." }));
+                        }
+                      }}
+                      style={{
+                        borderColor: formErrors.location ? "#dc3545" : "#ced4da",
+                        backgroundColor: formErrors.location ? "#fff5f5" : "white"
+                      }}
                     />
                   </div>
                   <div className="col">
@@ -923,15 +1043,23 @@ const Citations = () => {
                       className="form-control"
                       placeholder="YYYY"
                       value={formData.conference.year}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          conference: {
-                            ...formData.conference,
-                            year: e.target.value,
-                          },
-                        })
-                      }
+                      onChange={e => {
+                        const val = e.target.value;
+                        setFormData({ ...formData, conference: { ...formData.conference, year: val } });
+                        if (formErrors.year && val.trim()) {
+                          const { year, ...rest } = formErrors;
+                          setFormErrors(rest);
+                        }
+                      }}
+                      onBlur={e => {
+                        if (!e.target.value.trim()) {
+                          setFormErrors(prev => ({ ...prev, year: "This field is required." }));
+                        }
+                      }}
+                      style={{
+                        borderColor: formErrors.year ? "#dc3545" : "#ced4da",
+                        backgroundColor: formErrors.year ? "#fff5f5" : "white"
+                      }}
                     />
                   </div>
                 </div>
@@ -942,15 +1070,26 @@ const Citations = () => {
                   className="form-control mb-2"
                   placeholder="e.g. 100–110"
                   value={formData.conference.pages}
-                  onChange={(e) =>
+                  onChange={e => {
+                    const val = e.target.value;
                     setFormData({
                       ...formData,
-                      conference: {
-                        ...formData.conference,
-                        pages: e.target.value,
-                      },
-                    })
-                  }
+                      conference: { ...formData.conference, pages: val }
+                    });
+                    if (formErrors.pages && val.trim()) {
+                      const { pages, ...rest } = formErrors;
+                      setFormErrors(rest);
+                    }
+                  }}
+                  onBlur={e => {
+                    if (!e.target.value.trim()) {
+                      setFormErrors(prev => ({ ...prev, pages: "This field is required." }));
+                    }
+                  }}
+                  style={{
+                    borderColor: formErrors.pages ? "#dc3545" : "#ced4da",
+                    backgroundColor: formErrors.pages ? "#fff5f5" : "white"
+                  }}
                 />
 
                 <label className="form-label">DOI</label>
