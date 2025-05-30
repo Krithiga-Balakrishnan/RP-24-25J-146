@@ -20,33 +20,34 @@ const Sidebar = ({
   const menuData = [
     { type: "link", label: "Home", icon: "🏠", route: "/" },
     { type: "header", label: "WRITEWIZARD FOR WRITING" },
-    { type: "link", label: "Chat PDF", icon: "💬", route: "/chat-pdf" },
     {
       type: "link",
       label: "New Web Document",
       icon: "📝",
-      route: "/new-web-doc",
+      route: "/newdocument",
     },
     { type: "link", label: "Mindmap", icon: "✍️", route: "/mindmap" },
     { type: "link", label: "Citations", icon: "🔬", route: "/citations" },
     { type: "link", label: "IEEE", icon: "🔄", route: "/ieee" },
-    { type: "link", label: "Contributor", icon: "✏️", route: "/contributor" },
+    { type: "link", label: "Published Pages", icon: "🌐", route: "/published" },
+    { type: "link", label: "Chat PDF", icon: "💬", route: "/pdfchat" },
 
+    // { type: "link", label: "Contributor", icon: "✏️", route: "/contributor" },
 
-    { type: "header", label: "WRITEWIZARD APPS" },
-    {
-      type: "link",
-      label: "For Microsoft Word",
-      icon: "🪟",
-      route: "/ms-word",
-    },
-    {
-      type: "link",
-      label: "For Google Docs",
-      icon: "📄",
-      route: "/google-docs",
-    },
-    { type: "link", label: "For Overleaf", icon: "🌿", route: "/overleaf" },
+    // { type: "header", label: "WRITEWIZARD APPS" },
+    // {
+    //   type: "link",
+    //   label: "For Microsoft Word",
+    //   icon: "🪟",
+    //   route: "/ms-word",
+    // },
+    // {
+    //   type: "link",
+    //   label: "For Google Docs",
+    //   icon: "📄",
+    //   route: "/google-docs",
+    // },
+    // { type: "link", label: "For Overleaf", icon: "🌿", route: "/overleaf" },
 
     { type: "header", label: "WRITEWIZARD FOR MANUSCRIPT" },
     {
@@ -55,12 +56,12 @@ const Sidebar = ({
       icon: "🔎",
       route: "/plagiarism",
     },
-    {
-      type: "link",
-      label: "Submission Check",
-      icon: "✅",
-      route: "/submission",
-    },
+    // {
+    //   type: "link",
+    //   label: "Submission Check",
+    //   icon: "✅",
+    //   route: "/submission",
+    // },
     {
       type: "link",
       label: "Human Expert Services",
@@ -70,7 +71,8 @@ const Sidebar = ({
 
     { type: "link", label: "Plans", icon: "⭐", route: "/plans" },
     { type: "header", label: `USER: ${userName.current.toUpperCase()}` },
-    { type: "link", label: "My Profile", icon: "👤", route: "/profile" },
+    // { type: "link", label: "My Profile", icon: "👤", route: "/profile" },
+    { type: "link", label: "My Account", icon: "👤", route: "/account" },
     { type: "link", label: "Refer and Earn", icon: "💸", route: "/refer" },
     { type: "link", label: "Help Center", icon: "❓", route: "/help" },
     { type: "link", label: "Logout", icon: "🚪", route: "#", action: "logout" },

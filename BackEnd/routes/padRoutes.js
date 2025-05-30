@@ -6,25 +6,26 @@ const jwt = require("jsonwebtoken");
 const router = express.Router();
 const multer = require("multer");
 const path = require("path");
-
-// Middleware for authentication
-const auth = (req, res, next) => {
-  const token = req.header("Authorization");
-  if (!token) return res.status(401).json({ msg: "No token, authorization denied" });
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.userId = decoded.userId;
-    next();
-  } catch (err) {
-    res.status(401).json({ msg: "Invalid token" });
-  }
-};
+const auth = require("../middleware/auth");
 
 // Create a pad and store it in MongoDB
 router.post("/create", auth, async (req, res) => {
   const { name } = req.body;
   if (!name) return res.status(400).json({ msg: "Pad name is required" });
+
   try {
+    // 1) Make sure the current user (as owner) doesn’t already have a pad with this name
+    const exists = await Pad.findOne({
+      name,
+      [`roles.${req.userId}`]: "pad_owner"
+    });
+    if (exists) {
+      return res
+        .status(400)
+        .json({ msg: "You already have a pad with that name" });
+    }
+
+    // 2) Otherwise, create it
     const pad = new Pad({
       _id: new mongoose.Types.ObjectId(),
       name,
@@ -32,7 +33,14 @@ router.post("/create", auth, async (req, res) => {
       roles: { [req.userId]: "pad_owner" },
     });
     await pad.save();
-    res.json({ padId: pad._id.toString(), padName: pad.name, roles: pad.roles });
+
+    // 3) Respond
+    res.json({
+      padId: pad._id.toString(),
+      padName: pad.name,
+      roles: pad.roles,
+      createdAt: pad.createdAt
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ msg: "Server error" });
@@ -42,13 +50,41 @@ router.post("/create", auth, async (req, res) => {
 // Get all pads of the authenticated user
 router.get("/user-pads", auth, async (req, res) => {
   try {
-    const pads = await Pad.find({ users: req.userId });
-    res.json(pads);
+    // const pads = await Pad.find({ users: req.userId });
+    // res.json(pads);
+    
+    // Pull back plain JS objects so we can tweak them
+    const pads = await Pad.find({ users: req.userId }).lean();
+
+    const normalized = pads.map((pad) => {
+      // If there's no createdAt at all, set null
+      if (pad.createdAt === undefined) {
+        pad.createdAt = null;
+      }
+      // Otherwise leave string or Date in place
+      return pad;
+    });
+
+    res.json(normalized);
   } catch (error) {
     console.error(error);
     res.status(500).json({ msg: "Server error" });
   }
 });
+
+// GET /api/pads/published
+router.get("/published",
+  auth,
+  async (req, res) => {
+    try {
+      const pads = await Pad.find({ published: true }).lean();
+      return res.json(pads);
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ msg: "Server error" });
+    }
+  }
+);
 
 // Add user to a pad with "editor" role
 router.post("/add-user", auth, async (req, res) => {
@@ -89,6 +125,7 @@ router.get("/:padId", async (req, res) => {
       title: pad.title || "",
       abstract: pad.abstract || "",
       keyword: pad.keyword || "",
+      published: pad.published
     });
   } catch (err) {
     res.status(500).json({ msg: "Server Error", error: err });
@@ -242,5 +279,111 @@ router.post("/:padId/save-citation", async (req, res) => {
     return res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+// PATCH /api/pads/:padId — update only name and/or title
+router.patch("/:padId", auth, async (req, res) => {
+  const { padId } = req.params;
+  const { name, title } = req.body;
+  if (name === undefined && title === undefined) {
+    return res.status(400).json({ msg: "Nothing to update" });
+  }
+
+  try {
+    const pad = await Pad.findById(padId);
+    if (!pad) return res.status(404).json({ msg: "Pad not found" });
+
+    // Only the owner can rename
+    if (name !== undefined && pad.roles.get(req.userId) !== "pad_owner") {
+      return res.status(403).json({ msg: "Only owner may rename" });
+    }
+
+    // **New**: if renaming, ensure uniqueness among this user's owned pads
+    if (name !== undefined) {
+      const exists = await Pad.findOne({
+        _id: { $ne: padId },
+        name,
+        [`roles.${req.userId}`]: "pad_owner"
+      });
+      if (exists) {
+        return res
+          .status(400)
+          .json({ msg: "You already have a pad with that name" });
+      }
+      pad.name = name;
+    }
+
+    if (title !== undefined) {
+      pad.title = title;
+    }
+
+    await pad.save();
+    res.json({ msg: "Pad updated", pad });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: "Server error" });
+  }
+});
+
+// DELETE /api/pads/:padId — delete the pad entirely
+router.delete("/:padId", auth, async (req, res) => {
+  const { padId } = req.params;
+  try {
+    const pad = await Pad.findById(padId);
+    if (!pad) return res.status(404).json({ msg: "Pad not found" });
+    // Only owner can delete
+    if (pad.roles.get(req.userId) !== "pad_owner") {
+      return res.status(403).json({ msg: "Only owner may delete" });
+    }
+    await pad.deleteOne();
+    res.json({ msg: "Pad deleted" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: "Server error" });
+  }
+});
+
+// PATCH /api/pads/:padId/publish — toggle published flag
+router.patch("/:padId/publish", auth, async (req, res) => {
+  try {
+    const pad = await Pad.findById(req.params.padId);
+    if (!pad) return res.status(404).json({ msg: "Pad not found" });
+
+    // Only the pad owner may toggle publish
+    if (pad.roles.get(req.userId) !== "pad_owner") {
+      return res.status(403).json({ msg: "Only pad owner may publish/unpublish" });
+    }
+
+    // Toggle!
+    pad.published = !pad.published;
+    await pad.save();
+
+    res.json({
+      msg: pad.published
+        ? "Pad is now published"
+        : "Pad has been unpublished",
+      published: pad.published
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: "Server error" });
+  }
+});
+
+// GET /api/pads/user/:id/published
+router.get("/user/:id/published", auth, async (req, res) => {
+  try {
+    // “owner OR editor”: the user appears in the pad.users array
+    const pads = await Pad.find({
+      users: req.params.id,
+      published: true,
+    }).lean();
+    res.json(pads);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: "Server error" });
+  }
+});
+
 
 module.exports = router;

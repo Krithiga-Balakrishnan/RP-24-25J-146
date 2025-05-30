@@ -1,9 +1,11 @@
 // Citations.js
 import React, { useState, useRef, useEffect } from "react";
-import IconX from '../Icons/IconX';
+import IconX from "../Icons/IconX";
 import Lottie from "react-lottie-player";
 import LoadinginSideBar from "../animation/document-search.json";
 import LoadinginCitation from "../animation/citation-loading.json";
+import Marquee from "react-fast-marquee";
+import { FileText } from "lucide-react";
 
 const Citations = () => {
   const [activeTab, setActiveTab] = useState("search");
@@ -12,20 +14,31 @@ const Citations = () => {
   const [copied, setCopied] = useState(false);
   // 1) state at top of Citations()
   const initialJournal = {
-    authors: "", title: "", journal: "",
-    volume: "", issue: "",
-    year: "", pageStart: "", pageEnd: "",
-    doi: "", url: ""
+    authors: "",
+    title: "",
+    journal: "",
+    volume: "",
+    issue: "",
+    year: "",
+    pageStart: "",
+    pageEnd: "",
+    doi: "",
+    url: "",
   };
   const initialConference = {
-    authors: "", title: "", conference: "",
-    location: "", confDate: "",
-    pages: "", doi: "", url: ""
+    authors: "",
+    title: "",
+    conference: "",
+    location: "",
+    confDate: "",
+    pages: "",
+    doi: "",
+    url: "",
   };
 
   const [formData, setFormData] = useState({
     journal: initialJournal,
-    conference: initialConference
+    conference: initialConference,
   });
 
   // const [newReference, setNewReference] = useState({
@@ -45,7 +58,8 @@ const Citations = () => {
   const [error, setError] = useState(null);
   const baseApiUrl_Search = `${process.env.REACT_APP_BACKEND_API_URL_REFERENCE_SEARCH}`;
   const baseApiUrl_Citation = `${process.env.REACT_APP_BACKEND_API_URL_CITATION}`;
-  const baseApiUrl_manualApi = process.env.REACT_APP_BACKEND_API_URL_MANUAL_CITATION;
+  const baseApiUrl_manualApi =
+    process.env.REACT_APP_BACKEND_API_URL_MANUAL_CITATION;
   const [sourceType, setSourceType] = useState("journal");
 
   const [loadingCitation, setLoadingCitation] = useState(false);
@@ -64,14 +78,11 @@ const Citations = () => {
     setShowCitationModal(true);
 
     try {
-      const res = await fetch(
-        `${baseApiUrl_Citation}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ selected_paper_ids: [paper.paper_id] }),
-        }
-      );
+      const res = await fetch(`${baseApiUrl_Citation}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ selected_paper_ids: [paper.paper_id] }),
+      });
 
       const payload = await res.json();
 
@@ -167,25 +178,26 @@ const Citations = () => {
     const active = formData[sourceType];
     const authorsArray = (active.authors || "")
       .split(",")
-      .map(a => a.trim())
-      .filter(a => a);
+      .map((a) => a.trim())
+      .filter((a) => a);
 
     // Dynamic container key:
     const containerField = sourceType;
     // this will be either "journal" or "conference"
 
     const requestBody = {
-      type: sourceType,      // "journal" or "conference"
+      type: sourceType, // "journal" or "conference"
       authors: authorsArray,
       title: active.title,
       [containerField]: active[containerField],
       year: parseInt(active.year, 10) || undefined,
       location: active.location,
-      pages: sourceType === "journal"
-        ? `${active.pageStart}-${active.pageEnd}`
-        : active.pages,
+      pages:
+        sourceType === "journal"
+          ? `${active.pageStart}-${active.pageEnd}`
+          : active.pages,
       doi: active.doi,
-      url: active.url
+      url: active.url,
     };
 
     setCitationData("");
@@ -193,14 +205,11 @@ const Citations = () => {
     setShowCitationModal(true);
 
     try {
-      const res = await fetch(
-        `${baseApiUrl_manualApi}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(requestBody),
-        }
-      );
+      const res = await fetch(`${baseApiUrl_manualApi}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
       if (!res.ok) throw new Error(await res.text());
       const { citation } = await res.json();
       console.log("🦄 Received citation from backend:", citation);
@@ -209,9 +218,7 @@ const Citations = () => {
       console.log("Step 1 (drop 'None'):", step1);
 
       // 2) Strip out “doi:” or “URL:” labels that now point to empty
-      let step2 = step1
-        .replace(/doi:\s*/i, "")
-        .replace(/URL:\s*\.?/i, "");
+      let step2 = step1.replace(/doi:\s*/i, "").replace(/URL:\s*\.?/i, "");
       console.log("Step 2 (strip empty labels):", step2);
 
       // 3) Remove any “pp. –” or “p. –” *and* the preceding comma if present
@@ -239,8 +246,6 @@ const Citations = () => {
     }
   };
 
-
-
   const handleSearch = async () => {
     if (!textValue.trim()) return;
 
@@ -258,15 +263,17 @@ const Citations = () => {
       if (!response.ok) throw new Error("Failed to fetch papers");
 
       const data = await response.json();
-      const formatted = data.results?.map(paper => ({
-        //   ...paper,
-        //   authors: Array.isArray(paper.authors) ? paper.authors : [],
-        //   abstract: paper.abstract || paper.Abstract || "No abstract available.",
-        // })) || [];
-        ...paper,
-        authors: parseAuthors(paper.authors), // Ensure authors is an array
-        abstract: paper.abstract || paper.Abstract || "No abstract available."
-      })) || []
+      const formatted =
+        data.results?.map((paper) => ({
+          //   ...paper,
+          //   authors: Array.isArray(paper.authors) ? paper.authors : [],
+          //   abstract: paper.abstract || paper.Abstract || "No abstract available.",
+          // })) || [];
+          ...paper,
+          authors: parseAuthors(paper.authors), // Ensure authors is an array
+          abstract:
+            paper.abstract || paper.Abstract || "No abstract available.",
+        })) || [];
 
       setPapers(formatted);
     } catch (err) {
@@ -277,17 +284,19 @@ const Citations = () => {
   };
 
   function highlightMatch(abstract, matchedSentences) {
-    if (!abstract || !matchedSentences || matchedSentences.length === 0) return abstract;
+    if (!abstract || !matchedSentences || matchedSentences.length === 0)
+      return abstract;
 
     let highlightedAbstract = abstract;
 
     matchedSentences.forEach(({ sentence }) => {
       if (!sentence) return;
-      const escaped = sentence.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(escaped, 'gi');
+      const escaped = sentence.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = new RegExp(escaped, "gi");
       highlightedAbstract = highlightedAbstract.replace(
         regex,
-        match => `<span style="background-color: violet; font-weight: bold;">${match}</span>`
+        (match) =>
+          `<span style="background-color: violet; font-weight: bold;">${match}</span>`
       );
     });
 
@@ -296,22 +305,32 @@ const Citations = () => {
   // inside Citations()
   const handleCopyCitation = () => {
     if (!citationData) return;
-    navigator.clipboard.writeText(citationData)
+    navigator.clipboard
+      .writeText(citationData)
       .then(() => {
         setCopied(true);
         // reset after 2s
         setTimeout(() => setCopied(false), 2000);
       })
-      .catch(err => console.error("Failed to copy citation:", err));
+      .catch((err) => console.error("Failed to copy citation:", err));
   };
 
-
-
   return (
-    <div className="container-fluid py-3" style={{ maxWidth: "90%", height: "100vh", display: "flex", flexDirection: "column" }}>
-      <div className="row mb-2">
+    <div
+      className="container-fluid py-3"
+      style={{
+        maxWidth: "90%",
+        height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      {/* 1) Top-right plan info */}
+      <div className="row mb-3">
         <div className="col text-end">
-          <span className="me-2 text-muted">You are currently on free plan.</span>
+          <span className="me-2 text-muted">
+            You are currently on free plan.
+          </span>
           <a
             href="#"
             className="fw-bold header-font text-decoration-none"
@@ -321,33 +340,54 @@ const Citations = () => {
           </a>
         </div>
       </div>
-      <ul className="nav nav-pills custom-tabs mb-4">
-        <li className="nav-item">
 
-          <button
-            className={`nav-link ${activeTab === "search" ? "active" : ""}`}
-            onClick={() => setActiveTab("search")}
-          >
-            Search Reference Papers
-          </button>
-        </li>
-        <li className="nav-item">
-          <button
-            className={`nav-link ${activeTab === "manual" ? "active" : ""}`}
-            onClick={() => setActiveTab("manual")}
-          >
-            Manual Citation
-          </button>
-        </li>
-      </ul>
+      {/* 2) "My documents" heading */}
+      <div className="row mb-3">
+        <div className="col">
+          <h2 className="mb-4">IEEE Converter</h2>
+        </div>
+      </div>
+
+      {/* Wrap pills in a row so columns work */}
+      <div className="row g-0 mb-4">
+        <ul className="nav nav-pills custom-tabs d-flex p-0 w-100 header-font">
+          <li className="nav-item col-12 col-md-6">
+            <button
+              className={`nav-link w-100 ${
+                activeTab === "search" ? "active" : ""
+              }`}
+              onClick={() => setActiveTab("search")}
+            >
+              Search Reference Papers
+            </button>
+          </li>
+          <li className="nav-item col-12 col-md-6">
+            <button
+              className={`nav-link w-100 ${
+                activeTab === "manual" ? "active" : ""
+              }`}
+              onClick={() => setActiveTab("manual")}
+            >
+              Manual Citation
+            </button>
+          </li>
+        </ul>
+      </div>
+
       {/* Sticky Header: Textarea + Button */}
       {activeTab === "search" && (
         <div>
-          <div style={{ position: "sticky", top: 0, backgroundColor: "#fff", zIndex: 10, paddingBottom: "1rem" }}>
-
+          <div
+            style={{
+              position: "sticky",
+              top: 0,
+              backgroundColor: "#fff",
+              zIndex: 10,
+              paddingBottom: "1rem",
+            }}
+          >
             <div className="row">
               <div className="col">
-                <h2 className="mb-3">Search for Reference Papers</h2>
                 <textarea
                   className="form-control mb-2"
                   placeholder="Enter your text to find related reference papers..."
@@ -355,14 +395,22 @@ const Citations = () => {
                   value={textValue}
                   onChange={(e) => setTextValue(e.target.value)}
                 />
-                <button className="btn primary-button" onClick={handleSearch}>
+                <button
+                  className="btn primary-button px-4 py-2"
+                  onClick={handleSearch}
+                >
                   Find reference papers
                 </button>
                 {/* {loading && <p className="mt-2">Loading...</p>}
             {error && <p style={{ color: "red" }}>{error}</p>} */}
                 {loading && (
                   <div className="mt-3 d-flex justify-content-center">
-                    <Lottie loop animationData={LoadinginSideBar} play style={{ width: 200, height: 200 }} />
+                    <Lottie
+                      loop
+                      animationData={LoadinginSideBar}
+                      play
+                      style={{ width: 200, height: 200 }}
+                    />
                   </div>
                 )}
                 {error && <p style={{ color: "red" }}>{error}</p>}
@@ -377,41 +425,46 @@ const Citations = () => {
               flexGrow: 1,
               paddingRight: "0.5rem",
               marginTop: "1rem",
-              marginBottom: "2rem"
+              marginBottom: "2rem",
             }}
           >
-            {papers.length > 0 ? (
-              papers.map((paper, idx) => (
-                <div
-                  key={idx}
-                  // onClick={() => alert(`You clicked on: ${paper.title}`)} // Replace with your action
-                  onClick={() => {
-                    setSelectedPaper(paper);
-                    setShowViewModal(true);
-                  }}
-
-                  style={{
-                    marginBottom: "1rem",
-                    padding: "1rem",
-                    border: "1px solid #ddd",
-                    borderRadius: "10px",
-                    cursor: "pointer",
-                    transition: "background 0.2s",
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.backgroundColor = "#f9f9f9"}
-                  onMouseLeave={e => e.currentTarget.style.backgroundColor = "#fff"}
-                >
-                  <h4>{paper.title || "Untitled"}</h4>
-                  <p>
-                    <strong>Authors:</strong>{" "}
-                    {paper.authors?.length > 0 ? paper.authors.join(", ") : "Unknown Author"}
-                  </p>
-                  <p style={{ fontStyle: "italic", color: "#555" }}>{paper.abstract}</p>
-                </div>
-              ))
-            ) : (
-              !loading && <p>No papers found yet.</p>
-            )}
+            {papers.length > 0
+              ? papers.map((paper, idx) => (
+                  <div
+                    key={idx}
+                    // onClick={() => alert(`You clicked on: ${paper.title}`)} // Replace with your action
+                    onClick={() => {
+                      setSelectedPaper(paper);
+                      setShowViewModal(true);
+                    }}
+                    style={{
+                      marginBottom: "1rem",
+                      padding: "1rem",
+                      border: "1px solid #ddd",
+                      borderRadius: "10px",
+                      cursor: "pointer",
+                      transition: "background 0.2s",
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.backgroundColor = "#f9f9f9")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.backgroundColor = "#fff")
+                    }
+                  >
+                    <h4>{paper.title || "Untitled"}</h4>
+                    <p>
+                      <strong>Authors:</strong>{" "}
+                      {paper.authors?.length > 0
+                        ? paper.authors.join(", ")
+                        : "Unknown Author"}
+                    </p>
+                    <p style={{ fontStyle: "italic", color: "#555" }}>
+                      {paper.abstract}
+                    </p>
+                  </div>
+                ))
+              : !loading && <p>No papers found yet.</p>}
           </div>
           {showViewModal && selectedPaper && (
             <div
@@ -431,7 +484,10 @@ const Citations = () => {
                 textAlign: "left",
               }}
             >
-              <button onClick={() => setShowViewModal(false)} style={{ float: "right", border: "none", background: "none" }}>
+              <button
+                onClick={() => setShowViewModal(false)}
+                style={{ float: "right", border: "none", background: "none" }}
+              >
                 <IconX />
               </button>
               <h3>View Details</h3>
@@ -469,7 +525,10 @@ const Citations = () => {
                   {selectedPaper.abstract ? (
                     <p
                       dangerouslySetInnerHTML={{
-                        __html: highlightMatch(selectedPaper.abstract, selectedPaper.matched_sentences),
+                        __html: highlightMatch(
+                          selectedPaper.abstract,
+                          selectedPaper.matched_sentences
+                        ),
                       }}
                     />
                   ) : (
@@ -493,8 +552,12 @@ const Citations = () => {
                     border: "none",
                     cursor: "pointer",
                   }}
-                  onMouseEnter={(e) => (e.target.style.backgroundColor = "#a287b0")}
-                  onMouseLeave={(e) => (e.target.style.backgroundColor = "#56008a")}
+                  onMouseEnter={(e) =>
+                    (e.target.style.backgroundColor = "#a287b0")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.target.style.backgroundColor = "#56008a")
+                  }
                 >
                   View Citation
                 </button>
@@ -503,23 +566,47 @@ const Citations = () => {
           )}
 
           {showCitationModal && selectedPaper && (
-            <div style={{
-              position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
-              backgroundColor: "#fff", padding: "30px", borderRadius: "15px",
-              boxShadow: "0 5px 15px rgba(0,0,0,0.3)", zIndex: 1000, width: "800px", textAlign: "center"
-            }}>
-              <button onClick={() => setShowCitationModal(false)} style={{ float: "right", border: "none", background: "none" }}>
+            <div
+              style={{
+                position: "fixed",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                backgroundColor: "#fff",
+                padding: "30px",
+                borderRadius: "15px",
+                boxShadow: "0 5px 15px rgba(0,0,0,0.3)",
+                zIndex: 1000,
+                width: "800px",
+                textAlign: "center",
+              }}
+            >
+              <button
+                onClick={() => setShowCitationModal(false)}
+                style={{ float: "right", border: "none", background: "none" }}
+              >
                 <IconX />
               </button>
               <h3 style={{ marginBottom: "15px" }}>Citation Format</h3>
               <h4 style={{ textAlign: "left" }}>{selectedPaper.title}</h4>
-              <div style={{
-                backgroundColor: "#f8f8f8", padding: "10px", borderRadius: "5px",
-                fontSize: "14px", wordBreak: "break-word", textAlign: "left"
-              }}>
+              <div
+                style={{
+                  backgroundColor: "#f8f8f8",
+                  padding: "10px",
+                  borderRadius: "5px",
+                  fontSize: "14px",
+                  wordBreak: "break-word",
+                  textAlign: "left",
+                }}
+              >
                 {loadingCitation ? (
                   <div style={{ display: "flex", justifyContent: "center" }}>
-                    <Lottie loop animationData={LoadinginCitation} play style={{ width: 200, height: 200 }} />
+                    <Lottie
+                      loop
+                      animationData={LoadinginCitation}
+                      play
+                      style={{ width: 200, height: 200 }}
+                    />
                   </div>
                 ) : (
                   <p>{citationData}</p>
@@ -542,32 +629,34 @@ const Citations = () => {
                   )}
                 </div>
               )}
-
             </div>
           )}
-
         </div>
       )}
       {activeTab === "manual" && (
-        <div className="border p-4 rounded" style={{ background: "#fff", maxWidth: "100%" }}>
-          <h3>Add Reference</h3>
-
+        <div
+          className="border p-4 rounded"
+          style={{ background: "#fff", maxWidth: "100%" }}
+        >
           {/* 1) TYPE TOGGLE */}
-          <div className="btn-group mb-4" role="group">
-            <button
-              type="button"
-              className={`btn ${sourceType === "journal" ? "primary-button" : "btn-outline-custom"}`}
-              onClick={() => setSourceType("journal")}
-            >
-              Journal article
-            </button>
-            <button
-              type="button"
-              className={`btn ${sourceType === "conference" ? "primary-button" : "btn-outline-custom"}`}
-              onClick={() => setSourceType("conference")}
-            >
-              Conference paper
-            </button>
+          <div className="btn-group mb-4 header-font" role="group">
+            {["journal", "conference"].map((type) => (
+              <button
+                key={type}
+                type="button"
+                className={`btn ${
+                  sourceType === type ? "primary-button" : "btn-outline-custom"
+                }`}
+                style={
+                  sourceType === type
+                    ? {}
+                    : { border: `1px solid var(--secondary-color)` }
+                }
+                onClick={() => setSourceType(type)}
+              >
+                {type === "journal" ? "Journal article" : "Conference paper"}
+              </button>
+            ))}
           </div>
 
           {/* 2) CONDITIONAL FORM */}
@@ -575,41 +664,53 @@ const Citations = () => {
             <>
               {/* replicate your screenshot fields for Journal */}
               <div className="mb-3">
-                <label className="form-label">Title <span className="text-danger">*</span></label>
+                <label className="form-label">
+                  Title <span className="text-danger">*</span>
+                </label>
                 <input
                   type="text"
                   className="form-control mb-2"
                   placeholder="Article title"
                   value={formData.journal.title}
-                  onChange={e => setFormData({
-                    ...formData,
-                    journal: { ...formData.journal, title: e.target.value }
-                  })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      journal: { ...formData.journal, title: e.target.value },
+                    })
+                  }
                 />
 
-                <label className="form-label">Journal name <span className="text-danger">*</span></label>
+                <label className="form-label">
+                  Journal name <span className="text-danger">*</span>
+                </label>
                 <input
                   type="text"
                   className="form-control mb-2"
                   placeholder="Journal name"
                   value={formData.journal.journal}
-                  onChange={e => setFormData({
-                    ...formData,
-                    journal: { ...formData.journal, journal: e.target.value }
-                  })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      journal: { ...formData.journal, journal: e.target.value },
+                    })
+                  }
                 />
 
                 {/* Contributors (you’d wire up an “Add contributor” UI here) */}
-                <label className="form-label">Author Name <span className="text-danger">*</span></label>
+                <label className="form-label">
+                  Author Name <span className="text-danger">*</span>
+                </label>
                 <input
                   type="text"
                   className="form-control mb-2"
                   placeholder="Enter Author Name -e.g, John Doe, Jane Smith"
                   value={formData.journal.authors}
-                  onChange={e => setFormData({
-                    ...formData,
-                    journal: { ...formData.journal, authors: e.target.value }
-                  })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      journal: { ...formData.journal, authors: e.target.value },
+                    })
+                  }
                 />
                 <div className="row mb-2">
                   <div className="col">
@@ -619,10 +720,15 @@ const Citations = () => {
                       className="form-control"
                       placeholder="e.g. 12"
                       value={formData.journal.volume || ""}
-                      onChange={e => setFormData({
-                        ...formData,
-                        journal: { ...formData.journal, volume: e.target.value }
-                      })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          journal: {
+                            ...formData.journal,
+                            volume: e.target.value,
+                          },
+                        })
+                      }
                     />
                   </div>
                   <div className="col">
@@ -632,10 +738,15 @@ const Citations = () => {
                       className="form-control"
                       placeholder="e.g. 3"
                       value={formData.journal.issue || ""}
-                      onChange={e => setFormData({
-                        ...formData,
-                        journal: { ...formData.journal, issue: e.target.value }
-                      })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          journal: {
+                            ...formData.journal,
+                            issue: e.target.value,
+                          },
+                        })
+                      }
                     />
                   </div>
                 </div>
@@ -647,10 +758,15 @@ const Citations = () => {
                       className="form-control"
                       placeholder="YYYY"
                       value={formData.journal.year}
-                      onChange={e => setFormData({
-                        ...formData,
-                        journal: { ...formData.journal, year: e.target.value }
-                      })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          journal: {
+                            ...formData.journal,
+                            year: e.target.value,
+                          },
+                        })
+                      }
                     />
                   </div>
                 </div>
@@ -663,10 +779,15 @@ const Citations = () => {
                       className="form-control"
                       placeholder="1"
                       value={formData.journal.pageStart}
-                      onChange={e => setFormData({
-                        ...formData,
-                        journal: { ...formData.journal, pageStart: e.target.value }
-                      })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          journal: {
+                            ...formData.journal,
+                            pageStart: e.target.value,
+                          },
+                        })
+                      }
                     />
                   </div>
                   <div className="col">
@@ -676,10 +797,15 @@ const Citations = () => {
                       className="form-control"
                       placeholder="10"
                       value={formData.journal.pageEnd}
-                      onChange={e => setFormData({
-                        ...formData,
-                        journal: { ...formData.journal, pageEnd: e.target.value }
-                      })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          journal: {
+                            ...formData.journal,
+                            pageEnd: e.target.value,
+                          },
+                        })
+                      }
                     />
                   </div>
                 </div>
@@ -691,10 +817,12 @@ const Citations = () => {
                     className="form-control"
                     placeholder="e.g. 10.1037/a0040251"
                     value={formData.journal.doi}
-                    onChange={e => setFormData({
-                      ...formData,
-                      journal: { ...formData.journal, doi: e.target.value }
-                    })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        journal: { ...formData.journal, doi: e.target.value },
+                      })
+                    }
                   />
                 </div>
                 <div className="mb-2">
@@ -704,10 +832,12 @@ const Citations = () => {
                     className="form-control"
                     placeholder="https://…"
                     value={formData.journal.url}
-                    onChange={e => setFormData({
-                      ...formData,
-                      journal: { ...formData.journal, url: e.target.value }
-                    })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        journal: { ...formData.journal, url: e.target.value },
+                      })
+                    }
                   />
                 </div>
               </div>
@@ -722,21 +852,33 @@ const Citations = () => {
                   className="form-control mb-2"
                   placeholder="Paper title"
                   value={formData.conference.title}
-                  onChange={e => setFormData({
-                    ...formData,
-                    conference: { ...formData.conference, title: e.target.value }
-                  })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      conference: {
+                        ...formData.conference,
+                        title: e.target.value,
+                      },
+                    })
+                  }
                 />
-                <label className="form-label">Author Name <span className="text-danger">*</span></label>
+                <label className="form-label">
+                  Author Name <span className="text-danger">*</span>
+                </label>
                 <input
                   type="text"
                   className="form-control mb-2"
                   placeholder="Enter Author Name -e.g, John Doe, Jane Smith"
                   value={formData.conference.authors}
-                  onChange={e => setFormData({
-                    ...formData,
-                    conference: { ...formData.conference, authors: e.target.value }
-                  })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      conference: {
+                        ...formData.conference,
+                        authors: e.target.value,
+                      },
+                    })
+                  }
                 />
                 <label className="form-label">Conference name</label>
                 <input
@@ -744,10 +886,15 @@ const Citations = () => {
                   className="form-control mb-2"
                   placeholder="e.g. SIGGRAPH 2025"
                   value={formData.conference.conference}
-                  onChange={e => setFormData({
-                    ...formData,
-                    conference: { ...formData.conference, conference: e.target.value }
-                  })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      conference: {
+                        ...formData.conference,
+                        conference: e.target.value,
+                      },
+                    })
+                  }
                 />
 
                 <div className="row mb-2">
@@ -758,10 +905,15 @@ const Citations = () => {
                       className="form-control"
                       placeholder="City, Country"
                       value={formData.conference.location}
-                      onChange={e => setFormData({
-                        ...formData,
-                        conference: { ...formData.conference, location: e.target.value }
-                      })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          conference: {
+                            ...formData.conference,
+                            location: e.target.value,
+                          },
+                        })
+                      }
                     />
                   </div>
                   <div className="col">
@@ -771,10 +923,15 @@ const Citations = () => {
                       className="form-control"
                       placeholder="YYYY"
                       value={formData.conference.year}
-                      onChange={e => setFormData({
-                        ...formData,
-                        conference: { ...formData.conference, year: e.target.value }
-                      })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          conference: {
+                            ...formData.conference,
+                            year: e.target.value,
+                          },
+                        })
+                      }
                     />
                   </div>
                 </div>
@@ -785,10 +942,15 @@ const Citations = () => {
                   className="form-control mb-2"
                   placeholder="e.g. 100–110"
                   value={formData.conference.pages}
-                  onChange={e => setFormData({
-                    ...formData,
-                    conference: { ...formData.conference, pages: e.target.value }
-                  })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      conference: {
+                        ...formData.conference,
+                        pages: e.target.value,
+                      },
+                    })
+                  }
                 />
 
                 <label className="form-label">DOI</label>
@@ -797,10 +959,15 @@ const Citations = () => {
                   className="form-control mb-2"
                   placeholder="e.g. 10.1145/1234567.8901234"
                   value={formData.conference.doi}
-                  onChange={e => setFormData({
-                    ...formData,
-                    conference: { ...formData.conference, doi: e.target.value }
-                  })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      conference: {
+                        ...formData.conference,
+                        doi: e.target.value,
+                      },
+                    })
+                  }
                 />
 
                 <label className="form-label">URL</label>
@@ -809,10 +976,15 @@ const Citations = () => {
                   className="form-control"
                   placeholder="https://…"
                   value={formData.conference.url}
-                  onChange={e => setFormData({
-                    ...formData,
-                    conference: { ...formData.conference, url: e.target.value }
-                  })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      conference: {
+                        ...formData.conference,
+                        url: e.target.value,
+                      },
+                    })
+                  }
                 />
               </div>
             </>
@@ -821,7 +993,7 @@ const Citations = () => {
           {/* 3) Save / Cancel */}
           <div className="d-flex justify-content-end">
             <button
-              className="btn btn-secondary me-2"
+              className="btn secondary-color-button px-4 py-2 me-2"
               onClick={() =>
                 // setFormData({
                 //   key: "",
@@ -836,13 +1008,16 @@ const Citations = () => {
                 // })
                 setFormData({
                   journal: initialJournal,
-                  conference: initialConference
+                  conference: initialConference,
                 })
               }
             >
               Cancel
             </button>
-            <button className="btn primary-button" onClick={handleSaveReference}>
+            <button
+              className="btn primary-button px-4 py-2"
+              onClick={handleSaveReference}
+            >
               Generate Citation
             </button>
           </div>
@@ -866,36 +1041,40 @@ const Citations = () => {
           }}
         >
           {/* <div className="citation-modal"> */}
-          <button onClick={() => setShowCitationModal(false)} style={{ float: "right", border: "none", background: "none" }}>
+          <button
+            onClick={() => setShowCitationModal(false)}
+            style={{ float: "right", border: "none", background: "none" }}
+          >
             <IconX />
           </button>
           <h4>Citation</h4>
           {/* <div className="citation-body"> */}
           <div style={{ display: "flex", justifyContent: "center" }}>
             {loadingCitation ? (
-              <Lottie loop animationData={LoadinginCitation} play style={{ width: 200, height: 200 }} />
+              <Lottie
+                loop
+                animationData={LoadinginCitation}
+                play
+                style={{ width: 200, height: 200 }}
+              />
             ) : (
               <pre style={{ whiteSpace: "pre-wrap" }}>{citationData}</pre>
             )}
           </div>
           {!loadingCitation && citationData && (
             <button
-              className={`btn mt-3 ${copied ? "btn-success" : "btn-outline-secondary"
-                }`}
+              className={`btn mt-3 ${
+                copied ? "btn-success" : "btn-outline-secondary"
+              }`}
               onClick={handleCopyCitation}
               disabled={copied}
             >
               {copied ? "Copied!" : "Copy Citation"}
             </button>
           )}
-
         </div>
       )}
-
-
-
     </div>
-
   );
 };
 export default Citations;
