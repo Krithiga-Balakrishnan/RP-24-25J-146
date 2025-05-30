@@ -314,7 +314,7 @@ const Citations = () => {
       {/* 2) "My documents" heading */}
       <div className="row mb-3">
         <div className="col">
-          <h2 className="mb-4">IEEE Converter</h2>
+          <h2 className="mb-4">Reference Suggestor</h2>
         </div>
       </div>
 
