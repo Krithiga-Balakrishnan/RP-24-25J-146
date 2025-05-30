@@ -206,6 +206,8 @@ router.post("/:padId/save-citation", async (req, res) => {
     const { padId } = req.params;
     const { citation, author, title, journal, year, volume, number, pages } = req.body;
 
+    console.log("📦 Incoming body:", req.body);
+
     const pad = await Pad.findById(padId).exec();
     if (!pad) {
       return res.status(404).json({ error: "Pad not found" });
