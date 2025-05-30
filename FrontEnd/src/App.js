@@ -13,6 +13,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Mindmap from "./pages/Mindmap";
 import Citations from "./pages/Citations";
+import Plagiarism from "./pages/Plagiarism";
 import Ieee from "./pages/Ieee";
 import Contributor from "./pages/Contributor";
 import Results from "./components/Results";
@@ -53,6 +54,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/mindmap" element={<Mindmap />} />
             <Route path="/citations" element={<Citations />} />
+            <Route path="/plagiarism" element={<Plagiarism />} />
             <Route path="/ieee" element={<Ieee />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/mindmap/pad/:mindmap" element={<DocumentMindmap />} />
