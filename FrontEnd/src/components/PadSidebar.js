@@ -12,7 +12,7 @@ const menuData = [
   { label: "Checks", icon: "✔️", route: "#" },
 ];
 
-const PadSidebar = ({ sidebarOpen, toggleSidebar, onGenerateMindmap, onGenerateIEEE, onGenerateReference, padName, padId, }) => {
+const PadSidebar = ({ sidebarOpen, toggleSidebar, onGenerateMindmap, onGenerateIEEE, onGenerateReference,onCheckPDF, padName, padId, }) => {
   const navigate = useNavigate();
   const [isLaptop, setIsLaptop] = useState(window.innerWidth >= 992);
   
@@ -109,7 +109,10 @@ const PadSidebar = ({ sidebarOpen, toggleSidebar, onGenerateMindmap, onGenerateI
       onGenerateIEEE();
     } else if (item.label === "Cite") {
       onGenerateReference();  // Corrected this line
-    } else {
+    } 
+     else if (item.label === "Checks") {
+      onCheckPDF();  // Corrected this line
+    }else {
       navigate(item.route);
     }
     if (!isLaptop) toggleSidebar();

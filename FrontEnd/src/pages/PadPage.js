@@ -8,14 +8,15 @@ import PadHeader from "../components/PadHeader";
 import PadSidebar from "../components/PadSidebar";
 import CiteSidebar from "../components/CiteSideBar";
 import AcademicTextModal from "../components/AcademicTextModal";
-import LoadingScreen from "../animation/documentLoading"
+import LoadingScreen from "../animation/documentLoading";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-// const socket = io(`${process.env.REACT_APP_BACKEND_API_URL}`);
 
-const socket = io("http://98.70.36.206", {
-  path: "/api/node/socket.io"
-});
+const socket = io(`${process.env.REACT_APP_BACKEND_API_URL}`);
+
+// const socket = io("http://98.70.36.206", {
+//   path: "/api/node/socket.io"
+// });
 
 const PadPage = () => {
   const { padId } = useParams();
@@ -33,7 +34,9 @@ const PadPage = () => {
   const [showAcademicModal, setShowAcademicModal] = useState(false);
   const [convertedText, setConvertedText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-
+  // ⬆️ with the other useState hooks
+  const [evaluationResult, setEvaluationResult] = useState(null);
+  const [showEvalModal, setShowEvalModal] = useState(false); // NEW
 
   const editorRef = useRef(null);
 
@@ -63,43 +66,46 @@ const PadPage = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  useEffect(() => {
+    document.body.style.overflow = showEvalModal ? "hidden" : "auto";
+  }, [showEvalModal]);
+
   // For laptop: shift main content right to accommodate sidebar + gap.
   const mainContentStyle = {
     marginLeft: isLaptop ? "110px" : 0,
     padding: "1rem",
   };
 
+  // Fetch pad details from REST endpoint
+  const fetchPad = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
 
-    // Fetch pad details from REST endpoint
-    const fetchPad = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) return;
-
-      try {
-        const res = await fetch(
-          `${process.env.REACT_APP_BACKEND_API_URL}/api/pads/${padId}`,
-          {
-            headers: { Authorization: token },
-          }
-        );
-
-        if (!res.ok) {
-          console.error("❌ Failed to fetch pad:", res.status);
-          return;
+    try {
+      const res = await fetch(
+        `${process.env.REACT_APP_BACKEND_API_URL}/api/pads/${padId}`,
+        {
+          headers: { Authorization: token },
         }
+      );
 
-        const data = await res.json();
-        console.log("📜 Pad Data:", data);
-
-        setPad(data);
-        setSections(data.sections || []);
-        setAuthors(data.authors || []);
-        setReferences(data.references || []);
-        setPadName(data.name || "");
-      } catch (error) {
-        console.error("❌ Error fetching pad:", error);
+      if (!res.ok) {
+        console.error("❌ Failed to fetch pad:", res.status);
+        return;
       }
-    };
+
+      const data = await res.json();
+      console.log("📜 Pad Data:", data);
+
+      setPad(data);
+      setSections(data.sections || []);
+      setAuthors(data.authors || []);
+      setReferences(data.references || []);
+      setPadName(data.name || "");
+    } catch (error) {
+      console.error("❌ Error fetching pad:", error);
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem("userId", userId.current);
@@ -180,7 +186,6 @@ const PadPage = () => {
     console.log("Final text used for citation sidebar:", textToUse);
   };
 
-
   // Add user to pad (only if current user is pad_owner)
   const addUserToPad = async () => {
     if (!userEmail.trim()) return toast.error("Enter a valid email!");
@@ -236,7 +241,6 @@ const PadPage = () => {
         setConvertedText("Couldn't convert the text");
         setShowAcademicModal(true);
         throw new Error("Failed to convert text.");
-
       }
 
       const data = await response.json();
@@ -250,19 +254,18 @@ const PadPage = () => {
     }
   };
 
-
   // Fetch pad details from REST endpoint
   const FetchPadData = async () => {
-
     await fetchPad();
-    console.log("authors",authors)
+    console.log("authors", authors);
 
-     if (!authors || authors.length === 0) {
-    toast.error("At least one author must be added before generating the paper.");
-    return;
-  }
+    if (!authors || authors.length === 0) {
+      toast.error(
+        "At least one author must be added before generating the paper."
+      );
+      return;
+    }
 
-   
     const token = localStorage.getItem("token");
     if (!token) {
       console.error("No token found");
@@ -325,6 +328,195 @@ const PadPage = () => {
     setShowAcademicModal(false);
   };
 
+  // const FetchPadDataAndEvaluate = async () => {
+  //   console.log("Fetching pad data and evaluating PDF...");
+  //   await fetchPad();
+
+  //   if (!authors || authors.length === 0) {
+  //     toast.error(
+  //       "At least one author must be added before generating the paper."
+  //     );
+  //     return;
+  //   }
+
+  //   const token = localStorage.getItem("token");
+  //   if (!token) {
+  //     console.error("No token found");
+  //     return;
+  //   }
+
+  //   //setIsLoading(true);
+
+  //   try {
+  //     // 1. Generate PDF
+  //     const response = await fetch(
+  //       `${process.env.REACT_APP_BACKEND_API_URL}/api/convert/${padId}`,
+  //       {
+  //         headers: { Authorization: token },
+  //       }
+  //     );
+
+  //     if (!response.ok) {
+  //       console.error("❌ Failed to generate PDF:", response.status);
+  //       return;
+  //     }
+
+  //     const blob = await response.blob();
+  //     const file = new File([blob], "generated_ieee_paper.pdf", {
+  //       type: "application/pdf",
+  //     });
+
+  //     // 2. Evaluate the generated PDF
+  //     const formData = new FormData();
+  //     formData.append("file", file);
+
+  //     const evalRes = await fetch(
+  //       `${process.env.REACT_APP_BACKEND_API_URL}/api/convert/evaluate-pdf`,
+  //       {
+  //         method: "POST",
+  //         body: formData,
+  //       }
+  //     );
+
+  //     const evalData = await evalRes.json();
+
+  //     if (evalRes.ok) {
+  //       const requiredSections = [
+  //         "abstract",
+  //         "introduction",
+  //         "methodology",
+  //         "results",
+  //         "conclusion",
+  //         "references",
+  //       ];
+  //       const foundSections = evalData.sectionsFound.map((s) =>
+  //         s.toLowerCase()
+  //       );
+
+  //       let score = 0;
+
+  //       // Section completeness (max 50)
+  //       const sectionScore =
+  //         (requiredSections.filter((s) => foundSections.includes(s)).length /
+  //           requiredSections.length) *
+  //         50;
+  //       score += sectionScore;
+
+  //       // Font embedding (15 pts)
+  //       if (evalData.fonts_embedded) score += 15;
+
+  //       // Page size standard (10 pts)
+  //       if (evalData.page_size === "US Letter") score += 10;
+
+  //       // Readability score logic (10 pts)
+  //       if (evalData.gradeLevel >= 12 && evalData.gradeLevel <= 18) score += 5;
+  //       if (evalData.readingEase >= 20 && evalData.readingEase <= 50)
+  //         score += 5;
+
+  //       // Final clamp
+  //       const finalScore = Math.round(Math.min(score, 100));
+
+  //       setEvaluationResult({ ...evalData, complianceScore: finalScore });
+
+  //       toast.success("PDF evaluated successfully 🎓");
+  //     } else {
+  //       toast.error("Evaluation failed: " + evalData.error);
+  //     }
+
+  //     // Optionally download the PDF
+  //     // const url = URL.createObjectURL(blob);
+  //     // const a = document.createElement("a");
+  //     // a.href = url;
+  //     // a.download = "output_paper.pdf";
+  //     // document.body.appendChild(a);
+  //     // a.click();
+  //     // a.remove();
+  //     // URL.revokeObjectURL(url);
+  //   } catch (error) {
+  //     console.error("❌ Error in generation or evaluation:", error);
+  //     toast.error("Something went wrong during generation or evaluation.");
+  //   } finally {
+  //   //  setIsLoading(false);
+  //   }
+  // };
+
+  // ───────────────────────── Generate + Evaluate PDF ─────────────────────────
+const FetchPadDataAndEvaluate = async () => {
+  console.log("Fetching pad data and evaluating PDF…");
+  await fetchPad();
+
+  if (!authors?.length) return toast.error("Add at least one author first!");
+  const token = localStorage.getItem("token");
+  if (!token) return toast.error("No auth token!");
+
+  setIsLoading(true);
+
+  try {
+    // 1. Generate PDF
+    const pdfRes = await fetch(
+      `${process.env.REACT_APP_BACKEND_API_URL}/api/convert/${padId}`,
+      { headers: { Authorization: token } }
+    );
+    console.log("PDF Response Status:", pdfRes.status, pdfRes.statusText);
+    if (!pdfRes.ok) {
+      const errorText = await pdfRes.text();
+      console.error("PDF Error Response:", errorText);
+      throw new Error(`PDF generation failed: ${errorText}`);
+    }
+    const blob = await pdfRes.blob();
+
+    // 2. Evaluate PDF
+    const form = new FormData();
+    form.append("file", new File([blob], "paper.pdf", { type: "application/pdf" }));
+    const evalRes = await fetch(
+      `${process.env.REACT_APP_BACKEND_API_URL}/api/convert/evaluate-pdf`,
+      { method: "POST", body: form }
+    );
+    console.log("Eval Response Status:", evalRes.status, evalRes.statusText);
+    const evalData = await evalRes.json();
+    console.log("Eval Data:", evalData);
+    if (!evalRes.ok) throw new Error(evalData.error || "Evaluation failed");
+
+    // 3. Score
+    const req = ["abstract", "introduction", "methodology", "results", "conclusion", "references"];
+    const found = (evalData.sectionsFound || []).map((s) => s.toLowerCase());
+    let score = (req.filter((s) => found.includes(s)).length / req.length) * 50;
+    if (evalData.fonts_embedded) score += 15;
+    if (evalData.page_size === "US Letter") score += 10;
+    if (evalData.gradeLevel >= 12 && evalData.gradeLevel <= 18) score += 5;
+    if (evalData.readingEase >= 20 && evalData.readingEase <= 50) score += 5;
+    const finalScore = Math.round(Math.min(score, 100));
+
+    // 4. Show result
+    setEvaluationResult({ ...evalData, complianceScore: finalScore });
+    setShowEvalModal(true);
+    toast.success("PDF evaluated successfully 🎓");
+  } catch (err) {
+    console.error("❌ Evaluation error:", err);
+    toast.error(err.message || "Evaluation failed");
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+const handleCloseModal = () => {
+  setShowEvalModal(false);
+  setEvaluationResult(null);
+};
+
+// Remove the useEffect
+// useEffect(() => {
+//   if (evaluationResult) setShowEvalModal(true);
+//   console.log("Evaluation Result:", evaluationResult);
+// }, [evaluationResult]);
+
+//  useEffect(() => {
+//   if (evaluationResult) setShowEvalModal(true);
+//   console.log("Evaluation Result:", evaluationResult); 
+// }, [evaluationResult]);
+
+  // const handleCloseModal = () => setShowEvalModal(false);
+
   return (
     <>
       <PadSidebar
@@ -335,6 +527,7 @@ const PadPage = () => {
         onGenerateMindmap={handleGenerateMindmap}
         onGenerateReference={handleGenerateCiteSidebar}
         onGenerateIEEE={FetchPadData}
+        onCheckPDF={FetchPadDataAndEvaluate}
       />
       {isLoading ? (
         <LoadingScreen />
@@ -498,6 +691,53 @@ const PadPage = () => {
           }}
         />
       )}
+
+      {/* ─────────────── Evaluation Modal ─────────────── */}
+      {/* evaluation modal */}
+      {/* {showEvalModal && ( */}
+      {showEvalModal && (
+      <div className="fixed inset-0 flex items-center justify-center bg-black/60" style={{ zIndex: 9999 }}>
+        <div className="bg-white max-w-2xl w-full rounded-2xl shadow-xl p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">📊 Evaluation Report</h2>
+            <button
+              onClick={handleCloseModal}
+              className="text-gray-500 hover:text-gray-700 text-2xl leading-none font-bold"
+            >
+              ×
+            </button>
+          </div>
+          <ul className="space-y-2 text-sm text-gray-700">
+            <li>📄 <strong>Page Count:</strong> {evaluationResult?.pageCount ?? "N/A"}</li>
+            <li>📐 <strong>Page Size:</strong> {evaluationResult?.page_size ?? "N/A"}</li>
+            <li>🅰️ <strong>Fonts Embedded:</strong> {evaluationResult?.fonts_embedded ? "Yes ✅" : "No ❌"}</li>
+            <li>✅ <strong>Sections Found:</strong> {evaluationResult?.sectionsFound?.length ? evaluationResult.sectionsFound.join(", ") : "N/A"}</li>
+            <li>🎓 <strong>Grade Level:</strong> {evaluationResult?.gradeLevel ?? "N/A"}</li>
+            <li>📖 <strong>Reading Ease:</strong> {Number.isFinite(evaluationResult?.readingEase) ? evaluationResult.readingEase.toFixed(2) : "N/A"}</li>
+            <li>
+              🧠 <strong>Academic Compliance Score:</strong>
+              <span
+                className={`ml-2 px-2 py-1 rounded-full ${
+                  evaluationResult?.complianceScore >= 80
+                    ? "bg-green-100 text-green-800"
+                    : evaluationResult?.complianceScore >= 50
+                    ? "bg-yellow-100 text-yellow-800"
+                    : "bg-red-100 text-red-800"
+                }`}
+              >
+                {evaluationResult?.complianceScore ?? "N/A"}%
+              </span>
+            </li>
+          </ul>
+          <div className="mt-4">
+            <h4 className="font-medium mb-1">📝 Preview:</h4>
+            <pre className="bg-gray-100 p-3 rounded max-h-48 overflow-y-auto text-sm whitespace-pre-wrap">
+              {evaluationResult?.sampleText || "No preview available."}
+            </pre>
+          </div>
+        </div>
+      </div>
+    )}
       <AcademicTextModal
         show={showAcademicModal}
         onClose={() => setShowAcademicModal(false)}
