@@ -8,7 +8,7 @@ const menuData = [
   { label: "Contributor", icon: "✏️", route: "#" },
   { label: "Write", icon: "📝", route: "#" },
   { label: "Cite", icon: "🔬", route: "#" },
-  { label: "Translate", icon: "🌐", route: "#" },
+  { label: "Publish", icon: "🌐", route: "#" },
   { label: "Checks", icon: "✔️", route: "#" },
 ];
 
