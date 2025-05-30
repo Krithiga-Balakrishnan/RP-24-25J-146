@@ -150,6 +150,39 @@ export default function UserAccountPage() {
     return m.isValid() ? m.toDate() : null;
   }
 
+   const fetchPadData = async (padId) => {
+   
+  
+    const token = localStorage.getItem("token");
+    if (!token) return console.error("No token found");
+  
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `${process.env.REACT_APP_BACKEND_API_URL}/api/convert/${padId}`,
+        { headers: { Authorization: token } }
+      );
+      if (!res.ok) throw new Error(`Failed: ${res.status}`);
+  
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+  
+      // download
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "output_paper.pdf";
+      a.click();
+      URL.revokeObjectURL(url);
+      // window.location.reload();  // avoid full reload unless you really need it
+    } catch (err) {
+      console.error("❌ Error fetching pad:", err);
+      toast.error("Something went wrong generating the PDF.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+
   if (loading) return <LoadingComponent />;
 
   return (
@@ -399,13 +432,10 @@ export default function UserAccountPage() {
                     <div className="col-12 col-sm-2 d-flex justify-content-end mt-2 mt-sm-0">
                       <button
                         className="btn btn-sm p-2 primary-button d-flex align-items-center"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          window.open(
-                            `${API}/api/pads/${pad._id}/download`,
-                            "_blank"
-                          );
-                        }}
+                         onClick={async (e) => {
+                        e.stopPropagation();        // keep your row-click logic unchanged
+                        await fetchPadData(pad._id);      // run the new logic instead of window.open
+                      }}
                       >
                         <svg
                           xmlns="http://www.w3.org/2000/svg"

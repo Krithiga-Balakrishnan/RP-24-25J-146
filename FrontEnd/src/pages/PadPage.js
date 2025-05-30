@@ -11,6 +11,9 @@ import AcademicTextModal from "../components/AcademicTextModal";
 import LoadingScreen from "../animation/documentLoading";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import ConfirmationModal from "../components/ConfirmationModal";
+import EvaluationModal from "../components/EvaluationModal";
+
 
 const socket = io(`${process.env.REACT_APP_BACKEND_API_URL}`);
 
@@ -38,6 +41,7 @@ const PadPage = () => {
   // ⬆️ with the other useState hooks
   const [evaluationResult, setEvaluationResult] = useState(null);
   const [showEvalModal, setShowEvalModal] = useState(false); // NEW
+  
 
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
@@ -354,117 +358,6 @@ const PadPage = () => {
     setShowAcademicModal(false);
   };
 
-  // const FetchPadDataAndEvaluate = async () => {
-  //   console.log("Fetching pad data and evaluating PDF...");
-  //   await fetchPad();
-
-  //   if (!authors || authors.length === 0) {
-  //     toast.error(
-  //       "At least one author must be added before generating the paper."
-  //     );
-  //     return;
-  //   }
-
-  //   const token = localStorage.getItem("token");
-  //   if (!token) {
-  //     console.error("No token found");
-  //     return;
-  //   }
-
-  //   //setIsLoading(true);
-
-  //   try {
-  //     // 1. Generate PDF
-  //     const response = await fetch(
-  //       `${process.env.REACT_APP_BACKEND_API_URL}/api/convert/${padId}`,
-  //       {
-  //         headers: { Authorization: token },
-  //       }
-  //     );
-
-  //     if (!response.ok) {
-  //       console.error("❌ Failed to generate PDF:", response.status);
-  //       return;
-  //     }
-
-  //     const blob = await response.blob();
-  //     const file = new File([blob], "generated_ieee_paper.pdf", {
-  //       type: "application/pdf",
-  //     });
-
-  //     // 2. Evaluate the generated PDF
-  //     const formData = new FormData();
-  //     formData.append("file", file);
-
-  //     const evalRes = await fetch(
-  //       `${process.env.REACT_APP_BACKEND_API_URL}/api/convert/evaluate-pdf`,
-  //       {
-  //         method: "POST",
-  //         body: formData,
-  //       }
-  //     );
-
-  //     const evalData = await evalRes.json();
-
-  //     if (evalRes.ok) {
-  //       const requiredSections = [
-  //         "abstract",
-  //         "introduction",
-  //         "methodology",
-  //         "results",
-  //         "conclusion",
-  //         "references",
-  //       ];
-  //       const foundSections = evalData.sectionsFound.map((s) =>
-  //         s.toLowerCase()
-  //       );
-
-  //       let score = 0;
-
-  //       // Section completeness (max 50)
-  //       const sectionScore =
-  //         (requiredSections.filter((s) => foundSections.includes(s)).length /
-  //           requiredSections.length) *
-  //         50;
-  //       score += sectionScore;
-
-  //       // Font embedding (15 pts)
-  //       if (evalData.fonts_embedded) score += 15;
-
-  //       // Page size standard (10 pts)
-  //       if (evalData.page_size === "US Letter") score += 10;
-
-  //       // Readability score logic (10 pts)
-  //       if (evalData.gradeLevel >= 12 && evalData.gradeLevel <= 18) score += 5;
-  //       if (evalData.readingEase >= 20 && evalData.readingEase <= 50)
-  //         score += 5;
-
-  //       // Final clamp
-  //       const finalScore = Math.round(Math.min(score, 100));
-
-  //       setEvaluationResult({ ...evalData, complianceScore: finalScore });
-
-  //       toast.success("PDF evaluated successfully 🎓");
-  //     } else {
-  //       toast.error("Evaluation failed: " + evalData.error);
-  //     }
-
-  //     // Optionally download the PDF
-  //     // const url = URL.createObjectURL(blob);
-  //     // const a = document.createElement("a");
-  //     // a.href = url;
-  //     // a.download = "output_paper.pdf";
-  //     // document.body.appendChild(a);
-  //     // a.click();
-  //     // a.remove();
-  //     // URL.revokeObjectURL(url);
-  //   } catch (error) {
-  //     console.error("❌ Error in generation or evaluation:", error);
-  //     toast.error("Something went wrong during generation or evaluation.");
-  //   } finally {
-  //   //  setIsLoading(false);
-  //   }
-  // };
 
   // ───────────────────────── Generate + Evaluate PDF ─────────────────────────
 const FetchPadDataAndEvaluate = async () => {
@@ -525,10 +418,6 @@ const FetchPadDataAndEvaluate = async () => {
   }
 };
 
-const handleCloseModal = () => {
-  setShowEvalModal(false);
-  setEvaluationResult(null);
-};
 
 // Remove the useEffect
 // useEffect(() => {
@@ -574,6 +463,7 @@ const handleCloseModal = () => {
     }
   }
 
+   
   return (
     <>
       <PadSidebar
@@ -770,51 +660,12 @@ const handleCloseModal = () => {
       )}
 
       {/* ─────────────── Evaluation Modal ─────────────── */}
-      {/* evaluation modal */}
-      {/* {showEvalModal && ( */}
-      {showEvalModal && (
-      <div className="fixed inset-0 flex items-center justify-center bg-black/60" style={{ zIndex: 9999 }}>
-        <div className="bg-white max-w-2xl w-full rounded-2xl shadow-xl p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">📊 Evaluation Report</h2>
-            <button
-              onClick={handleCloseModal}
-              className="text-gray-500 hover:text-gray-700 text-2xl leading-none font-bold"
-            >
-              ×
-            </button>
-          </div>
-          <ul className="space-y-2 text-sm text-gray-700">
-            <li>📄 <strong>Page Count:</strong> {evaluationResult?.pageCount ?? "N/A"}</li>
-            <li>📐 <strong>Page Size:</strong> {evaluationResult?.page_size ?? "N/A"}</li>
-            <li>🅰️ <strong>Fonts Embedded:</strong> {evaluationResult?.fonts_embedded ? "Yes ✅" : "No ❌"}</li>
-            <li>✅ <strong>Sections Found:</strong> {evaluationResult?.sectionsFound?.length ? evaluationResult.sectionsFound.join(", ") : "N/A"}</li>
-            <li>🎓 <strong>Grade Level:</strong> {evaluationResult?.gradeLevel ?? "N/A"}</li>
-            <li>📖 <strong>Reading Ease:</strong> {Number.isFinite(evaluationResult?.readingEase) ? evaluationResult.readingEase.toFixed(2) : "N/A"}</li>
-            <li>
-              🧠 <strong>Academic Compliance Score:</strong>
-              <span
-                className={`ml-2 px-2 py-1 rounded-full ${
-                  evaluationResult?.complianceScore >= 80
-                    ? "bg-green-100 text-green-800"
-                    : evaluationResult?.complianceScore >= 50
-                    ? "bg-yellow-100 text-yellow-800"
-                    : "bg-red-100 text-red-800"
-                }`}
-              >
-                {evaluationResult?.complianceScore ?? "N/A"}%
-              </span>
-            </li>
-          </ul>
-          <div className="mt-4">
-            <h4 className="font-medium mb-1">📝 Preview:</h4>
-            <pre className="bg-gray-100 p-3 rounded max-h-48 overflow-y-auto text-sm whitespace-pre-wrap">
-              {evaluationResult?.sampleText || "No preview available."}
-            </pre>
-          </div>
-        </div>
-      </div>
-    )}
+  
+      <EvaluationModal
+        show={showEvalModal}
+        onClose={() => setShowEvalModal(false)}
+        evaluationResult={evaluationResult}
+      />
       <AcademicTextModal
         show={showAcademicModal}
         onClose={() => setShowAcademicModal(false)}
