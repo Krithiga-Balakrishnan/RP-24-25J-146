@@ -109,7 +109,7 @@ const AcademicConverter = () => {
       {/* 2) "My documents" heading */}
       <div className="row mb-3">
         <div className="col">
-          <h2 className="mb-4">Reference and Citation Dashboard</h2>
+          <h2 className="mb-4">Academic Text Converter</h2>
         </div>
       </div>
       {/* Banner */}

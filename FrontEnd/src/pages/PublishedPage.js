@@ -2,9 +2,12 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import moment from "moment";
-import { ToastContainer } from "react-toastify";
+import { toast,ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { Download } from "lucide-react";
+import LoadingComponent from "../components/LoadingComponent";
+
+
 
 export default function PublishedPage() {
   /***** state *****/
@@ -18,6 +21,9 @@ export default function PublishedPage() {
   const navigate = useNavigate();
   const currentUserId = localStorage.getItem("userId");
 
+  const [loading, setLoading] = useState(false);
+
+    
   /***** fetch published pads *****/
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -82,6 +88,42 @@ export default function PublishedPage() {
   const pagePads = filteredSortedPads.slice(startIdx, startIdx + itemsPerPage);
   const totalPages = Math.ceil(filteredSortedPads.length / itemsPerPage);
 
+
+  const fetchPadData = async (padId) => {
+   
+  
+    const token = localStorage.getItem("token");
+    if (!token) return console.error("No token found");
+  
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `${process.env.REACT_APP_BACKEND_API_URL}/api/convert/${padId}`,
+        { headers: { Authorization: token } }
+      );
+      if (!res.ok) throw new Error(`Failed: ${res.status}`);
+  
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+  
+      // download
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "output_paper.pdf";
+      a.click();
+      URL.revokeObjectURL(url);
+      // window.location.reload();  // avoid full reload unless you really need it
+    } catch (err) {
+      console.error("❌ Error fetching pad:", err);
+      toast.error("Something went wrong generating the PDF.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  if (loading) return <LoadingComponent />;
+  
   /***** UI *****/
   return (
     <div className="container py-3" style={{ fontFamily: "sans-serif" }}>
@@ -215,13 +257,9 @@ export default function PublishedPage() {
                       {/* Download button */}
                       <button
                         className="btn btn-sm primary-button"
-                        onClick={(e) => {
-                          e.stopPropagation(); // don’t trigger card click
-                          // replace with your actual download logic:
-                          window.open(
-                            "${process.env.REACT_APP_BACKEND_API_URL}/api/pads/${pad._id}/download",
-                            "_blank"
-                          );
+                        onClick={async (e) => {
+                          e.stopPropagation(); 
+                          await fetchPadData(pad._id);
                         }}
                       >
                         <Download size={16} />
