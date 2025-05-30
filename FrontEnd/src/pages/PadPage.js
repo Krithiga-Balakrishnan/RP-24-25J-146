@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
 import { v4 as uuidv4 } from "uuid";
 import Editor from "../components/Editor";
@@ -8,9 +8,10 @@ import PadHeader from "../components/PadHeader";
 import PadSidebar from "../components/PadSidebar";
 import CiteSidebar from "../components/CiteSideBar";
 import AcademicTextModal from "../components/AcademicTextModal";
-import LoadingScreen from "../animation/documentLoading"
+import LoadingScreen from "../animation/documentLoading";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import ConfirmationModal from "../components/ConfirmationModal";
 // const socket = io(`${process.env.REACT_APP_BACKEND_API_URL}`);
 
 const socket = io("http://98.70.36.206", {
@@ -20,6 +21,7 @@ const socket = io("http://98.70.36.206", {
 const PadPage = () => {
   const { padId } = useParams();
   const [users, setUsers] = useState([]);
+  const [padUsers, setPadUsers] = useState([]);
   const [pad, setPad] = useState(null);
   const [sections, setSections] = useState([]);
   const [authors, setAuthors] = useState([]);
@@ -33,9 +35,11 @@ const PadPage = () => {
   const [showAcademicModal, setShowAcademicModal] = useState(false);
   const [convertedText, setConvertedText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-
-
+  const [showPublishConfirm, setShowPublishConfirm] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
+  const [published, setPublished] = useState(false);
   const editorRef = useRef(null);
+  const navigate = useNavigate();
 
   const userId = useRef(localStorage.getItem("userId") || uuidv4());
   const userName = useRef(
@@ -69,37 +73,57 @@ const PadPage = () => {
     padding: "1rem",
   };
 
+  // Fetch pad details from REST endpoint
+  const fetchPad = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
 
-    // Fetch pad details from REST endpoint
-    const fetchPad = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) return;
-
-      try {
-        const res = await fetch(
-          `${process.env.REACT_APP_BACKEND_API_URL}/api/pads/${padId}`,
-          {
-            headers: { Authorization: token },
-          }
-        );
-
-        if (!res.ok) {
-          console.error("❌ Failed to fetch pad:", res.status);
-          return;
+    try {
+      const res = await fetch(
+        `${process.env.REACT_APP_BACKEND_API_URL}/api/pads/${padId}`,
+        {
+          headers: { Authorization: token },
         }
+      );
 
-        const data = await res.json();
-        console.log("📜 Pad Data:", data);
-
-        setPad(data);
-        setSections(data.sections || []);
-        setAuthors(data.authors || []);
-        setReferences(data.references || []);
-        setPadName(data.name || "");
-      } catch (error) {
-        console.error("❌ Error fetching pad:", error);
+      if (!res.ok) {
+        console.error("❌ Failed to fetch pad:", res.status);
+        return;
       }
-    };
+
+      const data = await res.json();
+      console.log("📜 Pad Data:", data);
+
+      setPad(data);
+      setSections(data.sections || []);
+      setAuthors(data.authors || []);
+      setReferences(data.references || []);
+      setPadName(data.name || "");
+
+      const currentUser = localStorage.getItem("userId");
+      setIsOwner(data.roles?.[currentUser] === "pad_owner");
+      console.log("Raw published from server:", data.published);
+      setPublished(Boolean(data.published));
+
+      // ─── fetch ALL users, then pick only those on this pad ───
+      const usersRes = await fetch(
+        `${process.env.REACT_APP_BACKEND_API_URL}/api/users`,
+        { headers: { Authorization: token } }
+      );
+      if (usersRes.ok) {
+        const all = await usersRes.json();
+        // filter to only the ones whose _id is in data.users
+        const padList = all.filter((u) =>
+          data.users.some((uid) => uid.toString() === u._id.toString())
+        );
+        setPadUsers(padList);
+      } else {
+        console.error("❌ Failed to fetch all users:", usersRes.status);
+      }
+    } catch (error) {
+      console.error("❌ Error fetching pad:", error);
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem("userId", userId.current);
@@ -180,7 +204,6 @@ const PadPage = () => {
     console.log("Final text used for citation sidebar:", textToUse);
   };
 
-
   // Add user to pad (only if current user is pad_owner)
   const addUserToPad = async () => {
     if (!userEmail.trim()) return toast.error("Enter a valid email!");
@@ -236,7 +259,6 @@ const PadPage = () => {
         setConvertedText("Couldn't convert the text");
         setShowAcademicModal(true);
         throw new Error("Failed to convert text.");
-
       }
 
       const data = await response.json();
@@ -250,19 +272,18 @@ const PadPage = () => {
     }
   };
 
-
   // Fetch pad details from REST endpoint
   const FetchPadData = async () => {
-
     await fetchPad();
-    console.log("authors",authors)
+    console.log("authors", authors);
 
-     if (!authors || authors.length === 0) {
-    toast.error("At least one author must be added before generating the paper.");
-    return;
-  }
+    if (!authors || authors.length === 0) {
+      toast.error(
+        "At least one author must be added before generating the paper."
+      );
+      return;
+    }
 
-   
     const token = localStorage.getItem("token");
     if (!token) {
       console.error("No token found");
@@ -325,6 +346,38 @@ const PadPage = () => {
     setShowAcademicModal(false);
   };
 
+  function requestPublishToggle() {
+    if (!isOwner) {
+      return toast.error("Only the pad owner can publish or unpublish.");
+    }
+    setShowPublishConfirm(true);
+  }
+
+  async function togglePublish() {
+    setShowPublishConfirm(false);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `${process.env.REACT_APP_BACKEND_API_URL}/api/pads/${padId}/publish`,
+        {
+          method: "PATCH",
+          headers: { Authorization: token },
+        }
+      );
+      const body = await res.json();
+      if (!res.ok) {
+        toast.error(body.msg || "Failed to toggle publish");
+      } else {
+        setPublished(body.published);
+        setPad((prev) => prev && { ...prev, published: body.published });
+        toast.success(body.msg);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Server error");
+    }
+  }
+
   return (
     <>
       <PadSidebar
@@ -335,6 +388,7 @@ const PadPage = () => {
         onGenerateMindmap={handleGenerateMindmap}
         onGenerateReference={handleGenerateCiteSidebar}
         onGenerateIEEE={FetchPadData}
+        onPublish={requestPublishToggle}
       />
       {isLoading ? (
         <LoadingScreen />
@@ -370,31 +424,50 @@ const PadPage = () => {
             />
 
             <div className="row mt-5">
-              {/* ─────────────── Active Users ─────────────── */}
+              {/* ─────────────── Collaborators ─────────────── */}
               <div className="col-12 col-md-8 mt-4">
                 <div className="d-flex align-items-center flex-wrap">
-                  <h3 className="me-3 mb-0">Active Users:</h3>
+                  <h3 className="me-3 mb-0">Users:</h3>
 
-                  {users.length > 0 ? (
-                    users.map((user) => (
-                      <span
-                        key={user.userId}
-                        className="badge rounded-pill me-2 px-4 py-2"
-                        style={{
-                          backgroundColor: "var(--fourth-color)",
-                          color: "var(--primary-color)",
-                        }}
-                      >
-                        {user.userName}
-                        {pad?.roles?.[user.userId] === "pad_owner"
-                          ? " (Owner)"
-                          : ""}
-                      </span>
-                    ))
-                  ) : (
+                  {padUsers.length === 0 ? (
                     <span className="text-warning">
-                      ⚠️ No active users yet.
+                      ⚠️ No users found on this pad.
                     </span>
+                  ) : (
+                    padUsers.map((u) => {
+                      const isActive = users.some((au) => au.userId === u._id);
+                      const isOwner = pad?.roles?.[u._id] === "pad_owner";
+                      // choose styles based on active/inactive
+                      const bg = isActive ? "var(--fourth-color)" : "#e0e0e0"; // light grey for inactive
+                      const fg = isActive ? "var(--primary-color)" : "#6c757d"; // muted text for inactive
+                      return (
+                        <span
+                          key={u._id}
+                          onClick={() => navigate(`/user/${u._id}`)}
+                          style={{
+                            cursor: "pointer",
+                            marginRight: "0.5rem",
+                            marginBottom: "0.5rem",
+                            padding: "0.35rem 0.8rem",
+                            borderRadius: "9999px",
+                            backgroundColor: bg,
+                            color: fg,
+                            fontWeight: isOwner ? "bold" : "normal",
+                            textDecoration: "none",
+                            transition: "opacity .2s",
+                          }}
+                          onMouseEnter={(e) =>
+                            (e.currentTarget.style.opacity = 0.7)
+                          }
+                          onMouseLeave={(e) =>
+                            (e.currentTarget.style.opacity = 1)
+                          }
+                        >
+                          {u.name || "Unknown"}
+                          {isOwner && " (Owner)"}
+                        </span>
+                      );
+                    })
                   )}
                 </div>
               </div>
@@ -503,6 +576,19 @@ const PadPage = () => {
         onClose={() => setShowAcademicModal(false)}
         convertedText={convertedText}
         onReplaceText={handleReplaceText}
+      />
+      <ConfirmationModal
+        show={showPublishConfirm}
+        title={published ? "Unpublish Pad?" : "Publish Pad?"}
+        message={
+          pad?.published
+            ? "Are you sure you want to unpublish this pad? It will no longer be publicly visible."
+            : "Are you sure you want to publish this pad? It will become publicly visible."
+        }
+        confirmText={published ? "Unpublish" : "Publish"}
+        cancelText="Cancel"
+        onCancel={() => setShowPublishConfirm(false)}
+        onConfirm={togglePublish}
       />
       <ToastContainer />
     </>
