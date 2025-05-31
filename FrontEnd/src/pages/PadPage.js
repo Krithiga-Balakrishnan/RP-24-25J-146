@@ -15,11 +15,11 @@ import ConfirmationModal from "../components/ConfirmationModal";
 import EvaluationModal from "../components/EvaluationModal";
 
 
-const socket = io(`${process.env.REACT_APP_BACKEND_API_URL}`);
+// const socket = io(`${process.env.REACT_APP_BACKEND_API_URL}`);
 
-// const socket = io("http://98.70.36.206", {
-//   path: "/api/node/socket.io"
-// });
+const socket = io("http://98.70.36.206", {
+  path: "/api/node/socket.io"
+});
 
 const PadPage = () => {
   const { padId } = useParams();
