@@ -80,7 +80,10 @@ const SavedMindmap = () => {
 
   const socketRef = useRef(null);
   if (!socketRef.current) {
-    socketRef.current = io(process.env.REACT_APP_BACKEND_API_URL);
+    // socketRef.current = io(process.env.REACT_APP_BACKEND_API_URL);
+    socketRef.current = io("http://98.70.36.206", {
+      path: "/api/node/socket.io",
+    });
   }
 
   const downloadAsPNG = () => {
@@ -993,7 +996,9 @@ const SavedMindmap = () => {
                     selectedSourceForRelationRef.current &&
                     selectedSourceForRelationRef.current.id === d.id
                   ) {
-                    toast.error("Source and target nodes cannot be the same. Please select a different target node.");
+                    toast.error(
+                      "Source and target nodes cannot be the same. Please select a different target node."
+                    );
                     event.stopPropagation();
                     return;
                   }
@@ -1303,7 +1308,9 @@ const SavedMindmap = () => {
               selectRelationFeedbackRef.current.style.display = "inline-block";
             }
           } else {
-            toast.error("Please click on a node first to set it as the source.");
+            toast.error(
+              "Please click on a node first to set it as the source."
+            );
           }
         }
         event.stopPropagation();
@@ -1339,7 +1346,7 @@ const SavedMindmap = () => {
         mindmapId: _id,
         nodeId: null,
         userName,
-      }); 
+      });
       update();
 
       if (!nodeGroupRef.current || !linkGroupRef.current) return;
